@@ -6,24 +6,26 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useI18n } from "../lib/i18n-provider";
 import ThemeToggle from "./ThemeToggle";
 import LanguageSwitcher from "./LanguageSwitcher";
 
-const menuItems = [
-  { href: "/", label: "Home", icon: "🏠" },
-  { href: "/create", label: "Create", icon: "🪙" },
-  { href: "/new-pairs", label: "New Pairs", icon: "🔥" },
-  { href: "/referral", label: "Refer", icon: "💰" },
-  { href: "/live", label: "Live", icon: "📢" },
-  { href: "/top-users", label: "Top Users", icon: "🏆" },
-];
-
 export default function Sidebar() {
+  const { t } = useI18n();
   const { connected, disconnect, publicKey } = useWallet();
   const { setVisible } = useWalletModal();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const menuItems = [
+    { href: "/", label: t("nav_home"), icon: "🏠" },
+    { href: "/create", label: t("nav_create"), icon: "🪙" },
+    { href: "/new-pairs", label: t("nav_new_pairs"), icon: "🔥" },
+    { href: "/referral", label: t("nav_refer"), icon: "💰" },
+    { href: "/live", label: t("nav_live"), icon: "📢" },
+    { href: "/top-users", label: t("nav_top_users"), icon: "🏆" },
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -46,7 +48,6 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <>
-      {/* Logo */}
       <div className="px-4 py-4 border-b border-gray-800">
         <Link href="/" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 overflow-hidden">
@@ -57,13 +58,12 @@ export default function Sidebar() {
             />
           </div>
           <div>
-            <span className="text-white font-bold text-lg tracking-tight">BluPrint</span>
-            <p className="text-[10px] text-gray-500 -mt-1">Launchpad</p>
+            <span className="text-white font-bold text-lg tracking-tight">{t("sidebar_bluprint")}</span>
+            <p className="text-[10px] text-gray-500 -mt-1">{t("sidebar_launchpad")}</p>
           </div>
         </Link>
       </div>
 
-      {/* Menu Items */}
       <nav className="flex-1 px-3 py-3 space-y-0.5">
         {menuItems.map((item) => (
           <Link
@@ -88,7 +88,6 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Wallet & Settings */}
       <div className="px-3 pt-2 pb-4 space-y-2.5">
         <button
           onClick={handleWalletClick}
@@ -101,7 +100,7 @@ export default function Sidebar() {
             </svg>
           </div>
           <span className="text-gray-200 text-sm font-medium truncate">
-            {connected && publicKey ? shortenAddress(publicKey.toString()) : "Connect Wallet"}
+            {connected && publicKey ? shortenAddress(publicKey.toString()) : t("nav_connect")}
           </span>
           {connected && (
             <span className="ml-auto w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -120,19 +119,17 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop Sidebar - top-0 bottom-0 ile tam yapıştır */}
       <aside className="fixed left-0 top-0 bottom-0 w-56 bg-gray-900/95 backdrop-blur-xl border-r border-gray-800 z-40 hidden md:flex flex-col">
         {sidebarContent}
       </aside>
 
-      {/* Mobile Header - top-0 ile yapıştır */}
       <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-gray-900/95 backdrop-blur-xl border-b border-gray-800">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
               <img src="/favicon.ico" alt="BluPrint" className="w-full h-full object-cover" />
             </div>
-            <span className="text-white font-bold text-lg">BluPrint</span>
+            <span className="text-white font-bold text-lg">{t("sidebar_bluprint")}</span>
           </Link>
 
           <button
@@ -150,7 +147,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>

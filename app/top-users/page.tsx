@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useI18n } from "../lib/i18n-provider";
 import Footer from "../components/Footer";
 import PageTransition from "../components/PageTransition";
 
@@ -15,6 +16,7 @@ interface User {
 }
 
 export default function TopUsersPage() {
+  const { t } = useI18n();
   const { publicKey } = useWallet();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,10 +49,10 @@ export default function TopUsersPage() {
 
   const getTierBadge = (tier?: string | null) => {
     if (tier === "vip") {
-      return <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full">👑 VIP</span>;
+      return <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full">{t("top_users_vip")}</span>;
     }
     if (tier === "premium") {
-      return <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">⭐ PREMIUM</span>;
+      return <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">{t("top_users_premium")}</span>;
     }
     return null;
   };
@@ -63,25 +65,23 @@ export default function TopUsersPage() {
         
         <div className="relative z-10 pt-20 sm:pt-28 max-w-6xl mx-auto px-3 sm:px-4 pb-16">
           
-          {/* Header */}
           <div className="text-center mb-10">
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent"
             >
-              🏆 Top Users
+              {t("top_users_title")}
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-gray-400 mt-3"
             >
-              Most active token creators on BluPrint
+              {t("top_users_subtitle")}
             </motion.p>
           </div>
 
-          {/* Filters */}
           <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
             <div className="flex gap-2">
               <button
@@ -92,7 +92,7 @@ export default function TopUsersPage() {
                     : "bg-gray-800/50 text-gray-400 hover:bg-gray-800"
                 }`}
               >
-                All Time
+                {t("top_users_all_time")}
               </button>
               <button
                 onClick={() => setTimeframe("week")}
@@ -102,7 +102,7 @@ export default function TopUsersPage() {
                     : "bg-gray-800/50 text-gray-400 hover:bg-gray-800"
                 }`}
               >
-                This Week
+                {t("top_users_week")}
               </button>
               <button
                 onClick={() => setTimeframe("month")}
@@ -112,7 +112,7 @@ export default function TopUsersPage() {
                     : "bg-gray-800/50 text-gray-400 hover:bg-gray-800"
                 }`}
               >
-                This Month
+                {t("top_users_month")}
               </button>
             </div>
             <div className="flex gap-2">
@@ -124,7 +124,7 @@ export default function TopUsersPage() {
                     : "bg-gray-800/50 text-gray-400 hover:bg-gray-800"
                 }`}
               >
-                🔥 Most Tokens
+                {t("top_users_most_tokens")}
               </button>
               <button
                 onClick={() => setSortBy("referrals")}
@@ -134,19 +134,18 @@ export default function TopUsersPage() {
                     : "bg-gray-800/50 text-gray-400 hover:bg-gray-800"
                 }`}
               >
-                👥 Most Referrals
+                {t("top_users_most_referrals")}
               </button>
             </div>
           </div>
 
-          {/* Leaderboard */}
           {loading ? (
             <div className="flex justify-center py-20">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
             </div>
           ) : users.length === 0 ? (
             <div className="text-center py-20 text-gray-500">
-              No users found
+              {t("top_users_no_users")}
             </div>
           ) : (
             <div className="space-y-2">
@@ -161,7 +160,6 @@ export default function TopUsersPage() {
                   }`}
                 >
                   <div className="flex items-center justify-between p-4">
-                    {/* Rank */}
                     <div className="flex items-center gap-4 w-16">
                       <span className={`text-2xl font-bold ${
                         index === 0 ? "text-yellow-400" :
@@ -173,7 +171,6 @@ export default function TopUsersPage() {
                       </span>
                     </div>
 
-                    {/* User Info */}
                     <div className="flex-1 flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
                         {index + 1}
@@ -186,25 +183,24 @@ export default function TopUsersPage() {
                           {getTierBadge(user.tier)}
                           {publicKey?.toString() === user.wallet && (
                             <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
-                              You
+                              {t("top_users_you")}
                             </span>
                           )}
                         </div>
                         <div className="flex gap-3 mt-1 text-xs text-gray-500">
-                          <span>Joined: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}</span>
+                          <span>{t("top_users_joined")}: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Stats */}
                     <div className="flex gap-6">
                       <div className="text-right">
                         <div className="text-xl font-bold text-white">{user.tokenCount}</div>
-                        <div className="text-xs text-gray-500">Tokens</div>
+                        <div className="text-xs text-gray-500">{t("top_users_tokens")}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-xl font-bold text-green-400">{user.referralCount}</div>
-                        <div className="text-xs text-gray-500">Referrals</div>
+                        <div className="text-xs text-gray-500">{t("top_users_referrals")}</div>
                       </div>
                     </div>
                   </div>
@@ -213,7 +209,6 @@ export default function TopUsersPage() {
             </div>
           )}
 
-          {/* Your Stats (if wallet connected) */}
           {publicKey && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -222,19 +217,19 @@ export default function TopUsersPage() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm text-gray-400">Your Rank</div>
+                  <div className="text-sm text-gray-400">{t("top_users_your_rank")}</div>
                   <div className="text-2xl font-bold text-white">
                     #{users.findIndex(u => u.wallet === publicKey.toString()) + 1 || "—"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-400">Your Tokens</div>
+                  <div className="text-sm text-gray-400">{t("top_users_your_tokens")}</div>
                   <div className="text-2xl font-bold text-white">
                     {users.find(u => u.wallet === publicKey.toString())?.tokenCount || 0}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-400">Your Referrals</div>
+                  <div className="text-sm text-gray-400">{t("top_users_your_referrals")}</div>
                   <div className="text-2xl font-bold text-green-400">
                     {users.find(u => u.wallet === publicKey.toString())?.referralCount || 0}
                   </div>

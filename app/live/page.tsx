@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useI18n } from "../lib/i18n-provider";
 import Footer from "../components/Footer";
 import PageTransition from "../components/PageTransition";
 
@@ -26,12 +27,13 @@ interface Announcement {
 }
 
 export default function LivePage() {
+  const { t } = useI18n();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [announcements] = useState<Announcement[]>([
-    { id: "1", title: "🔥 Launch Day: May 14th!", content: "Token creation starts on May 14th!", createdAt: Date.now() },
-    { id: "2", title: "💰 Referral System Active", content: "Earn 0.05 SOL per referral!", createdAt: Date.now() - 86400000 },
-    { id: "3", title: "👑 VIP Benefits Announced", content: "VIP members get 0.10 SOL monthly airdrop!", createdAt: Date.now() - 172800000 },
+    { id: "1", title: t("live_announcement_launch_title"), content: t("live_announcement_launch_desc"), createdAt: Date.now() },
+    { id: "2", title: t("live_announcement_referral_title"), content: t("live_announcement_referral_desc"), createdAt: Date.now() - 86400000 },
+    { id: "3", title: t("live_announcement_vip_title"), content: t("live_announcement_vip_desc"), createdAt: Date.now() - 172800000 },
   ]);
 
   useEffect(() => {
@@ -80,13 +82,13 @@ export default function LivePage() {
     const walletShort = `${activity.wallet.slice(0, 6)}...${activity.wallet.slice(-4)}`;
     switch (activity.type) {
       case "token":
-        return `New token "${activity.details.tokenName}" created by ${walletShort}`;
+        return `${t("live_feed_new_token")} "${activity.details.tokenName}" ${t("live_feed_created_by")} ${walletShort}`;
       case "vip":
-        return `${walletShort} became VIP member! 👑 (Rank #${activity.details.rank})`;
+        return `${walletShort} ${t("live_feed_became_vip")}`;
       case "premium":
-        return `${walletShort} joined as Premium member ⭐`;
+        return `${walletShort} ${t("live_feed_joined_premium")}`;
       case "referral":
-        return `${walletShort} earned ${activity.details.amount} SOL from referral`;
+        return `${walletShort} ${t("live_feed_earned")} ${activity.details.amount} ${t("live_feed_from_referral")}`;
       default:
         return "Activity occurred";
     }
@@ -116,22 +118,21 @@ export default function LivePage() {
         <div className="pt-6 px-6">
           
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-white">📢 Live Feed</h1>
-            <p className="text-gray-500 text-sm">Real-time platform activity and announcements</p>
+            <h1 className="text-2xl font-bold text-white">{t("live_feed_title")}</h1>
+            <p className="text-gray-500 text-sm">{t("live_feed_subtitle")}</p>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6">
             
-            {/* Activity Feed */}
             <div className="lg:col-span-2">
               <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-800">
-                  <h2 className="font-semibold text-white">🕒 Live Activity Feed</h2>
+                  <h2 className="font-semibold text-white">{t("live_feed_activity_title")}</h2>
                 </div>
                 <div className="divide-y divide-gray-800 max-h-[600px] overflow-y-auto">
                   <AnimatePresence>
                     {activities.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-gray-500">No activities yet</div>
+                      <div className="px-4 py-8 text-center text-gray-500">{t("live_feed_no_activity")}</div>
                     ) : (
                       activities.map((activity) => (
                         <motion.div
@@ -157,11 +158,10 @@ export default function LivePage() {
               </div>
             </div>
 
-            {/* Announcements */}
             <div>
               <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-800">
-                  <h2 className="font-semibold text-white">📢 Announcements</h2>
+                  <h2 className="font-semibold text-white">{t("live_feed_announcements_title")}</h2>
                 </div>
                 <div className="divide-y divide-gray-800 max-h-[600px] overflow-y-auto">
                   {announcements.map((ann) => (
