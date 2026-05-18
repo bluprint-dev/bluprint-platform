@@ -48,6 +48,14 @@ const translations: Record<Locale, Translations> = {
     "hero_button": "✨ Create Token",
     "hero_phantom": "Phantom Wallet",
 
+    // ==================== FEATURE CARDS ====================
+    "feature_fast_title": "Fast Deployment",
+    "feature_fast_desc": "Most tokens deploy in under 30 seconds",
+    "feature_secure_title": "Secure Launch",
+    "feature_secure_desc": "Authority controls included during creation",
+    "feature_solana_title": "Solana Powered",
+    "feature_solana_desc": "Built directly on Solana infrastructure",
+
     // ==================== WHY BLUPRINT ====================
     "why_title": "Why BluPrint?",
     "why_subtitle": "The simplest way to launch your Solana token",
@@ -164,6 +172,20 @@ const translations: Record<Locale, Translations> = {
     // ==================== REFERRAL PAGE ====================
     "ref_title": "🔗 Referral Program",
     "ref_desc": "Earn SOL by inviting your friends!",
+    "ref_total": "Total Earned",
+    "ref_per": "per referral",
+    "ref_claim": "Claim",
+    "ref_processing": "Processing...",
+    "ref_top": "Top Referrers",
+    "ref_referrals": "referrals",
+    "ref_step1": "Share Your Code",
+    "ref_step1_desc": "Share your unique promo code with friends",
+    "ref_step2": "Friend Creates Token",
+    "ref_step2_desc": "When they create a token, you earn 0.05 SOL",
+    "ref_step3": "Get Paid",
+    "ref_step3_desc": "SOL is sent directly to your wallet instantly",
+    "ref_no_earnings": "No earnings to claim",
+    "toast_connect": "Please connect your wallet first",
     "ref_total_earned": "Total Earned",
     "ref_unclaimed": "Unclaimed",
     "ref_per_referral": "per referral",
@@ -191,21 +213,9 @@ const translations: Record<Locale, Translations> = {
     "ref_info": "💡 Every person who creates a token with your code = 0.05 SOL for you!",
     "ref_bonus_info": "Reach 10 referrals → +0.1 SOL bonus • 25 referrals → +0.2 SOL • 50 → +0.5 SOL • 100 → +1 SOL",
     "ref_how_title": "How It Works",
-    "ref_step1": "Share Your Code",
-    "ref_step1_desc": "Share your unique promo code with friends",
-    "ref_step2": "Friend Creates Token",
-    "ref_step2_desc": "When they create a token, you earn 0.05 SOL",
-    "ref_step3": "Get Paid",
-    "ref_step3_desc": "SOL is sent directly to your wallet instantly",
     "ref_connect_wallet": "Connect your wallet to get your referral code.",
     "ref_create_first": "Create your first token to unlock your referral code!",
     "ref_create_button": "✨ Create Your First Token",
-    "ref_claim": "Claim",
-    "ref_processing": "Processing...",
-    "ref_top": "🏆 Top Referrers",
-    "ref_referrals": "referrals",
-    "ref_no_earnings": "No earnings to claim",
-    "toast_connect": "Please connect your wallet first",
     "ref_milestone_reached": "🎉 Milestone Reached!",
     "ref_milestone_bonus": "referrals — bonus added!",
 
@@ -217,7 +227,6 @@ const translations: Record<Locale, Translations> = {
     "new_pairs_bluprint_tab": "BluPrint Origin",
     "new_pairs_hash": "#",
     "new_pairs_token": "Token",
-    "new_pairs_source": "Source",
     "new_pairs_liquidity": "Liquidity",
     "new_pairs_volume": "Volume 24h",
     "new_pairs_price": "24h",
@@ -229,6 +238,25 @@ const translations: Record<Locale, Translations> = {
     "new_pairs_retry": "Retry",
     "new_pairs_refresh": "Refresh",
     "new_pairs_be_first": "Be the first to create a token on BluPrint!",
+    "new_pairs_new_badge": "NEW",
+    "new_pairs_live": "LIVE",
+    "new_pairs_updated": "Updated",
+    "new_pairs_auto_refresh": "Auto-refresh every 30s",
+    "new_pairs_total_tokens": "Total Tokens",
+    "new_pairs_source": "Source",
+    "new_pairs_status": "Status",
+    "new_pairs_syncing": "Syncing...",
+    "new_pairs_loading": "Fetching latest pairs...",
+    "new_pairs_showing": "Showing",
+    "new_pairs_pairs": "pairs",
+    "new_pairs_click_row": "Click any row to view on Solscan",
+    "new_pairs_auto_updating": "Auto-updating",
+    "new_pairs_create_first": "Create First Token",
+    "new_pairs_recently": "Recently",
+    "new_pairs_just_now": "Just now",
+    "new_pairs_min_ago": "m ago",
+    "new_pairs_hour_ago": "h ago",
+    "new_pairs_day_ago": "d ago",
 
     // ==================== LIVE FEED PAGE ====================
     "live_feed_title": "📢 Live Feed",
@@ -297,7 +325,6 @@ const translations: Record<Locale, Translations> = {
     "wallet_balance": "Wallet Balance",
   },
   tr: {
-    // ==================== NAVIGATION ====================
     "nav_home": "Ana Sayfa",
     "nav_create": "Oluştur",
     "nav_new_pairs": "Yeni Pair'ler",
@@ -305,12 +332,8 @@ const translations: Record<Locale, Translations> = {
     "nav_live": "Canlı",
     "nav_top_users": "En İyiler",
     "nav_connect": "Cüzdan Bağla",
-
-    // ==================== SIDEBAR ====================
     "sidebar_bluprint": "BluPrint",
     "sidebar_launchpad": "Başlatma Platformu",
-
-    // ==================== FOOTER ====================
     "footer_bluprint": "BluPrint",
     "footer_about": "Hakkımızda",
     "footer_faq": "SSS",
@@ -327,15 +350,17 @@ const translations: Record<Locale, Translations> = {
     "footer_github": "GitHub",
     "footer_legal": "Yasal",
     "footer_rights": "Tüm hakları saklıdır",
-
-    // ==================== HERO SECTION ====================
     "hero_title": "Meme Coin'ini Başlat",
     "hero_title_highlight": "Saniyeler İçinde ⚡",
     "hero_subtitle": "Kod yok. Zorluk yok. Sadece başlat.",
     "hero_button": "✨ Token Oluştur",
     "hero_phantom": "Phantom Cüzdan",
-
-    // ==================== WHY BLUPRINT ====================
+    "feature_fast_title": "Hızlı Dağıtım",
+    "feature_fast_desc": "Çoğu token 30 saniyeden kısa sürede dağıtılır",
+    "feature_secure_title": "Güvenli Başlatma",
+    "feature_secure_desc": "Oluşturma sırasında yetki kontrolleri dahildir",
+    "feature_solana_title": "Solana Destekli",
+    "feature_solana_desc": "Doğrudan Solana altyapısı üzerine inşa edilmiştir",
     "why_title": "Neden BluPrint?",
     "why_subtitle": "Solana token'ını başlatmanın en kolay yolu",
     "why_instant": "Anında Başlatma",
@@ -344,8 +369,6 @@ const translations: Record<Locale, Translations> = {
     "why_security_desc": "Mint ve freeze yetki seçenekleri dahildir.",
     "why_nocode": "Kodsuz Deneyim",
     "why_nocode_desc": "Geliştiriciye gerek yok.",
-
-    // ==================== HOW IT WORKS ====================
     "how_title": "Nasıl Çalışır",
     "how_subtitle": "Token'ını üç basit adımda başlat.",
     "how_step1": "Token'ını Seç",
@@ -354,8 +377,6 @@ const translations: Record<Locale, Translations> = {
     "how_step2_desc": "Cüzdanın ile işlemi onayla.",
     "how_step3": "Başlat ve Paylaş",
     "how_step3_desc": "Token'ın Solana'da canlı! 🚀",
-
-    // ==================== LIVE EXPERIENCE ====================
     "live_title": "Canlı Başlatma Deneyimi",
     "live_subtitle": "BluPrint'te token oluşturmanın ne kadar hızlı olduğunu gör.",
     "live_terminal": "terminal.bluprint",
@@ -363,16 +384,12 @@ const translations: Record<Locale, Translations> = {
     "live_demo": "⚡ Dağıtım genellikle 30 saniyeden kısa sürer",
     "live_success": "✅ Token başarıyla oluşturuldu",
     "live_confirmed": "İşlem onaylandı • Mint: B4uMev...NYgLzs",
-
-    // ==================== TRUST SECTION ====================
     "trust_title": "Güvenli Başlatmalar için Tasarlanmıştır",
     "trust_subtitle": "Solana token'larını güvenle başlat.",
     "trust_mint": "Mint Yetki Seçenekleri",
     "trust_freeze": "Freeze Yetki Seçenekleri",
     "trust_metadata": "Metadata Desteği",
     "trust_ipfs": "IPFS Yükleme Dahil",
-
-    // ==================== USE CASES ====================
     "usecase_title": "Her Yaratıcı için Mükemmel",
     "usecase_subtitle": "Ne inşa ediyor olursan ol, BluPrint kolaylaştırır.",
     "usecase_meme": "Meme Coin'ler",
@@ -381,8 +398,6 @@ const translations: Record<Locale, Translations> = {
     "usecase_community_desc": "Topluluk token'ını oluştur ve büyüt.",
     "usecase_exp": "Deneysel Projeler",
     "usecase_exp_desc": "Yeni fikirleri Solana'da anında test et.",
-
-    // ==================== BOOST SECTION ====================
     "boost_title": "🚀 Token'ını Öne Çıkar",
     "boost_subtitle": "BluPrint başlatma akışında öne çık ve anında görünürlük kazan.",
     "boost_featured": "⭐ ÖNE ÇIKAN BAŞLATMA",
@@ -402,13 +417,9 @@ const translations: Record<Locale, Translations> = {
     "boost_processing": "İşleniyor...",
     "boost_footer": "4 gün premium görünürlük • Küresel banner yerleşimi • Solscan'a tıkla",
     "connect_wallet_first": "Lütfen önce cüzdanını bağla",
-
-    // ==================== FINAL CTA ====================
     "cta_title": "Token'ını Başlatmaya Hazır Mısın?",
     "cta_subtitle": "BluPrint'te meme coin'ini başlatan yaratıcılara katıl",
     "cta_button": "✨ Hemen Başlat →",
-
-    // ==================== CREATE PAGE ====================
     "pool_title": "🎁 İlk 100 Token'a Özel Fırsat! 🎁",
     "pool_first": "Sadece",
     "pool_tokens": "token kaldı",
@@ -447,10 +458,22 @@ const translations: Record<Locale, Translations> = {
     "create_button": "Token Oluştur",
     "create_upload_first": "📸 Önce logo yükle",
     "common_free": "ÜCRETSİZ",
-
-    // ==================== REFERRAL PAGE ====================
     "ref_title": "🔗 Tavsiye Programı",
     "ref_desc": "Arkadaşlarını davet ederek SOL kazan!",
+    "ref_total": "Toplam Kazanç",
+    "ref_per": "tavsiye başına",
+    "ref_claim": "Al",
+    "ref_processing": "İşleniyor...",
+    "ref_top": "🏆 En İyi Tavsiyeciler",
+    "ref_referrals": "tavsiye",
+    "ref_step1": "Kodunu Paylaş",
+    "ref_step1_desc": "Benzersiz promosyon kodunu arkadaşlarınla paylaş",
+    "ref_step2": "Arkadaşın Token Oluşturur",
+    "ref_step2_desc": "Token oluşturduklarında 0.05 SOL kazanırsın",
+    "ref_step3": "Ödemeni Al",
+    "ref_step3_desc": "SOL anında cüzdanına gönderilir",
+    "ref_no_earnings": "Alacak kazanç yok",
+    "toast_connect": "Lütfen önce cüzdanını bağla",
     "ref_total_earned": "Toplam Kazanç",
     "ref_unclaimed": "Alınmamış",
     "ref_per_referral": "tavsiye başına",
@@ -478,25 +501,11 @@ const translations: Record<Locale, Translations> = {
     "ref_info": "💡 Kodu ile token oluşturan her kişi = senin için 0.05 SOL!",
     "ref_bonus_info": "10 tavsiye → +0.1 SOL bonus • 25 tavsiye → +0.2 SOL • 50 → +0.5 SOL • 100 → +1 SOL",
     "ref_how_title": "Nasıl Çalışır",
-    "ref_step1": "Kodunu Paylaş",
-    "ref_step1_desc": "Benzersiz promosyon kodunu arkadaşlarınla paylaş",
-    "ref_step2": "Arkadaşın Token Oluşturur",
-    "ref_step2_desc": "Token oluşturduklarında 0.05 SOL kazanırsın",
-    "ref_step3": "Ödemeni Al",
-    "ref_step3_desc": "SOL anında cüzdanına gönderilir",
     "ref_connect_wallet": "Tavsiye kodunu almak için cüzdanını bağla.",
     "ref_create_first": "Tavsiye kodunu açmak için ilk token'ını oluştur!",
     "ref_create_button": "✨ İlk Token'ını Oluştur",
-    "ref_claim": "Al",
-    "ref_processing": "İşleniyor...",
-    "ref_top": "🏆 En İyi Tavsiyeciler",
-    "ref_referrals": "tavsiye",
-    "ref_no_earnings": "Alacak kazanç yok",
-    "toast_connect": "Lütfen önce cüzdanını bağla",
     "ref_milestone_reached": "🎉 Hedefe Ulaşıldı!",
     "ref_milestone_bonus": "tavsiye — bonus eklendi!",
-
-    // ==================== NEW PAIRS PAGE ====================
     "new_pairs_title": "Yeni Pair'ler",
     "new_pairs_subtitle": "Solana'daki en yeni tokenları keşfet",
     "new_pairs_jupiter_badge": "✨ Jupiter API ile Canlı",
@@ -516,8 +525,24 @@ const translations: Record<Locale, Translations> = {
     "new_pairs_retry": "Tekrar Dene",
     "new_pairs_refresh": "Yenile",
     "new_pairs_be_first": "BluPrint'te ilk token'ı oluşturan sen ol!",
-
-    // ==================== LIVE FEED PAGE ====================
+    "new_pairs_new_badge": "YENİ",
+    "new_pairs_live": "CANLI",
+    "new_pairs_updated": "Güncellendi",
+    "new_pairs_auto_refresh": "30 saniyede bir otomatik yenile",
+    "new_pairs_total_tokens": "Toplam Token",
+    "new_pairs_status": "Durum",
+    "new_pairs_syncing": "Senkronize ediliyor...",
+    "new_pairs_loading": "En son pair'ler getiriliyor...",
+    "new_pairs_showing": "Gösterilen",
+    "new_pairs_pairs": "pair",
+    "new_pairs_click_row": "Solscan'da görüntülemek için herhangi bir satıra tıkla",
+    "new_pairs_auto_updating": "Otomatik güncelleniyor",
+    "new_pairs_create_first": "İlk Token'ı Oluştur",
+    "new_pairs_recently": "Yakında",
+    "new_pairs_just_now": "Şimdi",
+    "new_pairs_min_ago": "dakika önce",
+    "new_pairs_hour_ago": "saat önce",
+    "new_pairs_day_ago": "gün önce",
     "live_feed_title": "📢 Canlı Akış",
     "live_feed_subtitle": "Gerçek zamanlı platform aktivitesi ve duyurular",
     "live_feed_activity_title": "🕒 Canlı Aktivite Akışı",
@@ -535,8 +560,6 @@ const translations: Record<Locale, Translations> = {
     "live_announcement_referral_desc": "Her tavsiye için 0.05 SOL kazan!",
     "live_announcement_vip_title": "👑 VIP Avantajları Duyuruldu",
     "live_announcement_vip_desc": "VIP üyeler aylık 0.10 SOL airdrop alır!",
-
-    // ==================== TOP USERS PAGE ====================
     "top_users_title": "🏆 En İyi Kullanıcılar",
     "top_users_subtitle": "BluPrint'te en çok token oluşturanlar",
     "top_users_all_time": "Tüm Zamanlar",
@@ -556,8 +579,6 @@ const translations: Record<Locale, Translations> = {
     "top_users_no_users": "Kullanıcı bulunamadı",
     "top_users_vip": "👑 VIP",
     "top_users_premium": "⭐ PREMIUM",
-
-    // ==================== COMMON ====================
     "common_close": "Kapat",
     "common_copied": "Kopyalandı!",
     "common_loading": "Yükleniyor...",
@@ -584,7 +605,6 @@ const translations: Record<Locale, Translations> = {
     "wallet_balance": "Cüzdan Bakiyesi",
   },
   zh: {
-    // ==================== NAVIGATION ====================
     "nav_home": "首页",
     "nav_create": "创建",
     "nav_new_pairs": "新交易对",
@@ -592,12 +612,8 @@ const translations: Record<Locale, Translations> = {
     "nav_live": "直播",
     "nav_top_users": "顶级用户",
     "nav_connect": "连接钱包",
-
-    // ==================== SIDEBAR ====================
     "sidebar_bluprint": "BluPrint",
     "sidebar_launchpad": "启动平台",
-
-    // ==================== FOOTER ====================
     "footer_bluprint": "BluPrint",
     "footer_about": "关于我们",
     "footer_faq": "常见问题",
@@ -614,15 +630,17 @@ const translations: Record<Locale, Translations> = {
     "footer_github": "GitHub",
     "footer_legal": "法律",
     "footer_rights": "保留所有权利",
-
-    // ==================== HERO SECTION ====================
     "hero_title": "启动你的Meme币",
     "hero_title_highlight": "几秒内 ⚡",
     "hero_subtitle": "无需代码。无需繁琐。只需启动。",
     "hero_button": "✨ 创建代币",
     "hero_phantom": "Phantom钱包",
-
-    // ==================== WHY BLUPRINT ====================
+    "feature_fast_title": "快速部署",
+    "feature_fast_desc": "大多数代币在30秒内完成部署",
+    "feature_secure_title": "安全启动",
+    "feature_secure_desc": "创建过程中包含权限控制",
+    "feature_solana_title": "Solana驱动",
+    "feature_solana_desc": "直接构建在Solana基础设施上",
     "why_title": "为什么选择BluPrint？",
     "why_subtitle": "启动Solana代币的最简单方式",
     "why_instant": "即时启动",
@@ -631,8 +649,6 @@ const translations: Record<Locale, Translations> = {
     "why_security_desc": "包含铸造和冻结权限选项。",
     "why_nocode": "无代码体验",
     "why_nocode_desc": "无需开发人员。",
-
-    // ==================== HOW IT WORKS ====================
     "how_title": "如何运作",
     "how_subtitle": "三个简单步骤启动你的代币。",
     "how_step1": "选择代币",
@@ -641,8 +657,6 @@ const translations: Record<Locale, Translations> = {
     "how_step2_desc": "用你的钱包确认交易。",
     "how_step3": "启动并分享",
     "how_step3_desc": "你的代币已在Solana上线！🚀",
-
-    // ==================== LIVE EXPERIENCE ====================
     "live_title": "实时启动体验",
     "live_subtitle": "看看在BluPrint上创建代币有多快。",
     "live_terminal": "terminal.bluprint",
@@ -650,16 +664,12 @@ const translations: Record<Locale, Translations> = {
     "live_demo": "⚡ 部署通常在30秒内完成",
     "live_success": "✅ 代币创建成功",
     "live_confirmed": "交易确认 • Mint: B4uMev...NYgLzs",
-
-    // ==================== TRUST SECTION ====================
     "trust_title": "为安全启动而建",
     "trust_subtitle": "自信地启动Solana代币。",
     "trust_mint": "铸造权限选项",
     "trust_freeze": "冻结权限选项",
     "trust_metadata": "元数据支持",
     "trust_ipfs": "IPFS上传包含",
-
-    // ==================== USE CASES ====================
     "usecase_title": "适合每一位创作者",
     "usecase_subtitle": "无论你在构建什么，BluPrint都能让它变得简单。",
     "usecase_meme": "Meme币",
@@ -668,8 +678,6 @@ const translations: Record<Locale, Translations> = {
     "usecase_community_desc": "建立和发展你的社区代币。",
     "usecase_exp": "实验项目",
     "usecase_exp_desc": "在Solana上即时测试新想法。",
-
-    // ==================== BOOST SECTION ====================
     "boost_title": "🚀 推广你的代币",
     "boost_subtitle": "在BluPrint启动推送中展示，立即提高可见性。",
     "boost_featured": "⭐ 精选启动",
@@ -689,13 +697,9 @@ const translations: Record<Locale, Translations> = {
     "boost_processing": "处理中...",
     "boost_footer": "4天高级可见性 • 全球横幅展示 • 点击查看Solscan",
     "connect_wallet_first": "请先连接你的钱包",
-
-    // ==================== FINAL CTA ====================
     "cta_title": "准备好启动你的代币了吗？",
     "cta_subtitle": "加入在BluPrint上启动meme币的创作者",
     "cta_button": "✨ 立即开始创建 →",
-
-    // ==================== CREATE PAGE ====================
     "pool_title": "🎁 前100个代币特别优惠！🎁",
     "pool_first": "仅剩",
     "pool_tokens": "个代币名额",
@@ -734,10 +738,22 @@ const translations: Record<Locale, Translations> = {
     "create_button": "创建代币",
     "create_upload_first": "📸 请先上传标志",
     "common_free": "免费",
-
-    // ==================== REFERRAL PAGE ====================
     "ref_title": "🔗 推荐计划",
     "ref_desc": "邀请朋友赚取SOL！",
+    "ref_total": "总收益",
+    "ref_per": "每次推荐",
+    "ref_claim": "领取",
+    "ref_processing": "处理中...",
+    "ref_top": "🏆 顶级推荐者",
+    "ref_referrals": "次推荐",
+    "ref_step1": "分享你的代码",
+    "ref_step1_desc": "与朋友分享你的专属促销代码",
+    "ref_step2": "朋友创建代币",
+    "ref_step2_desc": "当他们创建代币时，你赚取0.05 SOL",
+    "ref_step3": "获得报酬",
+    "ref_step3_desc": "SOL直接发送到你的钱包",
+    "ref_no_earnings": "没有可领取的收益",
+    "toast_connect": "请先连接你的钱包",
     "ref_total_earned": "总收益",
     "ref_unclaimed": "未领取",
     "ref_per_referral": "每次推荐",
@@ -765,25 +781,11 @@ const translations: Record<Locale, Translations> = {
     "ref_info": "💡 使用你的代码创建代币的每个人 = 你赚0.05 SOL！",
     "ref_bonus_info": "达到10推荐 → +0.1 SOL奖励 • 25推荐 → +0.2 SOL • 50 → +0.5 SOL • 100 → +1 SOL",
     "ref_how_title": "如何运作",
-    "ref_step1": "分享你的代码",
-    "ref_step1_desc": "与朋友分享你的专属促销代码",
-    "ref_step2": "朋友创建代币",
-    "ref_step2_desc": "当他们创建代币时，你赚取0.05 SOL",
-    "ref_step3": "获得报酬",
-    "ref_step3_desc": "SOL直接发送到你的钱包",
     "ref_connect_wallet": "连接钱包以获取你的推荐码。",
     "ref_create_first": "创建你的第一个代币以解锁推荐码！",
     "ref_create_button": "✨ 创建你的第一个代币",
-    "ref_claim": "领取",
-    "ref_processing": "处理中...",
-    "ref_top": "🏆 顶级推荐者",
-    "ref_referrals": "次推荐",
-    "ref_no_earnings": "没有可领取的收益",
-    "toast_connect": "请先连接你的钱包",
     "ref_milestone_reached": "🎉 已达到里程碑！",
     "ref_milestone_bonus": "个推荐 — 奖励已添加！",
-
-    // ==================== NEW PAIRS PAGE ====================
     "new_pairs_title": "新交易对",
     "new_pairs_subtitle": "发现Solana上的最新代币",
     "new_pairs_jupiter_badge": "✨ Jupiter API实时",
@@ -803,8 +805,24 @@ const translations: Record<Locale, Translations> = {
     "new_pairs_retry": "重试",
     "new_pairs_refresh": "刷新",
     "new_pairs_be_first": "成为第一个在BluPrint上创建代币的人！",
-
-    // ==================== LIVE FEED PAGE ====================
+    "new_pairs_new_badge": "新",
+    "new_pairs_live": "实时",
+    "new_pairs_updated": "已更新",
+    "new_pairs_auto_refresh": "每30秒自动刷新",
+    "new_pairs_total_tokens": "总代币数",
+    "new_pairs_status": "状态",
+    "new_pairs_syncing": "同步中...",
+    "new_pairs_loading": "正在获取最新交易对...",
+    "new_pairs_showing": "显示",
+    "new_pairs_pairs": "个交易对",
+    "new_pairs_click_row": "点击任意行在Solscan上查看",
+    "new_pairs_auto_updating": "自动更新",
+    "new_pairs_create_first": "创建第一个代币",
+    "new_pairs_recently": "最近",
+    "new_pairs_just_now": "刚刚",
+    "new_pairs_min_ago": "分钟前",
+    "new_pairs_hour_ago": "小时前",
+    "new_pairs_day_ago": "天前",
     "live_feed_title": "📢 实时推送",
     "live_feed_subtitle": "实时平台活动和公告",
     "live_feed_activity_title": "🕒 实时活动推送",
@@ -822,8 +840,6 @@ const translations: Record<Locale, Translations> = {
     "live_announcement_referral_desc": "每次推荐赚取0.05 SOL！",
     "live_announcement_vip_title": "👑 VIP福利公布",
     "live_announcement_vip_desc": "VIP会员每月获得0.10 SOL空投！",
-
-    // ==================== TOP USERS PAGE ====================
     "top_users_title": "🏆 顶级用户",
     "top_users_subtitle": "BluPrint上最活跃的代币创建者",
     "top_users_all_time": "全部",
@@ -843,8 +859,6 @@ const translations: Record<Locale, Translations> = {
     "top_users_no_users": "未找到用户",
     "top_users_vip": "👑 VIP",
     "top_users_premium": "⭐ 高级",
-
-    // ==================== COMMON ====================
     "common_close": "关闭",
     "common_copied": "已复制！",
     "common_loading": "加载中...",
@@ -871,7 +885,6 @@ const translations: Record<Locale, Translations> = {
     "wallet_balance": "钱包余额",
   },
   ru: {
-    // ==================== NAVIGATION ====================
     "nav_home": "Главная",
     "nav_create": "Создать",
     "nav_new_pairs": "Новые пары",
@@ -879,12 +892,8 @@ const translations: Record<Locale, Translations> = {
     "nav_live": "Лента",
     "nav_top_users": "Топ пользователей",
     "nav_connect": "Подключить кошелек",
-
-    // ==================== SIDEBAR ====================
     "sidebar_bluprint": "BluPrint",
     "sidebar_launchpad": "Платформа запуска",
-
-    // ==================== FOOTER ====================
     "footer_bluprint": "BluPrint",
     "footer_about": "О нас",
     "footer_faq": "FAQ",
@@ -901,15 +910,17 @@ const translations: Record<Locale, Translations> = {
     "footer_github": "GitHub",
     "footer_legal": "Юридическая информация",
     "footer_rights": "Все права защищены",
-
-    // ==================== HERO SECTION ====================
     "hero_title": "Запусти свою Meme монету",
     "hero_title_highlight": "за секунды ⚡",
     "hero_subtitle": "Никакого кода. Никаких сложностей. Просто запуск.",
     "hero_button": "✨ Создать токен",
     "hero_phantom": "Phantom Кошелек",
-
-    // ==================== WHY BLUPRINT ====================
+    "feature_fast_title": "Быстрый деплой",
+    "feature_fast_desc": "Большинство токенов развертываются менее чем за 30 секунд",
+    "feature_secure_title": "Безопасный запуск",
+    "feature_secure_desc": "Контроль полномочий включен при создании",
+    "feature_solana_title": "На базе Solana",
+    "feature_solana_desc": "Построено непосредственно на инфраструктуре Solana",
     "why_title": "Почему BluPrint?",
     "why_subtitle": "Самый простой способ запустить токен на Solana",
     "why_instant": "Мгновенный запуск",
@@ -918,8 +929,6 @@ const translations: Record<Locale, Translations> = {
     "why_security_desc": "Опции разрешений на майнинг и заморозку включены.",
     "why_nocode": "Без кода",
     "why_nocode_desc": "Не нужны разработчики.",
-
-    // ==================== HOW IT WORKS ====================
     "how_title": "Как это работает",
     "how_subtitle": "Запустите свой токен в три простых шага.",
     "how_step1": "Выберите токен",
@@ -928,8 +937,6 @@ const translations: Record<Locale, Translations> = {
     "how_step2_desc": "Подтвердите транзакцию в кошельке.",
     "how_step3": "Запустите и делитесь",
     "how_step3_desc": "Ваш токен на Solana! 🚀",
-
-    // ==================== LIVE EXPERIENCE ====================
     "live_title": "Живой опыт запуска",
     "live_subtitle": "Узнайте, насколько быстро создается токен на BluPrint.",
     "live_terminal": "terminal.bluprint",
@@ -937,16 +944,12 @@ const translations: Record<Locale, Translations> = {
     "live_demo": "⚡ Развертывание обычно занимает менее 30 секунд",
     "live_success": "✅ Токен успешно создан",
     "live_confirmed": "Транзакция подтверждена • Mint: B4uMev...NYgLzs",
-
-    // ==================== TRUST SECTION ====================
     "trust_title": "Создано для безопасных запусков",
     "trust_subtitle": "Запускайте токены Solana с уверенностью.",
     "trust_mint": "Опции разрешения на майнинг",
     "trust_freeze": "Опции разрешения на заморозку",
     "trust_metadata": "Поддержка метаданных",
     "trust_ipfs": "Загрузка в IPFS включена",
-
-    // ==================== USE CASES ====================
     "usecase_title": "Идеально для каждого создателя",
     "usecase_subtitle": "Что бы вы ни создавали, BluPrint делает это простым.",
     "usecase_meme": "Meme монеты",
@@ -955,8 +958,6 @@ const translations: Record<Locale, Translations> = {
     "usecase_community_desc": "Создайте и развивайте токен сообщества.",
     "usecase_exp": "Экспериментальные проекты",
     "usecase_exp_desc": "Тестируйте новые идеи на Solana мгновенно.",
-
-    // ==================== BOOST SECTION ====================
     "boost_title": "🚀 Продвиньте свой токен",
     "boost_subtitle": "Покажите свой токен в ленте запуска BluPrint для мгновенной видимости.",
     "boost_featured": "⭐ ИЗБРАННЫЙ ЗАПУСК",
@@ -976,13 +977,9 @@ const translations: Record<Locale, Translations> = {
     "boost_processing": "Обработка...",
     "boost_footer": "4 дня премиум видимости • Глобальный баннер • Клик на Solscan",
     "connect_wallet_first": "Пожалуйста, сначала подключите кошелек",
-
-    // ==================== FINAL CTA ====================
     "cta_title": "Готовы запустить свой токен?",
     "cta_subtitle": "Присоединяйтесь к создателям, запустившим свои мемкоины на BluPrint",
     "cta_button": "✨ Начать создание →",
-
-    // ==================== CREATE PAGE ====================
     "pool_title": "🎁 Спецпредложение для первых 100 токенов! 🎁",
     "pool_first": "Осталось",
     "pool_tokens": "токенов",
@@ -1021,10 +1018,22 @@ const translations: Record<Locale, Translations> = {
     "create_button": "Создать токен",
     "create_upload_first": "📸 Сначала загрузите логотип",
     "common_free": "БЕСПЛАТНО",
-
-    // ==================== REFERRAL PAGE ====================
     "ref_title": "🔗 Реферальная программа",
     "ref_desc": "Зарабатывайте SOL, приглашая друзей!",
+    "ref_total": "Всего заработано",
+    "ref_per": "за реферала",
+    "ref_claim": "Получить",
+    "ref_processing": "Обработка...",
+    "ref_top": "🏆 Лучшие рефереры",
+    "ref_referrals": "рефералов",
+    "ref_step1": "Поделитесь кодом",
+    "ref_step1_desc": "Поделитесь уникальным промокодом с друзьями",
+    "ref_step2": "Друг создает токен",
+    "ref_step2_desc": "Когда они создают токен, вы получаете 0.05 SOL",
+    "ref_step3": "Получите оплату",
+    "ref_step3_desc": "SOL отправляется прямо в ваш кошелек",
+    "ref_no_earnings": "Нет средств для получения",
+    "toast_connect": "Пожалуйста, сначала подключите кошелек",
     "ref_total_earned": "Всего заработано",
     "ref_unclaimed": "Не получено",
     "ref_per_referral": "за реферала",
@@ -1052,25 +1061,11 @@ const translations: Record<Locale, Translations> = {
     "ref_info": "💡 Каждый, кто создаст токен по вашему коду = 0.05 SOL для вас!",
     "ref_bonus_info": "10 рефералов → +0.1 SOL бонус • 25 → +0.2 SOL • 50 → +0.5 SOL • 100 → +1 SOL",
     "ref_how_title": "Как это работает",
-    "ref_step1": "Поделитесь кодом",
-    "ref_step1_desc": "Поделитесь уникальным промокодом с друзьями",
-    "ref_step2": "Друг создает токен",
-    "ref_step2_desc": "Когда они создают токен, вы получаете 0.05 SOL",
-    "ref_step3": "Получите оплату",
-    "ref_step3_desc": "SOL отправляется прямо в ваш кошелек",
     "ref_connect_wallet": "Подключите кошелек, чтобы получить реферальный код.",
     "ref_create_first": "Создайте первый токен, чтобы разблокировать реферальный код!",
     "ref_create_button": "✨ Создайте свой первый токен",
-    "ref_claim": "Получить",
-    "ref_processing": "Обработка...",
-    "ref_top": "🏆 Лучшие рефереры",
-    "ref_referrals": "рефералов",
-    "ref_no_earnings": "Нет средств для получения",
-    "toast_connect": "Пожалуйста, сначала подключите кошелек",
     "ref_milestone_reached": "🎉 Достигнута цель!",
     "ref_milestone_bonus": "рефералов — бонус добавлен!",
-
-    // ==================== NEW PAIRS PAGE ====================
     "new_pairs_title": "Новые пары",
     "new_pairs_subtitle": "Откройте новейшие токены на Solana",
     "new_pairs_jupiter_badge": "✨ В реальном времени из Jupiter API",
@@ -1090,8 +1085,24 @@ const translations: Record<Locale, Translations> = {
     "new_pairs_retry": "Повторить",
     "new_pairs_refresh": "Обновить",
     "new_pairs_be_first": "Будьте первым, кто создаст токен на BluPrint!",
-
-    // ==================== LIVE FEED PAGE ====================
+    "new_pairs_new_badge": "НОВЫЙ",
+    "new_pairs_live": "ЖИВОЙ",
+    "new_pairs_updated": "Обновлено",
+    "new_pairs_auto_refresh": "Автообновление каждые 30с",
+    "new_pairs_total_tokens": "Всего токенов",
+    "new_pairs_status": "Статус",
+    "new_pairs_syncing": "Синхронизация...",
+    "new_pairs_loading": "Загрузка последних пар...",
+    "new_pairs_showing": "Показано",
+    "new_pairs_pairs": "пар",
+    "new_pairs_click_row": "Нажмите на любую строку для просмотра в Solscan",
+    "new_pairs_auto_updating": "Автообновление",
+    "new_pairs_create_first": "Создать первый токен",
+    "new_pairs_recently": "Недавно",
+    "new_pairs_just_now": "Только что",
+    "new_pairs_min_ago": "мин назад",
+    "new_pairs_hour_ago": "ч назад",
+    "new_pairs_day_ago": "д назад",
     "live_feed_title": "📢 Живая лента",
     "live_feed_subtitle": "Активность платформы и объявления в реальном времени",
     "live_feed_activity_title": "🕒 Живая лента активности",
@@ -1109,8 +1120,6 @@ const translations: Record<Locale, Translations> = {
     "live_announcement_referral_desc": "Зарабатывайте 0.05 SOL за каждого реферала!",
     "live_announcement_vip_title": "👑 Объявлены VIP преимущества",
     "live_announcement_vip_desc": "VIP участники получают ежемесячный эйрдроп 0.10 SOL!",
-
-    // ==================== TOP USERS PAGE ====================
     "top_users_title": "🏆 Топ пользователей",
     "top_users_subtitle": "Самые активные создатели токенов на BluPrint",
     "top_users_all_time": "За всё время",
@@ -1130,8 +1139,6 @@ const translations: Record<Locale, Translations> = {
     "top_users_no_users": "Пользователи не найдены",
     "top_users_vip": "👑 VIP",
     "top_users_premium": "⭐ ПРЕМИУМ",
-
-    // ==================== COMMON ====================
     "common_close": "Закрыть",
     "common_copied": "Скопировано!",
     "common_loading": "Загрузка...",
