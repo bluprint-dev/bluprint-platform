@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useI18n } from "../lib/i18n-provider";
 import Footer from "../components/Footer";
 import PageTransition from "../components/PageTransition";
 
@@ -26,7 +27,7 @@ function formatNumber(num?: number): string {
   return `$${num.toFixed(0)}`;
 }
 
-function formatTimeAgo(dateString?: string): string {
+function formatTimeAgo(dateString?: string, t?: (key: string) => string): string {
   if (!dateString) return "—";
   try {
     const diff = Date.now() - new Date(dateString).getTime();
@@ -87,64 +88,57 @@ function TokenAvatar({ token, isBluprint }: { token: Token; isBluprint: boolean 
   );
 }
 
-function TokenRow({ token, index, isBluprint, isNew }: { token: Token; index: number; isBluprint: boolean; isNew?: boolean }) {
+function TokenRow({ token, index, isBluprint, isNew, t }: { token: Token; index: number; isBluprint: boolean; isNew?: boolean; t: (key: string) => string }) {
   return (
     <div
       className={`group grid grid-cols-[2rem_1fr_auto] md:grid-cols-[2rem_1fr_7rem_6rem_6rem_6rem_5rem] gap-3 items-center px-4 py-3 border-b border-gray-800/40 hover:bg-white/5 cursor-pointer transition-all duration-200 ${isNew ? "animate-pulse-once bg-emerald-500/5" : ""}`}
       onClick={() => window.open(`${SCAN_URL}${token.mint}`, "_blank")}
     >
-      {/* Rank */}
       <div className="text-center">
         <span className={`text-xs font-mono font-bold ${index === 0 ? "text-yellow-400" : index === 1 ? "text-gray-300" : index === 2 ? "text-orange-400" : "text-gray-600"}`}>
           {index + 1}
         </span>
       </div>
 
-      {/* Token */}
       <div className="flex items-center gap-3 min-w-0">
         <TokenAvatar token={token} isBluprint={isBluprint} />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-white font-semibold text-sm truncate">{token.name}</span>
-            {isNew && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">NEW</span>}
+            {isNew && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">{t("new_pairs_new_badge")}</span>}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-gray-500 text-xs font-mono">{token.symbol}</span>
             <span className="text-gray-700 text-xs">·</span>
             {isBluprint ? (
-              <span className="text-[10px] text-blue-400 font-medium">BluPrint</span>
+              <span className="text-[10px] text-blue-400 font-medium">{t("new_pairs_bluprint_tab")}</span>
             ) : (
-              <span className="text-[10px] text-purple-400 font-medium">Jupiter</span>
+              <span className="text-[10px] text-purple-400 font-medium">{t("new_pairs_jupiter_tab")}</span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Liquidity */}
       <div className="hidden md:block text-right">
         <div className="text-sm text-white font-mono">{formatNumber(token.liquidity)}</div>
-        <div className="text-[10px] text-gray-600 mt-0.5">Liquidity</div>
+        <div className="text-[10px] text-gray-600 mt-0.5">{t("new_pairs_liquidity")}</div>
       </div>
 
-      {/* Volume */}
       <div className="hidden md:block text-right">
         <div className="text-sm text-white font-mono">{formatNumber(token.volume24h)}</div>
-        <div className="text-[10px] text-gray-600 mt-0.5">Vol 24h</div>
+        <div className="text-[10px] text-gray-600 mt-0.5">{t("new_pairs_volume")}</div>
       </div>
 
-      {/* Price change */}
       <div className="hidden md:block text-right">
         <PriceChange value={token.priceChange24h} />
-        <div className="text-[10px] text-gray-600 mt-0.5">24h</div>
+        <div className="text-[10px] text-gray-600 mt-0.5">{t("new_pairs_price")}</div>
       </div>
 
-      {/* Created */}
       <div className="hidden md:block text-right">
-        <div className="text-xs text-gray-400 font-mono">{formatTimeAgo(token.createdAt)}</div>
-        <div className="text-[10px] text-gray-600 mt-0.5">Created</div>
+        <div className="text-xs text-gray-400 font-mono">{formatTimeAgo(token.createdAt, t)}</div>
+        <div className="text-[10px] text-gray-600 mt-0.5">{t("new_pairs_created")}</div>
       </div>
 
-      {/* Arrow */}
       <div className="flex justify-end">
         <span className="text-gray-700 group-hover:text-purple-400 transition-colors text-lg">›</span>
       </div>
@@ -153,6 +147,7 @@ function TokenRow({ token, index, isBluprint, isNew }: { token: Token; index: nu
 }
 
 export default function NewPairsPage() {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<"bluprint" | "jupiter">("jupiter");
   const [bluprintTokens, setBluprintTokens] = useState<Token[]>([]);
   const [jupiterTokens, setJupiterTokens] = useState<Token[]>([]);
@@ -164,10 +159,9 @@ export default function NewPairsPage() {
   const [ticker, setTicker] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Canlı saat
   useEffect(() => {
-    const t = setInterval(() => setTicker((p) => p + 1), 1000);
-    return () => clearInterval(t);
+    const tInt = setInterval(() => setTicker((p) => p + 1), 1000);
+    return () => clearInterval(tInt);
   }, []);
 
   useEffect(() => {
@@ -180,7 +174,6 @@ export default function NewPairsPage() {
     }
   }, [activeTab]);
 
-  // Otomatik yenileme (30 saniye)
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
@@ -229,10 +222,10 @@ export default function NewPairsPage() {
         setJupiterTokens(data.tokens.slice(0, 50));
         setLastUpdated(new Date());
       } else {
-        if (!silent) setError(data.error || "No tokens found");
+        if (!silent) setError(data.error || t("new_pairs_no_tokens"));
       }
     } catch (err: any) {
-      if (!silent) setError(err.message || "Failed to fetch");
+      if (!silent) setError(err.message || t("new_pairs_no_tokens"));
     } finally {
       setJupiterLoading(false);
     }
@@ -240,35 +233,30 @@ export default function NewPairsPage() {
 
   const tokens = activeTab === "bluprint" ? bluprintTokens : jupiterTokens;
   const isLoading = activeTab === "bluprint" ? bluprintLoading : jupiterLoading;
-
-  // Canlı sayaç (kaç saniye önce güncellendi)
   const secondsAgo = Math.floor((Date.now() - lastUpdated.getTime()) / 1000);
 
   return (
     <PageTransition>
       <div className="relative min-h-screen bg-[#0a0a0f]">
-        {/* Arkaplan efektleri */}
         <div className="fixed inset-0 bg-gradient-to-br from-purple-950/20 via-transparent to-blue-950/20 pointer-events-none" />
         <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-purple-500/5 blur-3xl rounded-full pointer-events-none" />
 
         <div className="relative z-10 pt-20 sm:pt-24 max-w-7xl mx-auto px-3 sm:px-4 pb-16">
 
-          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">New Pairs</h1>
+                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">{t("new_pairs_title")}</h1>
                 <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-1">
                   <LiveDot />
-                  <span className="text-emerald-400 text-xs font-bold">LIVE</span>
+                  <span className="text-emerald-400 text-xs font-bold">{t("new_pairs_live")}</span>
                 </div>
               </div>
               <p className="text-gray-600 text-xs mt-1">
-                Updated {secondsAgo}s ago · Auto-refresh every 30s
+                {t("new_pairs_updated")} {secondsAgo}s ago · {t("new_pairs_auto_refresh")}
               </p>
             </div>
 
-            {/* Manuel refresh */}
             <button
               onClick={() => activeTab === "jupiter" ? fetchJupiterTokens() : fetchBluprintTokens()}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/60 border border-gray-700/50 rounded-lg text-xs text-gray-400 hover:text-white transition-all"
@@ -276,17 +264,16 @@ export default function NewPairsPage() {
               <svg className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Refresh
+              {t("new_pairs_refresh")}
             </button>
           </div>
 
-          {/* Stats bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
-              { label: "Total Tokens", value: tokens.length.toString(), color: "text-blue-400" },
-              { label: "New (5min)", value: newMints.size.toString(), color: "text-emerald-400" },
-              { label: "Source", value: activeTab === "bluprint" ? "BluPrint" : "Jupiter", color: "text-purple-400" },
-              { label: "Status", value: isLoading ? "Syncing..." : "Live", color: isLoading ? "text-yellow-400" : "text-emerald-400" },
+              { label: t("new_pairs_total_tokens"), value: tokens.length.toString(), color: "text-blue-400" },
+              { label: t("new_pairs_new_badge"), value: newMints.size.toString(), color: "text-emerald-400" },
+              { label: t("new_pairs_source"), value: activeTab === "bluprint" ? t("new_pairs_bluprint_tab") : t("new_pairs_jupiter_tab"), color: "text-purple-400" },
+              { label: t("new_pairs_status"), value: isLoading ? t("new_pairs_syncing") : t("new_pairs_live"), color: isLoading ? "text-yellow-400" : "text-emerald-400" },
             ].map((s) => (
               <div key={s.label} className="bg-gray-900/60 border border-gray-800/60 rounded-xl px-4 py-3">
                 <div className={`text-sm font-bold font-mono ${s.color}`}>{s.value}</div>
@@ -295,11 +282,10 @@ export default function NewPairsPage() {
             ))}
           </div>
 
-          {/* Tabs */}
           <div className="flex gap-1 mb-4 bg-gray-900/60 border border-gray-800/60 rounded-xl p-1 w-fit">
             {[
-              { id: "jupiter", label: "Jupiter Recent", icon: "◈" },
-              { id: "bluprint", label: "BluPrint Origin", icon: "◆" },
+              { id: "jupiter", label: t("new_pairs_jupiter_tab"), icon: "◈" },
+              { id: "bluprint", label: t("new_pairs_bluprint_tab"), icon: "◆" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -319,26 +305,23 @@ export default function NewPairsPage() {
             ))}
           </div>
 
-          {/* Table */}
           <div className="bg-gray-900/40 border border-gray-800/60 rounded-2xl overflow-hidden backdrop-blur-sm">
 
-            {/* Table header */}
             <div className="hidden md:grid grid-cols-[2rem_1fr_7rem_6rem_6rem_6rem_5rem] gap-3 px-4 py-3 border-b border-gray-800/60 bg-gray-900/60">
-              {["#", "Token", "Liquidity", "Vol 24h", "24h %", "Created", ""].map((h, i) => (
+              {["#", t("new_pairs_token"), t("new_pairs_liquidity"), t("new_pairs_volume"), t("new_pairs_price"), t("new_pairs_created"), ""].map((h, i) => (
                 <div key={i} className={`text-[10px] text-gray-600 font-bold uppercase tracking-wider ${i > 1 ? "text-right" : ""}`}>
                   {h}
                 </div>
               ))}
             </div>
 
-            {/* Content */}
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <div className="relative">
                   <div className="w-10 h-10 rounded-full border-2 border-gray-700" />
                   <div className="absolute inset-0 w-10 h-10 rounded-full border-2 border-t-purple-500 animate-spin" />
                 </div>
-                <p className="text-gray-600 text-sm">Fetching latest pairs...</p>
+                <p className="text-gray-600 text-sm">{t("new_pairs_loading")}</p>
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -348,16 +331,16 @@ export default function NewPairsPage() {
                   onClick={() => activeTab === "jupiter" ? fetchJupiterTokens() : fetchBluprintTokens()}
                   className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-white transition"
                 >
-                  Try Again
+                  {t("new_pairs_retry")}
                 </button>
               </div>
             ) : tokens.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <div className="text-4xl">🔍</div>
-                <p className="text-gray-500 text-sm">No tokens found yet</p>
+                <p className="text-gray-500 text-sm">{t("new_pairs_no_tokens")}</p>
                 {activeTab === "bluprint" && (
                   <a href="/create" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white transition">
-                    Create First Token
+                    {t("new_pairs_create_first")}
                   </a>
                 )}
               </div>
@@ -370,20 +353,20 @@ export default function NewPairsPage() {
                     index={idx}
                     isBluprint={activeTab === "bluprint"}
                     isNew={newMints.has(token.mint)}
+                    t={t}
                   />
                 ))}
               </div>
             )}
 
-            {/* Footer */}
             {tokens.length > 0 && (
               <div className="px-4 py-3 border-t border-gray-800/60 flex items-center justify-between">
                 <span className="text-[10px] text-gray-700">
-                  Showing {tokens.length} pairs · Click any row to view on Solscan
+                  {t("new_pairs_showing")} {tokens.length} {t("new_pairs_pairs")} · {t("new_pairs_click_row")}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <LiveDot />
-                  <span className="text-[10px] text-gray-700">Auto-updating</span>
+                  <span className="text-[10px] text-gray-700">{t("new_pairs_auto_updating")}</span>
                 </div>
               </div>
             )}
