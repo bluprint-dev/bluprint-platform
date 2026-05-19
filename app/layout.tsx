@@ -56,7 +56,7 @@ export default function RootLayout({
             {children}
           </main>
 
-          {/* AI Chatbot - Chatbase */}
+          {/* AI Chatbot - Sağ alt köşe */}
           <ChatbaseEmbed />
         </Providers>
       </body>
