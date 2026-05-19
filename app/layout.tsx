@@ -4,6 +4,7 @@ import Providers from "./providers";
 import Background from "./components/Background";
 import Sidebar from "./components/Sidebar";
 import MarqueeBanner from "./components/MarqueeBanner";
+import SupportWidget from "./components/SupportWidget";
 import "./globals.css";
 
 const sora = Sora({ subsets: ["latin"] });
@@ -57,6 +58,9 @@ export default function RootLayout({
           <main className="md:ml-56 pt-14 min-h-screen">
             {children}
           </main>
+
+          {/* Support Widget - sağ alt köşe */}
+          <SupportWidget />
         </Providers>
       </body>
     </html>
