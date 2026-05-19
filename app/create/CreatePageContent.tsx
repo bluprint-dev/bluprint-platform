@@ -584,7 +584,7 @@ export default function CreatePageContent() {
               </div>
               <div className="text-xs sm:text-sm mt-1">
                 ⚡ {t("pool_first")} <span className="font-bold text-xl">{tokensLeft}</span> {t("pool_tokens")}:{" "}
-                <span className="font-bold">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(2)} SOL</span>
+                <span className="font-bold">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(4)} SOL</span>
               </div>
             </motion.div>
           )}
@@ -699,7 +699,7 @@ export default function CreatePageContent() {
                 />
                 {referrerWallet && (
                   <p className="text-xs text-green-400 mt-1">
-                    ✅ Valid promo code! {(REFERRAL_REWARD / LAMPORTS_PER_SOL).toFixed(2)} SOL will go to referrer
+                    ✅ Valid promo code! {(REFERRAL_REWARD / LAMPORTS_PER_SOL).toFixed(4)} SOL will go to referrer
                   </p>
                 )}
               </div>
@@ -714,17 +714,17 @@ export default function CreatePageContent() {
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Creation Fee</span>
-                    <span className="font-bold text-green-400">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(2)} SOL</span>
+                    <span className="font-bold text-green-400">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(4)} SOL</span>
                   </div>
                   {referrerWallet && (
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-500">Referrer gets:</span>
-                      <span className="text-green-400">{(REFERRAL_REWARD / LAMPORTS_PER_SOL).toFixed(2)} SOL</span>
+                      <span className="text-green-400">{(REFERRAL_REWARD / LAMPORTS_PER_SOL).toFixed(4)} SOL</span>
                     </div>
                   )}
                   <div className="border-t border-gray-700 pt-2 flex justify-between font-semibold">
                     <span className="text-gray-300">Total to pay:</span>
-                    <span className="text-green-400 font-bold text-lg">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(2)} SOL</span>
+                    <span className="text-green-400 font-bold text-lg">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(4)} SOL</span>
                   </div>
                 </div>
               </div>
