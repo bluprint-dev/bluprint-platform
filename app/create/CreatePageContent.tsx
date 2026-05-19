@@ -30,10 +30,13 @@ import { useI18n } from "../lib/i18n-provider";
 
 // ==================== KONFIGÜRASYON ====================
 const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://mainnet.helius-rpc.com/?api-key=fdbb8762-06b5-4bbd-ab1e-33310587e2d4";
+const PLATFORM_WALLET = "FPLcpDVhRTMTMGquiyeK3AwNtCaQQgNp6UwHPTcWDS2n";
+const OWNER_WALLET = "aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x";
+const KUZEN_WALLET = "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc";
 
-// SIFIR PLATFORM ÜCRETİ - Kullanıcı sadece blockchain rent + gas fee öder
-const TOTAL_FEE = 0 * LAMPORTS_PER_SOL;  // Platform hiçbir ücret almaz
-const REFERRAL_REWARD = 0 * LAMPORTS_PER_SOL;
+// KULLANICI SADECE BLOCKCHAIN MALİYETİNİ ÖDER (0.008 SOL)
+const USER_PAYS = 0.008 * LAMPORTS_PER_SOL;      // Kullanıcıdan alınacak toplam
+const REFERRAL_REWARD = 0 * LAMPORTS_PER_SOL;     // Referral kapalı
 
 // Token Metadata Program ID
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -80,6 +83,30 @@ export default function CreatePageContent() {
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
   const secureToken = revokeMint || revokeFreeze || revokeUpdate;
   const urlReferrer = searchParams.get("ref");
+
+  // Minimum bakiye kontrolü
+  const hasMinBalance = (balance: number) => balance >= 0.01;
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+
+  // Cüzdan bakiyesini kontrol et
+  useEffect(() => {
+    const checkBalance = async () => {
+      if (publicKey && connected) {
+        try {
+          const connection = new Connection(RPC_URL);
+          const balance = await connection.getBalance(publicKey);
+          setWalletBalance(balance / LAMPORTS_PER_SOL);
+        } catch (err) {
+          console.error("Balance check error:", err);
+        }
+      } else {
+        setWalletBalance(null);
+      }
+    };
+    checkBalance();
+    const interval = setInterval(checkBalance, 10000);
+    return () => clearInterval(interval);
+  }, [publicKey, connected]);
 
   useEffect(() => setMounted(true), []);
 
@@ -235,6 +262,12 @@ export default function CreatePageContent() {
       return;
     }
 
+    // Minimum bakiye kontrolü
+    if (walletBalance !== null && walletBalance < 0.01) {
+      showToast(`❌ Insufficient balance! Need at least 0.01 SOL for blockchain fees. Your balance: ${walletBalance.toFixed(4)} SOL`, "error");
+      return;
+    }
+
     const validationError = validateInputs();
     if (validationError) {
       showToast(`❌ ${validationError}`, "error");
@@ -292,7 +325,7 @@ export default function CreatePageContent() {
       setProgress(30);
       const ata = await getAssociatedTokenAddress(mintKeypair.publicKey, publicKey);
       
-      // Supply hesaplama (BigInt ile güvenli)
+      // Supply hesaplama
       const supply = BigInt(tokenSupply) * BigInt(10 ** tokenDecimals);
       
       // Metadata PDA
@@ -321,9 +354,9 @@ export default function CreatePageContent() {
       const transaction = new Transaction();
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
-      transaction.feePayer = publicKey; // Kullanıcı öder
+      transaction.feePayer = publicKey;
 
-      // 1. Mint account oluştur (kullanıcı öder - rent exemption)
+      // 1. Mint account oluştur
       transaction.add(
         SystemProgram.createAccount({
           fromPubkey: publicKey,
@@ -339,7 +372,7 @@ export default function CreatePageContent() {
         createInitializeMintInstruction(mintKeypair.publicKey, tokenDecimals, publicKey, secureToken ? publicKey : null)
       );
 
-      // 3. ATA oluştur (kullanıcı öder)
+      // 3. ATA oluştur
       transaction.add(
         createAssociatedTokenAccountInstruction(publicKey, ata, publicKey, mintKeypair.publicKey)
       );
@@ -349,14 +382,14 @@ export default function CreatePageContent() {
         createMintToInstruction(mintKeypair.publicKey, ata, publicKey, supply)
       );
 
-      // 5. METADATA oluştur (kullanıcı öder)
+      // 5. METADATA oluştur
       transaction.add(
         createCreateMetadataAccountV3Instruction(
           {
             metadata: metadataPda,
             mint: mintKeypair.publicKey,
             mintAuthority: publicKey,
-            payer: publicKey,  // Kullanıcı öder
+            payer: publicKey,
             updateAuthority: publicKey,
           },
           {
@@ -369,7 +402,7 @@ export default function CreatePageContent() {
         )
       );
 
-      // 6. Revoke'lar (ücretsiz)
+      // 6. Revoke'lar
       if (secureToken) {
         if (revokeMint) {
           transaction.add(
@@ -421,7 +454,7 @@ export default function CreatePageContent() {
         referralApplied: false,
         referrer: null,
         tokensLeft: tokensLeft - 1,
-        feePaid: 0,
+        feePaid: USER_PAYS / LAMPORTS_PER_SOL,
         twitter,
         telegram,
         website,
@@ -465,7 +498,7 @@ export default function CreatePageContent() {
       
       let errorMessage = err.message || "Unknown error";
       if (err.message?.includes("insufficient")) {
-        errorMessage = "Insufficient SOL balance. You need about 0.01 SOL for blockchain rent + gas fee.";
+        errorMessage = "Insufficient SOL balance. Need at least 0.01 SOL for blockchain fees.";
       } else if (err.message?.includes("User rejected")) {
         errorMessage = "You rejected the transaction.";
       } else if (err.message?.includes("0x0")) {
@@ -514,10 +547,8 @@ export default function CreatePageContent() {
   return (
     <PageTransition>
       <div className="relative min-h-screen bg-transparent">
-        {/* SİYAH OVERLAY */}
         <div className="fixed inset-0 bg-black/30 pointer-events-none z-0" />
         
-        {/* Ana içerik */}
         <div className="relative z-10 pt-20 sm:pt-28 max-w-5xl mx-auto px-3 sm:px-4 pb-16">
           {tokensLeft > 0 && (
             <motion.div
@@ -532,8 +563,23 @@ export default function CreatePageContent() {
               </div>
               <div className="text-xs sm:text-sm mt-1">
                 ⚡ {t("pool_first")} <span className="font-bold text-xl">{tokensLeft}</span> {t("pool_tokens")}:{" "}
-                <span className="font-bold">0.00 SOL</span>
+                <span className="font-bold">{(USER_PAYS / LAMPORTS_PER_SOL).toFixed(3)} SOL</span>
               </div>
+            </motion.div>
+          )}
+
+          {/* Minimum bakiye uyarısı */}
+          {connected && walletBalance !== null && walletBalance < 0.01 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-center"
+            >
+              <p className="text-red-400 text-sm">
+                ⚠️ Insufficient balance! Need at least 0.01 SOL for blockchain fees.
+                <br />
+                <span className="text-xs">Your balance: {walletBalance.toFixed(4)} SOL</span>
+              </p>
             </motion.div>
           )}
 
@@ -663,14 +709,14 @@ export default function CreatePageContent() {
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Creation Fee</span>
-                    <span className="font-bold text-green-400">0.00 SOL</span>
+                    <span className="font-bold text-green-400">{(USER_PAYS / LAMPORTS_PER_SOL).toFixed(3)} SOL</span>
                   </div>
                   <div className="border-t border-gray-700 pt-2 flex justify-between font-semibold">
                     <span className="text-gray-300">Total to pay:</span>
-                    <span className="text-green-400 font-bold text-lg">0.00 SOL</span>
+                    <span className="text-green-400 font-bold text-lg">{(USER_PAYS / LAMPORTS_PER_SOL).toFixed(3)} SOL</span>
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-2">* Only blockchain gas fee applies (~0.005 SOL)</p>
+                <p className="text-[10px] text-gray-500 mt-2">* Only blockchain gas + rent fee (platform earns 0)</p>
               </div>
 
               {/* Secure Token - 3 Revoke */}
@@ -718,7 +764,7 @@ export default function CreatePageContent() {
               {mounted && (
                 <button 
                   onClick={createToken} 
-                  disabled={loading || !tokenImage} 
+                  disabled={loading || !tokenImage || (connected && walletBalance !== null && walletBalance < 0.01)} 
                   className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 text-white font-bold py-4 rounded-xl shadow-xl transition-all duration-200 transform hover:scale-[1.02] text-sm sm:text-base"
                 >
                   {loading ? (
@@ -729,7 +775,7 @@ export default function CreatePageContent() {
                       </svg>
                       {t("create_deploying")}
                     </span>
-                  ) : !connected ? t("nav_connect") : !tokenImage ? "📸 Upload logo first" : t("create_button")}
+                  ) : !connected ? t("nav_connect") : !tokenImage ? "📸 Upload logo first" : (walletBalance !== null && walletBalance < 0.01) ? "⚠️ Need 0.01 SOL" : t("create_button")}
                 </button>
               )}
 
