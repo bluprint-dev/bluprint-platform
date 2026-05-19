@@ -2,12 +2,29 @@
 
 import { useEffect } from "react";
 
+declare global {
+  interface Window {
+    embeddedChatbotConfig: {
+      chatbotId: string;
+      domain: string;
+    };
+  }
+}
+
 export default function ChatbaseEmbed() {
   useEffect(() => {
+    // Chatbase config
+    window.embeddedChatbotConfig = {
+      chatbotId: "g-snFwRE_q01msUtqIo3W",
+      domain: "www.chatbase.co"
+    };
+
+    // Chatbase widget script
     const script = document.createElement("script");
-    script.innerHTML = `
-      (function(){if(!window.chatbase||window.chatbase("getState")!=="initialized"){window.chatbase=(...arguments)=>{if(!window.chatbase.q){window.chatbase.q=[]}window.chatbase.q.push(arguments)};window.chatbase=new Proxy(window.chatbase,{get(target,prop){if(prop==="q"){return target.q}return(...args)=>target(prop,...args)}})}const onLoad=function(){const script=document.createElement("script");script.src="https://www.chatbase.co/embed.min.js";script.id="g-snFwRE_q01msUtqIo3W";script.domain="www.chatbase.co";document.body.appendChild(script)};if(document.readyState==="complete"){onLoad()}else{window.addEventListener("load",onLoad)}})();
-    `;
+    script.src = "https://www.chatbase.co/embed.min.js";
+    script.id = "g-snFwRE_q01msUtqIo3W";
+    script.async = true;
+    script.defer = true;
     document.body.appendChild(script);
 
     return () => {
