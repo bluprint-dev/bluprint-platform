@@ -4,7 +4,6 @@ import Providers from "./providers";
 import Background from "./components/Background";
 import Sidebar from "./components/Sidebar";
 import MarqueeBanner from "./components/MarqueeBanner";
-import SupportWidget from "./components/SupportWidget";
 import ChatbaseEmbed from "./components/ChatbaseEmbed";
 import "./globals.css";
 
@@ -57,9 +56,6 @@ export default function RootLayout({
             {children}
           </main>
 
-          {/* Sabit - sağ alt köşe */}
-          <SupportWidget />
-          
           {/* AI Chatbot - Chatbase */}
           <ChatbaseEmbed />
         </Providers>
