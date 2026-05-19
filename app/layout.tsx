@@ -44,22 +44,19 @@ export default function RootLayout({
         <Providers>
           <Background />
           
-          {/* Banner - sabit üstte */}
           <div className="fixed top-0 left-0 right-0 z-10">
             <MarqueeBanner />
           </div>
           
-          {/* Sidebar - banner'ın altından başlar */}
           <div className="fixed top-10 left-0 bottom-0 z-20">
             <Sidebar />
           </div>
           
-          {/* Ana içerik */}
           <main className="md:ml-56 pt-14 min-h-screen">
             {children}
           </main>
 
-          {/* Support Widget - sağ alt köşe */}
+          {/* Sabit - sağ alt köşe */}
           <SupportWidget />
         </Providers>
       </body>

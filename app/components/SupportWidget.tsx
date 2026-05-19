@@ -13,7 +13,6 @@ export default function SupportWidget() {
     const interval = setInterval(() => {
       setIsOnline(true);
     }, 30000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -22,7 +21,7 @@ export default function SupportWidget() {
   };
 
   return (
-    <>
+    <div className="fixed bottom-6 right-6 z-50">
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -31,7 +30,7 @@ export default function SupportWidget() {
         onClick={handleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className="fixed bottom-6 right-6 z-50 group relative"
+        className="relative block"
       >
         <div className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg shadow-purple-500/30 flex items-center justify-center cursor-pointer hover:shadow-xl transition-all duration-300">
           <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,10 +80,10 @@ export default function SupportWidget() {
       </motion.button>
 
       {!isOnline && (
-        <div className="fixed bottom-24 right-6 z-40 bg-red-500/90 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-lg shadow-lg">
+        <div className="absolute -top-12 right-0 bg-red-500/90 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
           ⚠️ Support offline
         </div>
       )}
-    </>
+    </div>
   );
 }
