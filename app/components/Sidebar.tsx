@@ -19,12 +19,13 @@ export default function Sidebar() {
   const [mounted, setMounted] = useState(false);
 
   const menuItems = [
-    { href: "/", label: t("nav_home"), icon: "🏠" },
-    { href: "/create", label: t("nav_create"), icon: "🪙" },
-    { href: "/new-pairs", label: t("nav_new_pairs"), icon: "🔥" },
-    { href: "/referral", label: t("nav_refer"), icon: "💰" },
-    { href: "/live", label: t("nav_live"), icon: "📢" },
-    { href: "/top-users", label: t("nav_top_users"), icon: "🏆" },
+    { href: "/", label: t("nav_home"), icon: "🏠", comingSoon: false },
+    { href: "/create", label: t("nav_create"), icon: "🪙", comingSoon: false },
+    { href: "/new-pairs", label: t("nav_new_pairs"), icon: "🔥", comingSoon: false },
+    { href: "/dex", label: "BluPrint DEX", icon: "📊", comingSoon: true },
+    { href: "/referral", label: t("nav_refer"), icon: "💰", comingSoon: false },
+    { href: "/live", label: t("nav_live"), icon: "📢", comingSoon: false },
+    { href: "/top-users", label: t("nav_top_users"), icon: "🏆", comingSoon: false },
   ];
 
   useEffect(() => {
@@ -66,25 +67,38 @@ export default function Sidebar() {
 
       <nav className="flex-1 px-3 py-3 space-y-0.5">
         {menuItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 ${
-              isActive(item.href)
-                ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25"
-                : "text-gray-400 hover:text-white hover:bg-gray-800/50"
-            }`}
-          >
-            <span className="text-xl">{item.icon}</span>
-            <span className="text-sm font-medium">{item.label}</span>
-            {isActive(item.href) && (
-              <motion.div
-                layoutId="activeIndicator"
-                className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-lg"
-                transition={{ type: "spring", duration: 0.3 }}
-              />
+          <div key={item.href} className="relative">
+            {item.comingSoon ? (
+              <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-gray-500 bg-gray-800/30 cursor-not-allowed">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl opacity-50">{item.icon}</span>
+                  <span className="text-sm font-medium opacity-50">{item.label}</span>
+                </div>
+                <span className="text-[9px] font-bold bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 px-1.5 py-0.5 rounded-full animate-pulse border border-yellow-500/30">
+                  COMING SOON
+                </span>
+              </div>
+            ) : (
+              <Link
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 ${
+                  isActive(item.href)
+                    ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25"
+                    : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                }`}
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-sm font-medium">{item.label}</span>
+                {isActive(item.href) && (
+                  <motion.div
+                    layoutId="activeIndicator"
+                    className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-lg"
+                    transition={{ type: "spring", duration: 0.3 }}
+                  />
+                )}
+              </Link>
             )}
-          </Link>
+          </div>
         ))}
       </nav>
 
