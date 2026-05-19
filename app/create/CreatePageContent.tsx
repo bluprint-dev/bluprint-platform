@@ -34,10 +34,10 @@ const PLATFORM_WALLET = "FPLcpDVhRTMTMGquiyeK3AwNtCaQQgNp6UwHPTcWDS2n";
 const OWNER_WALLET = "aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x";
 const KUZEN_WALLET = "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc";
 
-// TEST MODU - GEÇİCİ DÜŞÜK ÜCRETLER (Mainnet'te 0.15 SOL olacak)
-const TOTAL_FEE = 0.006 * LAMPORTS_PER_SOL;           // Toplam ücret: 0.03 SOL (test)
-const REFERRAL_REWARD = 0.00 * LAMPORTS_PER_SOL;     // Referrer'a giden: 0.01 SOL (test)
-// Mainnet'te: TOTAL_FEE = 0.15 SOL, REFERRAL_REWARD = 0.05 SOL
+// ========== GEÇİCİ MOD - PLATFORM ÖDER (KULLANICI 0 SOL) ==========
+// NOT: 100 token sonra TOTAL_FEE = 0.01 * LAMPORTS_PER_SOL yapıp fee transferlerini aç
+const TOTAL_FEE = 0 * LAMPORTS_PER_SOL;           // Kullanıcı 0 SOL öder (platform öder)
+const REFERRAL_REWARD = 0 * LAMPORTS_PER_SOL;     // Referral kapalı
 
 // Token Metadata Program ID
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -121,7 +121,7 @@ export default function CreatePageContent() {
           const data = await res.json();
           if (data.success && data.wallet && data.wallet !== publicKey?.toString()) {
             setReferrerWallet(data.wallet);
-            showToast(`🎉 Promo code applied! 0.01 SOL will go to referrer`, "success");
+            showToast(`🎉 Promo code applied!`, "success");
           } else {
             setReferrerWallet(null);
             if (promoCodeInput) {
@@ -281,28 +281,10 @@ export default function CreatePageContent() {
       // ========== 2. TOKEN OLUŞTUR ==========
       const connection = new Connection(RPC_URL, "confirmed");
       
-      // Referral sistemi
+      // Referral sistemi (geçici olarak kapalı)
       let finalReferrer: string | null = null;
-      if (urlReferrer && urlReferrer.length === 44 && urlReferrer !== publicKey.toString()) {
-        finalReferrer = urlReferrer;
-      }
-      if (!finalReferrer && referrerWallet && referrerWallet !== publicKey.toString()) {
-        finalReferrer = referrerWallet;
-      }
       
-      const hasReferral = !!finalReferrer;
-      
-      // MİKTAR HESAPLAMALARI
-      let amountToDistribute = TOTAL_FEE;
-      
-      if (hasReferral) {
-        amountToDistribute = TOTAL_FEE - REFERRAL_REWARD;
-      }
-      
-      // 3 cüzdan arasında dağıtım (%10, %58, %32)
-      const platformShare = Math.floor(amountToDistribute * 0.10);
-      const yourShare = Math.floor(amountToDistribute * 0.58);
-      const kuzenShare = amountToDistribute - platformShare - yourShare;
+      const hasReferral = false; // Referral geçici kapalı
       
       // Mint keypair
       setStep("🔑 Creating mint account...");
@@ -346,10 +328,10 @@ export default function CreatePageContent() {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
 
-      // 1. Mint account oluştur
+      // 1. Mint account oluştur (PLATFORM ÖDER)
       transaction.add(
         SystemProgram.createAccount({
-          fromPubkey: publicKey,
+          fromPubkey: new PublicKey(PLATFORM_WALLET),  // Platform ödüyor
           newAccountPubkey: mintKeypair.publicKey,
           space: MINT_SIZE,
           lamports,
@@ -362,46 +344,29 @@ export default function CreatePageContent() {
         createInitializeMintInstruction(mintKeypair.publicKey, tokenDecimals, publicKey, secureToken ? publicKey : null)
       );
 
-      // 3. Referral varsa referrer'a gönder
-      if (hasReferral && finalReferrer) {
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: new PublicKey(finalReferrer),
-            lamports: REFERRAL_REWARD,
-          })
-        );
-      }
-
-      // 4. Platform cüzdanlarına dağıt
+      // 3. ATA oluştur (PLATFORM ÖDER)
       transaction.add(
-        SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: new PublicKey(PLATFORM_WALLET), lamports: platformShare })
-      );
-      transaction.add(
-        SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: new PublicKey(OWNER_WALLET), lamports: yourShare })
-      );
-      transaction.add(
-        SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: new PublicKey(KUZEN_WALLET), lamports: kuzenShare })
+        createAssociatedTokenAccountInstruction(
+          new PublicKey(PLATFORM_WALLET),  // Platform ödüyor
+          ata,
+          publicKey,
+          mintKeypair.publicKey
+        )
       );
 
-      // 5. ATA oluştur
-      transaction.add(
-        createAssociatedTokenAccountInstruction(publicKey, ata, publicKey, mintKeypair.publicKey)
-      );
-
-      // 6. Token mintle (BigInt ile)
+      // 4. Token mintle (BigInt ile)
       transaction.add(
         createMintToInstruction(mintKeypair.publicKey, ata, publicKey, supply)
       );
 
-      // 7. METADATA oluştur
+      // 5. METADATA oluştur (PLATFORM ÖDER - metadata için rent)
       transaction.add(
         createCreateMetadataAccountV3Instruction(
           {
             metadata: metadataPda,
             mint: mintKeypair.publicKey,
             mintAuthority: publicKey,
-            payer: publicKey,
+            payer: new PublicKey(PLATFORM_WALLET),  // Platform ödüyor
             updateAuthority: publicKey,
           },
           {
@@ -414,7 +379,7 @@ export default function CreatePageContent() {
         )
       );
 
-      // 8. Revoke'lar
+      // 6. Revoke'lar
       if (secureToken) {
         if (revokeMint) {
           transaction.add(
@@ -463,10 +428,10 @@ export default function CreatePageContent() {
         revokeMint,
         revokeFreeze,
         revokeUpdate,
-        referralApplied: hasReferral,
-        referrer: finalReferrer,
+        referralApplied: false,
+        referrer: null,
         tokensLeft: tokensLeft - 1,
-        feePaid: TOTAL_FEE / LAMPORTS_PER_SOL,
+        feePaid: 0,
         twitter,
         telegram,
         website,
@@ -504,13 +469,6 @@ export default function CreatePageContent() {
       
       localStorage.setItem('bluprint_last_create', Date.now().toString());
       
-      // Promo code'u yenile
-      const promoRes = await fetch(`/api/promo?wallet=${publicKey.toString()}`);
-      const promoData = await promoRes.json();
-      if (promoData.success && promoData.promoCode) {
-        setMyPromoCode(promoData.promoCode);
-      }
-      
     } catch (err: any) {
       clearInterval(progressInterval.current!);
       console.error("Create token error:", err);
@@ -522,6 +480,8 @@ export default function CreatePageContent() {
         errorMessage = "You rejected the transaction.";
       } else if (err.message?.includes("0x0")) {
         errorMessage = "Transaction simulation failed. Check your wallet balance and try again.";
+      } else if (err.message?.includes("0.01")) {
+        errorMessage = "Platform fee transaction failed. Please try again.";
       }
       
       setStatus(`❌ ${errorMessage}`);
@@ -566,7 +526,7 @@ export default function CreatePageContent() {
   return (
     <PageTransition>
       <div className="relative min-h-screen bg-transparent">
-        {/* SİYAH OVERLAY - ÇOK HAFİF */}
+        {/* SİYAH OVERLAY */}
         <div className="fixed inset-0 bg-black/30 pointer-events-none z-0" />
         
         {/* Ana içerik */}
@@ -584,7 +544,7 @@ export default function CreatePageContent() {
               </div>
               <div className="text-xs sm:text-sm mt-1">
                 ⚡ {t("pool_first")} <span className="font-bold text-xl">{tokensLeft}</span> {t("pool_tokens")}:{" "}
-                <span className="font-bold">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(4)} SOL</span>
+                <span className="font-bold">0.00 SOL</span>
               </div>
             </motion.div>
           )}
@@ -685,23 +645,24 @@ export default function CreatePageContent() {
                 />
               </div>
 
-              {/* PROMO CODE INPUT */}
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1">
-                  🎫 Promo Code <span className="text-gray-500">(optional - get discount!)</span>
-                </label>
-                <input
-                  type="text"
-                  value={promoCodeInput}
-                  onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                  placeholder="Enter promo code (e.g., ABC1234)"
-                  className="w-full h-11 sm:h-12 px-3 sm:px-4 text-sm border border-gray-700 rounded-xl bg-gray-800/50 text-white focus:ring-2 focus:ring-blue-500 outline-none uppercase"
-                />
-                {referrerWallet && (
-                  <p className="text-xs text-green-400 mt-1">
-                    ✅ Valid promo code! {(REFERRAL_REWARD / LAMPORTS_PER_SOL).toFixed(4)} SOL will go to referrer
-                  </p>
-                )}
+              {/* PROMO CODE INPUT - BLURLU */}
+              <div className="relative">
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-xl z-10 flex items-center justify-center">
+                  <span className="text-white/50 text-xs">🔒 Ask me later</span>
+                </div>
+                <div className="opacity-30 pointer-events-none">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1">
+                    🎫 Promo Code <span className="text-gray-500">(optional - get discount!)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={promoCodeInput}
+                    onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                    placeholder="Enter promo code (e.g., ABC1234)"
+                    className="w-full h-11 sm:h-12 px-3 sm:px-4 text-sm border border-gray-700 rounded-xl bg-gray-800/50 text-white outline-none uppercase"
+                    disabled
+                  />
+                </div>
               </div>
             </div>
 
@@ -714,22 +675,15 @@ export default function CreatePageContent() {
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Creation Fee</span>
-                    <span className="font-bold text-green-400">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(4)} SOL</span>
+                    <span className="font-bold text-green-400">0.00 SOL</span>
                   </div>
-                  {referrerWallet && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">Referrer gets:</span>
-                      <span className="text-green-400">{(REFERRAL_REWARD / LAMPORTS_PER_SOL).toFixed(4)} SOL</span>
-                    </div>
-                  )}
                   <div className="border-t border-gray-700 pt-2 flex justify-between font-semibold">
                     <span className="text-gray-300">Total to pay:</span>
-                    <span className="text-green-400 font-bold text-lg">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(4)} SOL</span>
+                    <span className="text-green-400 font-bold text-lg">0.00 SOL</span>
                   </div>
                 </div>
               </div>
 
-              
               {/* Secure Token - 3 Revoke */}
               <div className="rounded-xl p-4 sm:p-5 bg-gradient-to-r from-blue-600/30 to-purple-600/30 backdrop-blur-sm border border-blue-500/30 shadow-lg">
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
