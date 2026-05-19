@@ -5,6 +5,7 @@ import Background from "./components/Background";
 import Sidebar from "./components/Sidebar";
 import MarqueeBanner from "./components/MarqueeBanner";
 import SupportWidget from "./components/SupportWidget";
+import ChatbaseEmbed from "./components/ChatbaseEmbed";
 import "./globals.css";
 
 const sora = Sora({ subsets: ["latin"] });
@@ -58,6 +59,9 @@ export default function RootLayout({
 
           {/* Sabit - sağ alt köşe */}
           <SupportWidget />
+          
+          {/* AI Chatbot - Chatbase */}
+          <ChatbaseEmbed />
         </Providers>
       </body>
     </html>
