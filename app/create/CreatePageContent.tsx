@@ -34,10 +34,10 @@ const PLATFORM_WALLET = "FPLcpDVhRTMTMGquiyeK3AwNtCaQQgNp6UwHPTcWDS2n";
 const OWNER_WALLET = "aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x";
 const KUZEN_WALLET = "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc";
 
-// ========== GEÇİCİ MOD - PLATFORM ÖDER (KULLANICI 0 SOL) ==========
-// NOT: 100 token sonra TOTAL_FEE = 0.01 * LAMPORTS_PER_SOL yapıp fee transferlerini aç
-const TOTAL_FEE = 0 * LAMPORTS_PER_SOL;           // Kullanıcı 0 SOL öder (platform öder)
-const REFERRAL_REWARD = 0 * LAMPORTS_PER_SOL;     // Referral kapalı
+// ========== KULLANICI SADECE BLOCKCHAIN MALİYETİNİ ÖDER (0.007 SOL) ==========
+// Platform kar etmez, sadece kullanıcı blockchain masraflarını karşılar
+const TOTAL_FEE = 0.007 * LAMPORTS_PER_SOL;           // Toplam ücret: 0.007 SOL
+const REFERRAL_REWARD = 0 * LAMPORTS_PER_SOL;         // Referral kapalı
 
 // Token Metadata Program ID
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -281,10 +281,9 @@ export default function CreatePageContent() {
       // ========== 2. TOKEN OLUŞTUR ==========
       const connection = new Connection(RPC_URL, "confirmed");
       
-      // Referral sistemi (geçici olarak kapalı)
+      // Referral sistemi (geçici kapalı)
       let finalReferrer: string | null = null;
-      
-      const hasReferral = false; // Referral geçici kapalı
+      const hasReferral = false;
       
       // Mint keypair
       setStep("🔑 Creating mint account...");
@@ -297,7 +296,7 @@ export default function CreatePageContent() {
       setProgress(30);
       const ata = await getAssociatedTokenAddress(mintKeypair.publicKey, publicKey);
       
-      // Supply hesaplama (BigInt ile güvenli)
+      // Supply hesaplama
       const supply = BigInt(tokenSupply) * BigInt(10 ** tokenDecimals);
       
       // Metadata PDA
@@ -328,10 +327,10 @@ export default function CreatePageContent() {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
 
-      // 1. Mint account oluştur (PLATFORM ÖDER)
+      // 1. Mint account oluştur
       transaction.add(
         SystemProgram.createAccount({
-          fromPubkey: new PublicKey(PLATFORM_WALLET),  // Platform ödüyor
+          fromPubkey: publicKey,
           newAccountPubkey: mintKeypair.publicKey,
           space: MINT_SIZE,
           lamports,
@@ -344,29 +343,24 @@ export default function CreatePageContent() {
         createInitializeMintInstruction(mintKeypair.publicKey, tokenDecimals, publicKey, secureToken ? publicKey : null)
       );
 
-      // 3. ATA oluştur (PLATFORM ÖDER)
+      // 3. ATA oluştur
       transaction.add(
-        createAssociatedTokenAccountInstruction(
-          new PublicKey(PLATFORM_WALLET),  // Platform ödüyor
-          ata,
-          publicKey,
-          mintKeypair.publicKey
-        )
+        createAssociatedTokenAccountInstruction(publicKey, ata, publicKey, mintKeypair.publicKey)
       );
 
-      // 4. Token mintle (BigInt ile)
+      // 4. Token mintle
       transaction.add(
         createMintToInstruction(mintKeypair.publicKey, ata, publicKey, supply)
       );
 
-      // 5. METADATA oluştur (PLATFORM ÖDER - metadata için rent)
+      // 5. METADATA oluştur
       transaction.add(
         createCreateMetadataAccountV3Instruction(
           {
             metadata: metadataPda,
             mint: mintKeypair.publicKey,
             mintAuthority: publicKey,
-            payer: new PublicKey(PLATFORM_WALLET),  // Platform ödüyor
+            payer: publicKey,
             updateAuthority: publicKey,
           },
           {
@@ -431,7 +425,7 @@ export default function CreatePageContent() {
         referralApplied: false,
         referrer: null,
         tokensLeft: tokensLeft - 1,
-        feePaid: 0,
+        feePaid: TOTAL_FEE / LAMPORTS_PER_SOL,
         twitter,
         telegram,
         website,
@@ -480,8 +474,6 @@ export default function CreatePageContent() {
         errorMessage = "You rejected the transaction.";
       } else if (err.message?.includes("0x0")) {
         errorMessage = "Transaction simulation failed. Check your wallet balance and try again.";
-      } else if (err.message?.includes("0.01")) {
-        errorMessage = "Platform fee transaction failed. Please try again.";
       }
       
       setStatus(`❌ ${errorMessage}`);
@@ -526,10 +518,8 @@ export default function CreatePageContent() {
   return (
     <PageTransition>
       <div className="relative min-h-screen bg-transparent">
-        {/* SİYAH OVERLAY */}
         <div className="fixed inset-0 bg-black/30 pointer-events-none z-0" />
         
-        {/* Ana içerik */}
         <div className="relative z-10 pt-20 sm:pt-28 max-w-5xl mx-auto px-3 sm:px-4 pb-16">
           {tokensLeft > 0 && (
             <motion.div
@@ -544,7 +534,7 @@ export default function CreatePageContent() {
               </div>
               <div className="text-xs sm:text-sm mt-1">
                 ⚡ {t("pool_first")} <span className="font-bold text-xl">{tokensLeft}</span> {t("pool_tokens")}:{" "}
-                <span className="font-bold">0.00 SOL</span>
+                <span className="font-bold">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(3)} SOL</span>
               </div>
             </motion.div>
           )}
@@ -675,11 +665,11 @@ export default function CreatePageContent() {
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Creation Fee</span>
-                    <span className="font-bold text-green-400">0.00 SOL</span>
+                    <span className="font-bold text-green-400">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(3)} SOL</span>
                   </div>
                   <div className="border-t border-gray-700 pt-2 flex justify-between font-semibold">
                     <span className="text-gray-300">Total to pay:</span>
-                    <span className="text-green-400 font-bold text-lg">0.00 SOL</span>
+                    <span className="text-green-400 font-bold text-lg">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(3)} SOL</span>
                   </div>
                 </div>
               </div>
