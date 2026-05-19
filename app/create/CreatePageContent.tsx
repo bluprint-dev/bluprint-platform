@@ -30,14 +30,10 @@ import { useI18n } from "../lib/i18n-provider";
 
 // ==================== KONFIGÜRASYON ====================
 const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://mainnet.helius-rpc.com/?api-key=fdbb8762-06b5-4bbd-ab1e-33310587e2d4";
-const PLATFORM_WALLET = "FPLcpDVhRTMTMGquiyeK3AwNtCaQQgNp6UwHPTcWDS2n";
-const OWNER_WALLET = "aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x";
-const KUZEN_WALLET = "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc";
 
-// ========== KULLANICI SADECE BLOCKCHAIN MALİYETİNİ ÖDER (0.007 SOL) ==========
-// Platform kar etmez, sadece kullanıcı blockchain masraflarını karşılar
-const TOTAL_FEE = 0.007 * LAMPORTS_PER_SOL;           // Toplam ücret: 0.007 SOL
-const REFERRAL_REWARD = 0 * LAMPORTS_PER_SOL;         // Referral kapalı
+// SIFIR PLATFORM ÜCRETİ - Kullanıcı sadece blockchain rent + gas fee öder
+const TOTAL_FEE = 0 * LAMPORTS_PER_SOL;  // Platform hiçbir ücret almaz
+const REFERRAL_REWARD = 0 * LAMPORTS_PER_SOL;
 
 // Token Metadata Program ID
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -281,7 +277,7 @@ export default function CreatePageContent() {
       // ========== 2. TOKEN OLUŞTUR ==========
       const connection = new Connection(RPC_URL, "confirmed");
       
-      // Referral sistemi (geçici kapalı)
+      // Referral sistemi geçici kapalı
       let finalReferrer: string | null = null;
       const hasReferral = false;
       
@@ -296,7 +292,7 @@ export default function CreatePageContent() {
       setProgress(30);
       const ata = await getAssociatedTokenAddress(mintKeypair.publicKey, publicKey);
       
-      // Supply hesaplama
+      // Supply hesaplama (BigInt ile güvenli)
       const supply = BigInt(tokenSupply) * BigInt(10 ** tokenDecimals);
       
       // Metadata PDA
@@ -325,9 +321,9 @@ export default function CreatePageContent() {
       const transaction = new Transaction();
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
-      transaction.feePayer = publicKey;
+      transaction.feePayer = publicKey; // Kullanıcı öder
 
-      // 1. Mint account oluştur
+      // 1. Mint account oluştur (kullanıcı öder - rent exemption)
       transaction.add(
         SystemProgram.createAccount({
           fromPubkey: publicKey,
@@ -343,7 +339,7 @@ export default function CreatePageContent() {
         createInitializeMintInstruction(mintKeypair.publicKey, tokenDecimals, publicKey, secureToken ? publicKey : null)
       );
 
-      // 3. ATA oluştur
+      // 3. ATA oluştur (kullanıcı öder)
       transaction.add(
         createAssociatedTokenAccountInstruction(publicKey, ata, publicKey, mintKeypair.publicKey)
       );
@@ -353,14 +349,14 @@ export default function CreatePageContent() {
         createMintToInstruction(mintKeypair.publicKey, ata, publicKey, supply)
       );
 
-      // 5. METADATA oluştur
+      // 5. METADATA oluştur (kullanıcı öder)
       transaction.add(
         createCreateMetadataAccountV3Instruction(
           {
             metadata: metadataPda,
             mint: mintKeypair.publicKey,
             mintAuthority: publicKey,
-            payer: publicKey,
+            payer: publicKey,  // Kullanıcı öder
             updateAuthority: publicKey,
           },
           {
@@ -373,7 +369,7 @@ export default function CreatePageContent() {
         )
       );
 
-      // 6. Revoke'lar
+      // 6. Revoke'lar (ücretsiz)
       if (secureToken) {
         if (revokeMint) {
           transaction.add(
@@ -425,7 +421,7 @@ export default function CreatePageContent() {
         referralApplied: false,
         referrer: null,
         tokensLeft: tokensLeft - 1,
-        feePaid: TOTAL_FEE / LAMPORTS_PER_SOL,
+        feePaid: 0,
         twitter,
         telegram,
         website,
@@ -469,7 +465,7 @@ export default function CreatePageContent() {
       
       let errorMessage = err.message || "Unknown error";
       if (err.message?.includes("insufficient")) {
-        errorMessage = "Insufficient SOL balance.";
+        errorMessage = "Insufficient SOL balance. You need about 0.01 SOL for blockchain rent + gas fee.";
       } else if (err.message?.includes("User rejected")) {
         errorMessage = "You rejected the transaction.";
       } else if (err.message?.includes("0x0")) {
@@ -518,8 +514,10 @@ export default function CreatePageContent() {
   return (
     <PageTransition>
       <div className="relative min-h-screen bg-transparent">
+        {/* SİYAH OVERLAY */}
         <div className="fixed inset-0 bg-black/30 pointer-events-none z-0" />
         
+        {/* Ana içerik */}
         <div className="relative z-10 pt-20 sm:pt-28 max-w-5xl mx-auto px-3 sm:px-4 pb-16">
           {tokensLeft > 0 && (
             <motion.div
@@ -534,7 +532,7 @@ export default function CreatePageContent() {
               </div>
               <div className="text-xs sm:text-sm mt-1">
                 ⚡ {t("pool_first")} <span className="font-bold text-xl">{tokensLeft}</span> {t("pool_tokens")}:{" "}
-                <span className="font-bold">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(3)} SOL</span>
+                <span className="font-bold">0.00 SOL</span>
               </div>
             </motion.div>
           )}
@@ -665,13 +663,14 @@ export default function CreatePageContent() {
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Creation Fee</span>
-                    <span className="font-bold text-green-400">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(3)} SOL</span>
+                    <span className="font-bold text-green-400">0.00 SOL</span>
                   </div>
                   <div className="border-t border-gray-700 pt-2 flex justify-between font-semibold">
                     <span className="text-gray-300">Total to pay:</span>
-                    <span className="text-green-400 font-bold text-lg">{(TOTAL_FEE / LAMPORTS_PER_SOL).toFixed(3)} SOL</span>
+                    <span className="text-green-400 font-bold text-lg">0.00 SOL</span>
                   </div>
                 </div>
+                <p className="text-[10px] text-gray-500 mt-2">* Only blockchain gas fee applies (~0.005 SOL)</p>
               </div>
 
               {/* Secure Token - 3 Revoke */}
