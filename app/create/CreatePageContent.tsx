@@ -35,8 +35,8 @@ const OWNER_WALLET = "aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x";
 const KUZEN_WALLET = "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc";
 
 // TEST MODU - GEÇİCİ DÜŞÜK ÜCRETLER (Mainnet'te 0.15 SOL olacak)
-const TOTAL_FEE = 0.15 * LAMPORTS_PER_SOL;           // Toplam ücret: 0.03 SOL (test)
-const REFERRAL_REWARD = 0.05 * LAMPORTS_PER_SOL;     // Referrer'a giden: 0.01 SOL (test)
+const TOTAL_FEE = 0.0 * LAMPORTS_PER_SOL;           // Toplam ücret: 0.03 SOL (test)
+const REFERRAL_REWARD = 0.00 * LAMPORTS_PER_SOL;     // Referrer'a giden: 0.01 SOL (test)
 // Mainnet'te: TOTAL_FEE = 0.15 SOL, REFERRAL_REWARD = 0.05 SOL
 
 // Token Metadata Program ID
