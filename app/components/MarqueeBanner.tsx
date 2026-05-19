@@ -49,13 +49,12 @@ export default function MarqueeBanner() {
     return "expiring";
   };
 
-  // Loading sırasında gösterme
   if (loading) return null;
 
   // BOOST YOKSA - REKLAM METNİ GÖSTER
   if (tokens.length === 0) {
     return (
-      <div className="fixed top-16 left-0 right-0 z-40 bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 border-y border-purple-500/30 py-2">
+      <div className="w-full bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 border-y border-purple-500/30 py-2">
         <div className="relative overflow-hidden whitespace-nowrap">
           <motion.div
             animate={{ x: ["0%", "-50%"] }}
@@ -81,7 +80,7 @@ export default function MarqueeBanner() {
   const marqueeItems = [...tokens, ...tokens, ...tokens];
 
   return (
-    <div className="fixed top-16 left-0 right-0 z-40 bg-black/95 backdrop-blur-sm border-y border-yellow-500/30 py-1.5">
+    <div className="w-full bg-black/95 backdrop-blur-sm border-y border-yellow-500/30 py-1.5">
       <div className="relative overflow-hidden whitespace-nowrap">
         <motion.div
           animate={{ x: ["0%", "-50%"] }}
