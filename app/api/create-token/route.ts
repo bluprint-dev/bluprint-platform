@@ -3,61 +3,150 @@ import { getPlatformUmi } from '@/app/lib/umi';
 import { createAndRegisterLaunch } from '@metaplex-foundation/genesis';
 import Irys from '@irys/sdk';
 import { redis } from '@/app/lib/redis';
+import { Keypair } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
+
+// ============================================
+// CREATE TOKEN FEE DAĞITIM KONFİGÜRASYONU
+// ============================================
+const CREATE_FEE_SOL = 0.01;
+
+const CREATE_FEE_DISTRIBUTION = [
+  { address: 'aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x', percentage: 58 },
+  { address: '2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc', percentage: 32 },
+  { address: 'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X', percentage: 10 },
+];
+
+const BONDING_CURVE_FEE_WALLET = 'aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x';
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const name = formData.get('name') as string;
     const symbol = formData.get('symbol') as string;
-    const logoFile = formData.get('logo') as File;
+    const logoFile = formData.get('logo') as File | null;
     const userPublicKey = formData.get('userPublicKey') as string;
 
-    if (!name || !symbol || !logoFile || !userPublicKey) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    if (!name || !symbol || !userPublicKey) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Missing required fields: name, symbol, userPublicKey' 
+      }, { status: 400 });
     }
 
-    // 1. Logo'yu Irys'a yükle
-    const buffer = Buffer.from(await logoFile.arrayBuffer());
-    const irys = new Irys({
-      network: 'mainnet',
-      token: 'solana',
-      key: process.env.PLATFORM_SECRET_KEY,
-    });
-    const receipt = await irys.upload(buffer, {
-      tags: [{ name: 'Content-Type', value: logoFile.type }],
-    });
-    const gatewayUrl = `https://gateway.irys.xyz/${receipt.id}`;
+    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!);
+    const userWallet = new PublicKey(userPublicKey);
+    const totalFeeLamports = CREATE_FEE_SOL * 1_000_000_000;
 
-    // 2. Umi'yi hazırla
+    // ============================================
+    // 1. TEK TRANSACTION İLE 3 CÜZDANA TRANSFER
+    // ============================================
+    const feeTransaction = new Transaction();
+    
+    for (const dist of CREATE_FEE_DISTRIBUTION) {
+      const amount = (totalFeeLamports * dist.percentage) / 100;
+      const destinationWallet = new PublicKey(dist.address);
+      
+      feeTransaction.add(
+        SystemProgram.transfer({
+          fromPubkey: userWallet,
+          toPubkey: destinationWallet,
+          lamports: amount,
+        })
+      );
+    }
+
+    const serializedTransaction = feeTransaction.serialize({ requireAllSignatures: false });
+    const transactionBase64 = serializedTransaction.toString('base64');
+
+    // ============================================
+    // 2. LOGO YÜKLEME (Irys - DÜZELTİLMİŞ)
+    // ============================================
+    let imageUrl = "https://gateway.irys.xyz/default-token-logo.png";
+    
+    if (logoFile && logoFile.size > 0) {
+      try {
+        const buffer = Buffer.from(await logoFile.arrayBuffer());
+        
+        // Irys için key olarak secret key array'ini kullan
+        const secretKeyArray = JSON.parse(process.env.PLATFORM_SECRET_KEY!);
+        
+        const irys = new Irys({
+          network: 'mainnet',
+          token: 'solana',
+          key: secretKeyArray, // ✅ 'wallet' DEĞİL, 'key' KULLAN
+        });
+        
+        const receipt = await irys.upload(buffer, {
+          tags: [{ name: 'Content-Type', value: logoFile.type }],
+        });
+        
+        imageUrl = `https://gateway.irys.xyz/${receipt.id}`;
+        console.log('✅ Logo uploaded to Irys:', imageUrl);
+        
+      } catch (irysError) {
+        console.error('❌ Irys upload failed:', irysError);
+        // Irys hatasında devam et, varsayılan resim kullan
+      }
+    }
+
+    // ============================================
+    // 3. BONDING CURVE TOKEN OLUŞTUR
+    // ============================================
     const umi = getPlatformUmi();
 
-    // 3. Bonding curve token launch - launchType "bondingCurve" (tire yok!)
-    // @ts-ignore
     const result = await createAndRegisterLaunch(umi, {}, {
       wallet: userPublicKey,
-      launchType: 'bondingCurve',  // ✅ "bonding-curve" değil, "bondingCurve"
+      launchType: 'bondingCurve',
       token: {
         name,
         symbol,
-        image: gatewayUrl,
+        image: imageUrl,
+        description: formData.get('description') as string || '',
       },
       launch: {
-        creatorFeeWallet: process.env.PLATFORM_PUBLIC_KEY,
+        creatorFeeWallet: BONDING_CURVE_FEE_WALLET,
       },
-    });
+    } as any);
 
-    // 4. Redis'e kaydet
     const mintAddress = result.mintAddress;
+
+    // ============================================
+    // 4. REDIS'E KAYDET
+    // ============================================
     await redis.set(`bonding-curve:creator:${mintAddress}`, userPublicKey);
     await redis.sadd('bonding-curve:tokens', mintAddress);
+    
+    await redis.set(`create-fee-distribution:${mintAddress}`, JSON.stringify({
+      distribution: CREATE_FEE_DISTRIBUTION,
+      totalFee: CREATE_FEE_SOL,
+      timestamp: Date.now(),
+    }));
+
+    console.log('✅ Token created:', {
+      mintAddress,
+      name,
+      symbol,
+      feeDistribution: CREATE_FEE_DISTRIBUTION,
+    });
 
     return NextResponse.json({
       success: true,
       mintAddress,
       launchLink: result.launch.link,
+      feeTransaction: transactionBase64,
+      feeConfig: {
+        totalFee: CREATE_FEE_SOL,
+        distribution: CREATE_FEE_DISTRIBUTION,
+      },
     });
+    
   } catch (error: any) {
-    console.error('Create token error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('❌ Create token error:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message || 'Internal server error',
+      details: error.toString(),
+    }, { status: 500 });
   }
 }
