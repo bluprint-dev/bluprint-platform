@@ -7,6 +7,8 @@
     background-color: white;
     color: black;
     font-family: var(--font-inter);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   .dark body {
     background-color: #0a0a0a;
@@ -34,6 +36,37 @@
   code, pre, .mono {
     font-family: var(--font-mono);
   }
+
+  /* ========== YENİ: Custom Scrollbar - Premium Dark Theme ========== */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0a0a0a;
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+  }
+
+  /* ========== YENİ: Selection rengi ========== */
+  ::selection {
+    background: rgba(59, 130, 246, 0.3);
+    color: #ffffff;
+  }
+
+  ::-moz-selection {
+    background: rgba(59, 130, 246, 0.3);
+    color: #ffffff;
+  }
 }
 
 @layer utilities {
@@ -42,6 +75,48 @@
   }
   .text-glow-strong {
     text-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+  }
+
+  /* ========== YENİ: Tutarlı animasyon süreleri ========== */
+  .transition-smooth {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+
+  .transition-slow {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+
+  /* ========== YENİ: Gradient glow efekti ========== */
+  .gradient-glow {
+    position: relative;
+  }
+
+  .gradient-glow::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4);
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+  }
+
+  .gradient-glow:hover::before {
+    opacity: 1;
+  }
+
+  /* ========== YENİ: Premium card hover ========== */
+  .card-hover {
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
   }
 }
 

@@ -1,32 +1,102 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Coins, Rocket, TrendingUp, Gift, Shield, Award } from "lucide-react";
 
-export default function HowItWorks({ t }: { t: (key: string) => string }) {
-  const steps = [
-    { number: "1", titleKey: "how_step1", descKey: "how_step1_desc" },
-    { number: "2", titleKey: "how_step2", descKey: "how_step2_desc" },
-    { number: "3", titleKey: "how_step3", descKey: "how_step3_desc" },
-  ];
+const steps = [
+  {
+    step: "01",
+    icon: Coins,
+    title: "Create Token",
+    description: "Enter token details, supply, and metadata. No coding required.",
+    color: "from-blue-500 to-cyan-500",
+  },
+  {
+    step: "02",
+    icon: Rocket,
+    title: "Launch Bonding Curve",
+    description: "Set your initial price and launch your bonding curve instantly.",
+    color: "from-purple-500 to-pink-500",
+  },
+  {
+    step: "03",
+    icon: TrendingUp,
+    title: "Reach Market Cap",
+    description: "When market cap hits $69k, migrate to Raydium automatically.",
+    color: "from-orange-500 to-red-500",
+  },
+  {
+    step: "04",
+    icon: Gift,
+    title: "Claim Rewards",
+    description: "Earn referral bonuses and rewards from successful launches.",
+    color: "from-green-500 to-emerald-500",
+  },
+  {
+    step: "05",
+    icon: Shield,
+    title: "Secure Trading",
+    description: "Trade with confidence using our audited smart contracts.",
+    color: "from-cyan-500 to-blue-500",
+  },
+  {
+    step: "06",
+    icon: Award,
+    title: "Community Growth",
+    description: "Build your community with integrated marketing tools.",
+    color: "from-indigo-500 to-purple-500",
+  },
+];
 
+export default function HowItWorks() {
   return (
-    <section className="py-16">
-      <div className="text-center mb-12">
-        <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white to-blue-400 bg-clip-text text-transparent">
-          {t("how_title")}
-        </h2>
-        <p className="text-gray-400 mt-3">{t("how_subtitle")}</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {steps.map((step, index) => (
-          <motion.div key={index} className="relative bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6 text-center">
-            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-xl font-bold text-white">
-              {step.number}
-            </div>
-            <h3 className="text-lg font-semibold text-white mb-2">{t(step.titleKey)}</h3>
-            <p className="text-gray-400 text-sm">{t(step.descKey)}</p>
-          </motion.div>
-        ))}
+    <section className="px-4 py-16 md:py-24">
+      <div className="container mx-auto max-w-7xl">
+        {/* Header */}
+        <div className="mb-12 text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 text-sm font-medium text-purple-400">
+            <Rocket className="h-3.5 w-3.5" />
+            <span>Simple Process</span>
+          </div>
+          <h2 className="mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">
+            How It <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Works</span>
+          </h2>
+          <p className="mx-auto max-w-2xl text-gray-400">
+            Launch your token in minutes with our streamlined process
+          </p>
+        </div>
+
+        {/* Grid - rounded-2xl + yumuşak hover */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {steps.map((step, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              viewport={{ once: true }}
+              whileHover={{ y: -4, scale: 1.01 }}
+              className="group relative rounded-2xl border border-gray-800 bg-gradient-to-br from-gray-900/50 to-gray-950/50 p-6 backdrop-blur-sm transition-all duration-300 hover:border-purple-500/30 hover:shadow-xl"
+            >
+              {/* Glow efekti */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/0 via-pink-500/0 to-purple-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-5" />
+              
+              {/* Step numarası */}
+              <div className="mb-2 text-sm font-semibold text-purple-400">{step.step}</div>
+              
+              {/* İkon */}
+              <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${step.color} shadow-lg`}>
+                <step.icon className="h-6 w-6 text-white" />
+              </div>
+              
+              {/* Başlık */}
+              <h3 className="mb-2 text-xl font-semibold text-white">{step.title}</h3>
+              
+              {/* Açıklama */}
+              <p className="text-gray-400">{step.description}</p>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );

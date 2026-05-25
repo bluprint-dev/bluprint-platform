@@ -9,6 +9,18 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useI18n } from "../lib/i18n-provider";
 import ThemeToggle from "./ThemeToggle";
 import LanguageSwitcher from "./LanguageSwitcher";
+import {
+  Home,
+  Sparkles,
+  Flame,
+  LineChart,
+  Users,
+  Radio,
+  Trophy,
+  Wallet,
+  X,
+  Menu,
+} from "lucide-react";
 
 export default function Sidebar() {
   const { t } = useI18n();
@@ -19,13 +31,13 @@ export default function Sidebar() {
   const [mounted, setMounted] = useState(false);
 
   const menuItems = [
-    { href: "/", label: t("nav_home"), icon: "🏠", comingSoon: false },
-    { href: "/create", label: t("nav_create"), icon: "🪙", comingSoon: false },
-    { href: "/new-pairs", label: t("nav_new_pairs"), icon: "🔥", comingSoon: false },
-    { href: "/dex", label: "BluPrint DEX", icon: "📊", comingSoon: false },
-    { href: "/referral", label: t("nav_refer"), icon: "💰", comingSoon: false },
-    { href: "/live", label: t("nav_live"), icon: "📢", comingSoon: false },
-    { href: "/top-users", label: t("nav_top_users"), icon: "🏆", comingSoon: false },
+    { href: "/", label: t("nav_home"), icon: Home, comingSoon: false },
+    { href: "/create", label: t("nav_create"), icon: Sparkles, comingSoon: false },
+    { href: "/new-pairs", label: t("nav_new_pairs"), icon: Flame, comingSoon: false },
+    { href: "/dex", label: "BluPrint DEX", icon: LineChart, comingSoon: false },
+    { href: "/referral", label: t("nav_refer"), icon: Users, comingSoon: false },
+    { href: "/live", label: t("nav_live"), icon: Radio, comingSoon: false },
+    { href: "/top-users", label: t("nav_top_users"), icon: Trophy, comingSoon: false },
   ];
 
   useEffect(() => {
@@ -66,52 +78,52 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-3 space-y-0.5">
-        {menuItems.map((item) => (
-          <div key={item.href} className="relative">
-            {item.comingSoon ? (
-              <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-gray-500 bg-gray-800/30 cursor-not-allowed">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl opacity-50">{item.icon}</span>
-                  <span className="text-sm font-medium opacity-50">{item.label}</span>
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.href} className="relative">
+              {item.comingSoon ? (
+                <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-gray-500 bg-gray-800/30 cursor-not-allowed">
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-5 h-5 opacity-50" />
+                    <span className="text-sm font-medium opacity-50">{item.label}</span>
+                  </div>
+                  <span className="text-[9px] font-bold bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 px-1.5 py-0.5 rounded-full animate-pulse border border-yellow-500/30">
+                    COMING SOON
+                  </span>
                 </div>
-                <span className="text-[9px] font-bold bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 px-1.5 py-0.5 rounded-full animate-pulse border border-yellow-500/30">
-                  COMING SOON
-                </span>
-              </div>
-            ) : (
-              <Link
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 ${
-                  isActive(item.href)
-                    ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25"
-                    : "text-gray-400 hover:text-white hover:bg-gray-800/50"
-                }`}
-              >
-                <span className="text-xl">{item.icon}</span>
-                <span className="text-sm font-medium">{item.label}</span>
-                {isActive(item.href) && (
-                  <motion.div
-                    layoutId="activeIndicator"
-                    className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-lg"
-                    transition={{ type: "spring", duration: 0.3 }}
-                  />
-                )}
-              </Link>
-            )}
-          </div>
-        ))}
+              ) : (
+                <Link
+                  href={item.href}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 ${
+                    isActive(item.href)
+                      ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25"
+                      : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive(item.href) ? "text-white" : "text-gray-400 group-hover:text-white"}`} />
+                  <span className="text-sm font-medium">{item.label}</span>
+                  {isActive(item.href) && (
+                    <motion.div
+                      layoutId="activeIndicator"
+                      className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-lg"
+                      transition={{ type: "spring", duration: 0.3 }}
+                    />
+                  )}
+                </Link>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="px-3 pt-2 pb-4 space-y-2.5">
         <button
           onClick={handleWalletClick}
-          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-green-600/20 to-green-500/10 border border-green-500/30 hover:from-green-600/30 hover:to-green-500/20 transition-all duration-200"
+          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-green-600/20 to-green-500/10 border border-green-500/30 hover:from-green-600/30 hover:to-green-500/20 transition-all duration-200 group"
         >
           <div className="w-6 h-6 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-lg">
-            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
-              <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1z" clipRule="evenodd" />
-            </svg>
+            <Wallet className="w-3 h-3 text-white" />
           </div>
           <span className="text-gray-200 text-sm font-medium truncate">
             {connected && publicKey ? shortenAddress(publicKey.toString()) : t("nav_connect")}
@@ -150,13 +162,11 @@ export default function Sidebar() {
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="w-10 h-10 rounded-xl bg-gray-800/50 flex items-center justify-center active:scale-95 transition"
           >
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {isMobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
+            {isMobileMenuOpen ? (
+              <X className="w-6 h-6 text-white" />
+            ) : (
+              <Menu className="w-6 h-6 text-white" />
+            )}
           </button>
         </div>
       </div>
