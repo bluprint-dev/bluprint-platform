@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
+import { Transaction } from "@solana/web3.js";
 import {
   ArrowLeft,
   Rocket,
@@ -20,7 +22,8 @@ import {
 } from "lucide-react";
 
 export default function CreatePage() {
-  const { connected, publicKey } = useWallet();
+  const { connected, publicKey, signTransaction, sendTransaction } = useWallet();
+  const { connection } = useConnection();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -93,6 +96,31 @@ export default function CreatePage() {
       const data = await res.json();
       
       if (data.success) {
+        // ============================================
+        // FEE TRANSACTION'INI İMZALA VE GÖNDER
+        // ============================================
+        if (data.feeTransaction && signTransaction && sendTransaction) {
+          try {
+            // Fee transaction'ını deserialize et
+            const feeTx = Transaction.from(Buffer.from(data.feeTransaction, 'base64'));
+            
+            // İmzala
+            const signedFeeTx = await signTransaction(feeTx);
+            
+            // Gönder ve onayla
+            const signature = await sendTransaction(signedFeeTx, connection);
+            await connection.confirmTransaction(signature);
+            
+            console.log('✅ Fee transaction confirmed:', signature);
+          } catch (feeError: any) {
+            console.error('Fee transaction failed:', feeError);
+            setError(`Fee payment failed: ${feeError.message}`);
+            setIsLoading(false);
+            return;
+          }
+        }
+        
+        // Başarılı
         setSuccess(true);
         setTimeout(() => {
           router.push("/");
@@ -102,6 +130,7 @@ export default function CreatePage() {
         setIsLoading(false);
       }
     } catch (err: any) {
+      console.error("Create token error:", err);
       setError(err.message || "Network error");
       setIsLoading(false);
     }
@@ -303,27 +332,27 @@ export default function CreatePage() {
                     <p className="text-sm text-[#ff2d95] mb-2">ℹ️ Bonding Curve Launch</p>
                     <p className="text-xs text-gray-300">
                       Your token will launch on a bonding curve. Price increases with each buy.
-                      No platform fees, only Solana network gas fee (~0.001 SOL).
+                      Create fee: 0.01 SOL (58% Owner, 32% Cousin, 10% Platform)
                     </p>
                   </div>
 
-                  {/* Initial Buy Amount */}
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-2">
-                      Initial Buy (SOL) - Optional
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">◎</span>
-                      <input
-                        type="number"
-                        value={buyAmount}
-                        onChange={(e) => setBuyAmount(e.target.value)}
-                        step="0.1"
-                        min="0"
-                        className="w-full pl-8 pr-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white focus:outline-none focus:border-[#ff2d95] transition-all"
-                      />
+                  {/* Create Fee Info */}
+                  <div className="bg-[#0A0A0F] rounded-xl p-4 border border-[#252525]">
+                    <p className="text-sm text-gray-400 mb-2">💰 Create Token Fee Distribution</p>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span>Owner (aJCqEs...)</span>
+                        <span className="text-[#ff2d95]">58% (0.0058 SOL)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Cousin (2WyCLg...)</span>
+                        <span className="text-[#ff2d95]">32% (0.0032 SOL)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Platform (A692Ua...)</span>
+                        <span className="text-[#ff2d95]">10% (0.0010 SOL)</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">First buy after launch (you can skip)</p>
                   </div>
 
                   <div className="flex gap-3">
@@ -383,21 +412,21 @@ export default function CreatePage() {
                       <span className="text-gray-500">Token Symbol</span>
                       <span className="text-white font-medium">{tokenSymbol}</span>
                     </div>
-                    <div className="flex justify-between py-2 border-b border-[#252525]">
-                      <span className="text-gray-500">Initial Buy</span>
-                      <span className="text-white font-medium">{buyAmount} SOL</span>
-                    </div>
                   </div>
 
                   {/* Cost Info */}
                   <div className="bg-[#0A0A0F] rounded-xl p-4 space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Platform Fee</span>
-                      <span className="text-green-400">0 SOL</span>
+                      <span className="text-gray-500">Create Token Fee</span>
+                      <span className="text-white">0.01 SOL</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Network Fee (est.)</span>
                       <span className="text-white">~0.001 SOL</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-[#252525]">
+                      <span className="text-gray-400">Total Estimated</span>
+                      <span className="text-[#ff2d95] font-medium">~0.011 SOL</span>
                     </div>
                   </div>
 
@@ -408,7 +437,9 @@ export default function CreatePage() {
                       <div>
                         <p className="text-sm font-medium text-yellow-400">Important</p>
                         <p className="text-xs text-gray-400 mt-1">
-                          Once launched, you cannot change token parameters. Double-check everything fren!
+                          You will need to approve TWO transactions: 
+                          1) Create fee payment (0.01 SOL) 
+                          2) Token creation
                         </p>
                       </div>
                     </div>
@@ -517,7 +548,7 @@ export default function CreatePage() {
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <Check className="w-4 h-4 text-[#ff2d95]" />
-                    <span className="text-gray-400">No platform fees</span>
+                    <span className="text-gray-400">No trading platform fees</span>
                   </div>
                 </div>
               </div>
