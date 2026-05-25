@@ -56,11 +56,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ✅ RECENT BLOCKHASH EKLE (ÇOK ÖNEMLİ!)
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+    feeTransaction.recentBlockhash = blockhash;
+    feeTransaction.lastValidBlockHeight = lastValidBlockHeight;
+    feeTransaction.feePayer = userWallet;
+
     const serializedTransaction = feeTransaction.serialize({ requireAllSignatures: false });
     const transactionBase64 = serializedTransaction.toString('base64');
 
     // ============================================
-    // 2. LOGO YÜKLEME (Irys - DÜZELTİLMİŞ)
+    // 2. LOGO YÜKLEME (Irys)
     // ============================================
     let imageUrl = "https://gateway.irys.xyz/default-token-logo.png";
     
@@ -74,7 +80,7 @@ export async function POST(req: NextRequest) {
         const irys = new Irys({
           network: 'mainnet',
           token: 'solana',
-          key: secretKeyArray, // ✅ 'wallet' DEĞİL, 'key' KULLAN
+          key: secretKeyArray,
         });
         
         const receipt = await irys.upload(buffer, {
@@ -86,7 +92,6 @@ export async function POST(req: NextRequest) {
         
       } catch (irysError) {
         console.error('❌ Irys upload failed:', irysError);
-        // Irys hatasında devam et, varsayılan resim kullan
       }
     }
 
