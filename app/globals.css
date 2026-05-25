@@ -2,310 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ==================== OKLCH PREMIUM WHALE THEME ==================== */
+/* ==================== PREMIUM MINIMAL PINK WHALE ==================== */
 
 @layer base {
-  /* OKLCH CSS Variables */
   :root {
-    /* Ana Renkler - OKLCH */
-    --whale-primary: oklch(42.4% 0.199 265.638);      /* Koyu Mavi - Ana arkaplan */
-    --whale-secondary: oklch(14.1% 0.005 285.823);    /* Koyu Mor/Siyah - Kart arkaplanı */
-    --whale-tertiary: oklch(25% 0.1 265);             /* Orta mavi - Hover state */
-    --whale-accent: oklch(62.7% 0.194 149.214);       /* Teal/Yeşil - Butonlar, vurgular */
-    --whale-accent-dark: oklch(55.8% 0.288 302.321);  /* Mor - İkincil vurgular */
-    --whale-text-primary: oklch(98.4% 0.003 247.858); /* Beyaz - Ana metin */
-    --whale-text-secondary: oklch(70% 0.015 260);     /* Açık gri - Alt metin */
-    --whale-border: oklch(35% 0.05 265);              /* Border rengi */
-    --whale-deep: oklch(10% 0.005 285);               /* En koyu alan */
-    --whale-card-bg: oklch(14.1% 0.005 285.823);      /* Kart arkaplanı */
-    --whale-hover: oklch(25% 0.1 265);                /* Hover state */
+    --pink: oklch(51.8% 0.253 323.949);
+    --pink-soft: oklch(55% 0.15 323.949);
+    --bg: #0D0D0F;
+    --card: #131316;
+    --card-hover: #1A1A1F;
+    --text: #FFFFFF;
+    --text-muted: #8A8A99;
+    --border: #22222A;
   }
 
   body {
-    background-color: var(--whale-primary);
-    color: var(--whale-text-primary);
+    background-color: var(--bg);
+    color: var(--text);
     font-family: var(--font-inter);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Dark mode - OKLCH temasında aynı kalır */
-  .dark body {
-    background-color: var(--whale-primary);
-    color: var(--whale-text-primary);
-  }
-
-  /* Başlıklar - Space Grotesk */
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-space);
     font-weight: 700;
+    letter-spacing: -0.02em;
   }
 
-  /* Butonlar */
-  button {
-    font-family: var(--font-space);
-    font-weight: 600;
-  }
-
-  /* Input, textarea */
-  input, textarea {
-    font-family: var(--font-inter);
-  }
-
-  /* Code/mono */
-  code, pre, .mono {
-    font-family: var(--font-mono);
-  }
-
-  /* ==================== CUSTOM SCROLLBAR ==================== */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 5px;
   }
 
   ::-webkit-scrollbar-track {
-    background: var(--whale-primary);
-    border-radius: 10px;
+    background: var(--card);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--whale-border);
+    background: var(--pink);
     border-radius: 10px;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--whale-accent);
-  }
-
-  /* ==================== SELECTION RENGİ ==================== */
   ::selection {
-    background: var(--whale-accent);
-    color: var(--whale-primary);
-  }
-
-  ::-moz-selection {
-    background: var(--whale-accent);
-    color: var(--whale-primary);
-  }
-
-  /* ==================== YUMUŞAK KAYDIRMA ==================== */
-  html {
-    scroll-behavior: smooth;
-  }
-
-  a {
-    transition: color 0.2s ease;
+    background: var(--pink);
+    color: white;
   }
 }
 
 @layer utilities {
-  /* ==================== OKLCH KART STILLERI ==================== */
-  .whale-card {
-    @apply rounded-2xl border transition-all duration-300;
-    background-color: var(--whale-card-bg);
-    border-color: var(--whale-border);
-  }
-
-  .whale-card-hover {
-    transition: all 0.3s ease;
+  .text-pink {
+    color: var(--pink);
   }
   
-  .whale-card-hover:hover {
-    border-color: var(--whale-accent);
-    box-shadow: 0 0 20px var(--whale-accent);
-    transform: translateY(-4px);
-  }
-
-  .whale-card-active {
-    border-color: var(--whale-accent);
-    box-shadow: 0 0 15px var(--whale-accent);
-  }
-
-  /* ==================== OKLCH GRADIENTLER ==================== */
-  .whale-gradient-primary {
-    background: linear-gradient(135deg, 
-      var(--whale-primary) 0%, 
-      var(--whale-secondary) 50%, 
-      var(--whale-tertiary) 100%
-    );
-  }
-
-  .whale-gradient-accent {
-    background: linear-gradient(135deg, 
-      var(--whale-accent) 0%, 
-      var(--whale-accent-dark) 100%
-    );
-  }
-
-  .whale-gradient-dark {
-    background: linear-gradient(180deg, 
-      var(--whale-deep) 0%, 
-      var(--whale-primary) 100%
-    );
-  }
-
-  /* ==================== OKLCH GLOW EFEKTLERI ==================== */
-  .whale-glow {
-    box-shadow: 0 0 20px var(--whale-accent);
-  }
-
-  .whale-glow-strong {
-    box-shadow: 0 0 30px var(--whale-accent);
-  }
-
-  .whale-glow-hover {
-    transition: box-shadow 0.3s ease;
+  .bg-pink {
+    background-color: var(--pink);
   }
   
-  .whale-glow-hover:hover {
-    box-shadow: 0 0 25px var(--whale-accent);
-  }
-
-  /* ==================== TEXT GLOW ==================== */
-  .text-glow {
-    text-shadow: 0 0 20px var(--whale-accent);
-  }
-
-  .text-glow-strong {
-    text-shadow: 0 0 30px var(--whale-accent);
-  }
-
-  /* ==================== BUTON STILLERI ==================== */
-  .btn-whale {
-    @apply relative overflow-hidden rounded-xl px-6 py-3 font-semibold transition-all duration-300 border;
-    background: linear-gradient(135deg, var(--whale-tertiary), var(--whale-secondary));
-    color: var(--whale-text-primary);
-    border-color: var(--whale-border);
-  }
-  
-  .btn-whale:hover {
-    border-color: var(--whale-accent);
-    box-shadow: 0 0 20px var(--whale-accent);
-    transform: scale(1.02);
-  }
-
-  .btn-whale-primary {
-    @apply relative overflow-hidden rounded-xl px-6 py-3 font-semibold transition-all duration-300;
-    background: linear-gradient(135deg, var(--whale-accent), var(--whale-accent-dark));
-    color: var(--whale-primary);
-  }
-  
-  .btn-whale-primary:hover {
-    box-shadow: 0 0 25px var(--whale-accent);
-    transform: scale(1.02);
-  }
-
-  /* ==================== ANİMASYON SÜRELERİ ==================== */
-  .transition-smooth {
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 200ms;
-  }
-
-  .transition-slow {
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 300ms;
-  }
-
-  /* Card hover efekti */
-  .card-hover {
-    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
-  }
-
-  .card-hover:hover {
-    transform: translateY(-4px);
-  }
-
-  /* Glow border efekti */
-  .gradient-glow {
-    position: relative;
-  }
-
-  .gradient-glow::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    background: linear-gradient(135deg, var(--whale-accent), var(--whale-accent-dark), var(--whale-accent));
-    border-radius: inherit;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: -1;
-  }
-
-  .gradient-glow:hover::before {
-    opacity: 1;
+  .border-pink {
+    border-color: var(--pink);
   }
 }
 
-/* ==================== MOBİL UYUMLULUK ==================== */
-
+/* Mobile */
 @media (max-width: 768px) {
-  button, a, [role="button"] {
+  button, a {
     min-height: 44px;
-    min-width: 44px;
-  }
-
-  input, textarea, select {
-    font-size: 16px !important;
-  }
-}
-
-@media (max-width: 768px) {
-  .overflow-x-auto {
-    -webkit-overflow-scrolling: touch;
   }
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
-}
-
-/* ==================== KAYAN BANNER ANİMASYONU ==================== */
-
-@keyframes marquee {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-33.33%);
-  }
-}
-
-.animate-marquee {
-  animation: marquee 30s linear infinite;
-  display: inline-flex;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
-
-/* ==================== OKLCH ÖZEL EKSTRALAR ==================== */
-
-/* Grid desen arkaplan */
-.whale-grid-bg {
-  background-image: 
-    linear-gradient(to right, var(--whale-border) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--whale-border) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-
-/* Noise texture */
-.whale-noise {
-  position: relative;
-}
-
-.whale-noise::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  opacity: 0.3;
-}
-
-/* Gradient overlay */
-.whale-overlay {
-  background: linear-gradient(180deg, transparent 0%, var(--whale-deep) 100%);
 }
