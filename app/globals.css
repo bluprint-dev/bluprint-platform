@@ -2,22 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ==================== WHALE THEME - LACİVERT, BEYAZ, SİYAH ==================== */
+/* ==================== OKLCH PREMIUM WHALE THEME ==================== */
 
 @layer base {
-  /* Whale Theme CSS Variables */
+  /* OKLCH CSS Variables */
   :root {
-    --whale-primary: #0A192F;
-    --whale-secondary: #112240;
-    --whale-tertiary: #1A365D;
-    --whale-accent: #64FFDA;
-    --whale-accent-dark: #4ECDC4;
-    --whale-text-primary: #FFFFFF;
-    --whale-text-secondary: #8892B0;
-    --whale-border: #233554;
-    --whale-deep: #020C1A;
-    --whale-card-bg: #112240;
-    --whale-hover: #1A365D;
+    /* Ana Renkler - OKLCH */
+    --whale-primary: oklch(42.4% 0.199 265.638);      /* Koyu Mavi - Ana arkaplan */
+    --whale-secondary: oklch(14.1% 0.005 285.823);    /* Koyu Mor/Siyah - Kart arkaplanı */
+    --whale-tertiary: oklch(25% 0.1 265);             /* Orta mavi - Hover state */
+    --whale-accent: oklch(62.7% 0.194 149.214);       /* Teal/Yeşil - Butonlar, vurgular */
+    --whale-accent-dark: oklch(55.8% 0.288 302.321);  /* Mor - İkincil vurgular */
+    --whale-text-primary: oklch(98.4% 0.003 247.858); /* Beyaz - Ana metin */
+    --whale-text-secondary: oklch(70% 0.015 260);     /* Açık gri - Alt metin */
+    --whale-border: oklch(35% 0.05 265);              /* Border rengi */
+    --whale-deep: oklch(10% 0.005 285);               /* En koyu alan */
+    --whale-card-bg: oklch(14.1% 0.005 285.823);      /* Kart arkaplanı */
+    --whale-hover: oklch(25% 0.1 265);                /* Hover state */
   }
 
   body {
@@ -28,7 +29,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Dark mode override - Whale temasında dark mode aynı kalır */
+  /* Dark mode - OKLCH temasında aynı kalır */
   .dark body {
     background-color: var(--whale-primary);
     color: var(--whale-text-primary);
@@ -56,7 +57,7 @@
     font-family: var(--font-mono);
   }
 
-  /* ==================== CUSTOM SCROLLBAR - WHALE THEME ==================== */
+  /* ==================== CUSTOM SCROLLBAR ==================== */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -78,13 +79,13 @@
 
   /* ==================== SELECTION RENGİ ==================== */
   ::selection {
-    background: rgba(100, 255, 218, 0.2);
-    color: var(--whale-text-primary);
+    background: var(--whale-accent);
+    color: var(--whale-primary);
   }
 
   ::-moz-selection {
-    background: rgba(100, 255, 218, 0.2);
-    color: var(--whale-text-primary);
+    background: var(--whale-accent);
+    color: var(--whale-primary);
   }
 
   /* ==================== YUMUŞAK KAYDIRMA ==================== */
@@ -92,82 +93,109 @@
     scroll-behavior: smooth;
   }
 
-  /* Link hover efekti */
   a {
     transition: color 0.2s ease;
   }
 }
 
 @layer utilities {
-  /* ==================== WHALE TEMA UTILITIES ==================== */
-
-  /* Kart stilleri */
+  /* ==================== OKLCH KART STILLERI ==================== */
   .whale-card {
-    @apply rounded-2xl border border-[#233554] bg-[#112240] transition-all duration-300;
+    @apply rounded-2xl border transition-all duration-300;
+    background-color: var(--whale-card-bg);
+    border-color: var(--whale-border);
   }
 
   .whale-card-hover {
-    @apply hover:border-[#64FFDA] hover:shadow-lg hover:shadow-[#64FFDA]/10 hover:-translate-y-1;
+    transition: all 0.3s ease;
+  }
+  
+  .whale-card-hover:hover {
+    border-color: var(--whale-accent);
+    box-shadow: 0 0 20px var(--whale-accent);
+    transform: translateY(-4px);
   }
 
   .whale-card-active {
-    @apply border-[#64FFDA] shadow-md shadow-[#64FFDA]/20;
+    border-color: var(--whale-accent);
+    box-shadow: 0 0 15px var(--whale-accent);
   }
 
-  /* Gradient arkaplanlar */
+  /* ==================== OKLCH GRADIENTLER ==================== */
   .whale-gradient-primary {
-    background: linear-gradient(135deg, #0A192F 0%, #112240 50%, #1A365D 100%);
+    background: linear-gradient(135deg, 
+      var(--whale-primary) 0%, 
+      var(--whale-secondary) 50%, 
+      var(--whale-tertiary) 100%
+    );
   }
 
   .whale-gradient-accent {
-    background: linear-gradient(135deg, #64FFDA 0%, #4ECDC4 100%);
+    background: linear-gradient(135deg, 
+      var(--whale-accent) 0%, 
+      var(--whale-accent-dark) 100%
+    );
   }
 
   .whale-gradient-dark {
-    background: linear-gradient(180deg, #020C1A 0%, #0A192F 100%);
+    background: linear-gradient(180deg, 
+      var(--whale-deep) 0%, 
+      var(--whale-primary) 100%
+    );
   }
 
-  /* Glow efektleri */
+  /* ==================== OKLCH GLOW EFEKTLERI ==================== */
   .whale-glow {
-    box-shadow: 0 0 20px rgba(100, 255, 218, 0.15);
+    box-shadow: 0 0 20px var(--whale-accent);
   }
 
   .whale-glow-strong {
-    box-shadow: 0 0 30px rgba(100, 255, 218, 0.3);
+    box-shadow: 0 0 30px var(--whale-accent);
   }
 
   .whale-glow-hover {
-    @apply transition-shadow duration-300;
+    transition: box-shadow 0.3s ease;
   }
-
+  
   .whale-glow-hover:hover {
-    box-shadow: 0 0 25px rgba(100, 255, 218, 0.25);
+    box-shadow: 0 0 25px var(--whale-accent);
   }
 
-  /* Text glow - sadece accent renkte */
+  /* ==================== TEXT GLOW ==================== */
   .text-glow {
-    text-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+    text-shadow: 0 0 20px var(--whale-accent);
   }
 
   .text-glow-strong {
-    text-shadow: 0 0 30px rgba(100, 255, 218, 0.5);
+    text-shadow: 0 0 30px var(--whale-accent);
   }
 
-  /* Border gradient */
-  .border-gradient {
-    border-image: linear-gradient(135deg, #64FFDA, #0A192F) 1;
-  }
-
-  /* Buton stilleri */
+  /* ==================== BUTON STILLERI ==================== */
   .btn-whale {
-    @apply relative overflow-hidden rounded-xl bg-gradient-to-r from-[#1A365D] to-[#112240] px-6 py-3 font-semibold text-white transition-all duration-300 border border-[#64FFDA]/30 hover:border-[#64FFDA] hover:shadow-lg hover:shadow-[#64FFDA]/20;
+    @apply relative overflow-hidden rounded-xl px-6 py-3 font-semibold transition-all duration-300 border;
+    background: linear-gradient(135deg, var(--whale-tertiary), var(--whale-secondary));
+    color: var(--whale-text-primary);
+    border-color: var(--whale-border);
+  }
+  
+  .btn-whale:hover {
+    border-color: var(--whale-accent);
+    box-shadow: 0 0 20px var(--whale-accent);
+    transform: scale(1.02);
   }
 
   .btn-whale-primary {
-    @apply relative overflow-hidden rounded-xl bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] px-6 py-3 font-semibold text-[#0A192F] transition-all duration-300 hover:shadow-lg hover:shadow-[#64FFDA]/30 hover:scale-[1.02];
+    @apply relative overflow-hidden rounded-xl px-6 py-3 font-semibold transition-all duration-300;
+    background: linear-gradient(135deg, var(--whale-accent), var(--whale-accent-dark));
+    color: var(--whale-primary);
+  }
+  
+  .btn-whale-primary:hover {
+    box-shadow: 0 0 25px var(--whale-accent);
+    transform: scale(1.02);
   }
 
-  /* ==================== TUTARLI ANİMASYON SÜRELERİ ==================== */
+  /* ==================== ANİMASYON SÜRELERİ ==================== */
   .transition-smooth {
     transition-property: all;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -198,7 +226,7 @@
     content: "";
     position: absolute;
     inset: -2px;
-    background: linear-gradient(135deg, #64FFDA, #4ECDC4, #64FFDA);
+    background: linear-gradient(135deg, var(--whale-accent), var(--whale-accent-dark), var(--whale-accent));
     border-radius: inherit;
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -212,31 +240,23 @@
 
 /* ==================== MOBİL UYUMLULUK ==================== */
 
-/* 1. Dokunmatik hedef boyutları - sadece mobilde */
 @media (max-width: 768px) {
-  button,
-  a,
-  [role="button"] {
+  button, a, [role="button"] {
     min-height: 44px;
     min-width: 44px;
   }
 
-  /* iOS zoom'u engelle - inputlarda font 16px+ */
-  input,
-  textarea,
-  select {
+  input, textarea, select {
     font-size: 16px !important;
   }
 }
 
-/* 2. Tabloları mobilde kaydırılabilir yap */
 @media (max-width: 768px) {
   .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
   }
 }
 
-/* 3. Tıklama flash'ını kaldır (tüm cihazlar) */
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -257,14 +277,13 @@
   display: inline-flex;
 }
 
-/* Banner hover'da yavaşlama */
 .animate-marquee:hover {
   animation-play-state: paused;
 }
 
-/* ==================== WHALE TEMA ÖZEL EKSTRALAR ==================== */
+/* ==================== OKLCH ÖZEL EKSTRALAR ==================== */
 
-/* Grid desen arkaplan (opsiyonel) */
+/* Grid desen arkaplan */
 .whale-grid-bg {
   background-image: 
     linear-gradient(to right, var(--whale-border) 1px, transparent 1px),
@@ -272,7 +291,7 @@
   background-size: 40px 40px;
 }
 
-/* Noise texture (opsiyonel) */
+/* Noise texture */
 .whale-noise {
   position: relative;
 }
@@ -286,7 +305,7 @@
   opacity: 0.3;
 }
 
-/* Lacivertten siyaha gradient overlay */
+/* Gradient overlay */
 .whale-overlay {
   background: linear-gradient(180deg, transparent 0%, var(--whale-deep) 100%);
 }
