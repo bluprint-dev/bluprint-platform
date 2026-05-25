@@ -1,71 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { publicKey } from '@metaplex-foundation/umi';
-import { findAssociatedTokenPda, createAssociatedToken, syncNative } from '@metaplex-foundation/mpl-toolbox';
+import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import { getPlatformUmi } from '@/app/lib/umi';
 import { 
   findBondingCurveBucketV2Pda, 
   fetchBondingCurveBucketV2, 
   getSwapResult, 
-  swapBondingCurveV2, 
-  SwapDirection 
+  swapBondingCurveV2,
+  SwapDirection
 } from '@metaplex-foundation/genesis';
-import { transactionBuilder } from '@metaplex-foundation/umi';
+import { Connection, PublicKey } from '@solana/web3.js';
 
-const WSOL_MINT = publicKey('So11111111111111111111111111111111111111112');
+const WSOL_MINT = 'So11111111111111111111111111111111111111112';
 
 export async function POST(req: NextRequest) {
   try {
     const { mintAddress, amount, userPublicKey, isBuy } = await req.json();
 
     if (!mintAddress || !amount || !userPublicKey || isBuy === undefined) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!);
     const umi = getPlatformUmi();
-    const mint = publicKey(mintAddress);
-    const user = publicKey(userPublicKey);
+    const umiMint = publicKey(mintAddress);
+    const umiUser = publicKey(userPublicKey);
+    const umiWSOL = publicKey(WSOL_MINT);
 
-    // 1. Bucket'ı bul
-    const [bucketPda] = findBondingCurveBucketV2Pda(umi, { genesisAccount: mint, bucketIndex: 0 });
+    // Bucket
+    const [bucketPda] = findBondingCurveBucketV2Pda(umi, { 
+      genesisAccount: umiMint, 
+      bucketIndex: 0 
+    });
     const bucket = await fetchBondingCurveBucketV2(umi, bucketPda);
 
-    // 2. ATA hesaplarını bul
-    const [userBaseTokenAccount] = findAssociatedTokenPda(umi, { mint, owner: user });
-    const [userQuoteTokenAccount] = findAssociatedTokenPda(umi, { mint: WSOL_MINT, owner: user });
+    // ATA'lar
+    const [userBaseTokenAccount] = findAssociatedTokenPda(umi, { 
+      mint: umiMint, 
+      owner: umiUser 
+    });
+    const [userQuoteTokenAccount] = findAssociatedTokenPda(umi, { 
+      mint: umiWSOL, 
+      owner: umiUser 
+    });
 
-    // 3. Alış işleminde wSOL hesabını hazırla
-    if (isBuy) {
-      const wrapTx = transactionBuilder()
-        .add(createAssociatedToken(umi, { mint: WSOL_MINT, owner: user }))
-        .add(syncNative(umi, { account: userQuoteTokenAccount }));
-      await wrapTx.sendAndConfirm(umi);
-    }
-
-    // 4. Swap işlemi için gerekli değerler
-    const amountIn = BigInt(amount);
+    // Direction + Quote
     const direction = isBuy ? SwapDirection.Buy : SwapDirection.Sell;
-    const quote = getSwapResult(bucket, amountIn, direction);
+    const quote = getSwapResult(bucket, BigInt(amount), direction);
 
-    // @ts-ignore - Tip uyumsuzluğu (direction parametresi bazı sürümlerde beklenmiyor)
-    const swapResult = await swapBondingCurveV2(umi, {
-      genesisAccount: mint,
+    // %1 slippage toleransı
+    const minAmountOut = (quote.amountOut * BigInt(99)) / BigInt(100);
+
+    // Builder — tip tanımına göre tam parametreler
+    const swapBuilder = swapBondingCurveV2(umi, {
+      genesisAccount: umiMint,
       bucket: bucketPda,
-      baseMint: mint,
-      quoteMint: WSOL_MINT,
+      baseMint: umiMint,
+      quoteMint: umiWSOL,
       baseTokenAccount: userBaseTokenAccount,
       quoteTokenAccount: userQuoteTokenAccount,
+      quoteTokenOwner: umiUser,   // Buy'da quote imzalayan
+      baseTokenOwner: umiUser,    // Sell'de base imzalayan
+      // Data args
+      swapDirection: direction,
       amount: quote.amountIn,
-    }).sendAndConfirm(umi);
+      minAmountOutScaled: minAmountOut,
+    });
+
+    // Build
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+    const umiTx = await swapBuilder.setBlockhash(blockhash).build(umi);
+
+    // Serialize
+    const serializedTx = Buffer.from(
+      umi.transactions.serialize(umiTx)
+    ).toString('base64');
 
     return NextResponse.json({
       success: true,
-      signature: Buffer.from(swapResult.signature).toString('base64'),
+      transaction: serializedTx,
       amountOut: quote.amountOut.toString(),
-      fee: quote.fee.toString(),
-      creatorFee: quote.creatorFee.toString(),
+      amountIn: quote.amountIn.toString(),
+      fee: quote.fee?.toString() || '0',
+      creatorFee: quote.creatorFee?.toString() || '0',
+      lastValidBlockHeight,
     });
+
   } catch (error: any) {
-    console.error('Swap error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Swap build error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

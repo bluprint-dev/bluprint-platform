@@ -3,16 +3,22 @@ import { redis } from '@/app/lib/redis';
 
 export async function GET() {
   try {
-    // Upstash Redis'te zrange ile rev: true kullan
     const trending = await redis.zrange('trending:tokens', 0, 9, { rev: true });
     
     const result = [];
     if (Array.isArray(trending)) {
       for (let i = 0; i < trending.length; i++) {
         if (typeof trending[i] === 'string') {
-          result.push({
-            mint: trending[i],
-          });
+          const metadataRaw = await redis.get(`token:metadata:${trending[i]}`);
+          if (metadataRaw && typeof metadataRaw === 'string') {
+            const metadata = JSON.parse(metadataRaw);
+            result.push({
+              mint: trending[i],
+              name: metadata.name,
+              symbol: metadata.symbol,
+              imageUrl: metadata.imageUrl,
+            });
+          }
         }
       }
     }

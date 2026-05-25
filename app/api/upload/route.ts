@@ -10,10 +10,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // Rate limit kontrolü (IP bazlı)
-    const ip = req.headers.get('x-forwarded-for') || 'unknown';
-    // TODO: Rate limit implementasyonu
-
     const buffer = Buffer.from(await file.arrayBuffer());
     const secretKeyArray = JSON.parse(process.env.PLATFORM_SECRET_KEY!);
     
