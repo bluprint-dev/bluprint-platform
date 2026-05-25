@@ -6,9 +6,6 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { useI18n } from "../lib/i18n-provider";
-import ThemeToggle from "./ThemeToggle";
-import LanguageSwitcher from "./LanguageSwitcher";
 import {
   Home,
   Sparkles,
@@ -19,12 +16,10 @@ import {
   Wallet,
   X,
   Menu,
-  TrendingUp,
   Zap,
 } from "lucide-react";
 
 export default function Sidebar() {
-  const { t } = useI18n();
   const { connected, disconnect, publicKey } = useWallet();
   const { setVisible } = useWalletModal();
   const pathname = usePathname();
@@ -67,15 +62,6 @@ export default function Sidebar() {
       {/* Glow orbs */}
       <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-[#ff2d95]/15 blur-3xl" />
       <div className="absolute bottom-20 left-0 w-40 h-40 rounded-full bg-[#7c3aed]/10 blur-3xl" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-24 h-24 rounded-full bg-[#3b82f6]/10 blur-2xl" />
-      
-      {/* Noise texture */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E")`,
-          backgroundRepeat: 'repeat',
-        }}
-      />
       
       {/* Grid pattern */}
       <div 
@@ -101,26 +87,21 @@ export default function Sidebar() {
           </div>
         </div>
         
-        {/* Logo - Floating Whale */}
+        {/* Logo - Sade logo + BluPrint yazısı */}
         <div className="px-5 py-4">
           <Link href="/" className="flex items-center gap-3 group">
-            <motion.div
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="relative"
-            >
-              <div className="absolute inset-0 rounded-2xl bg-[#ff2d95]/30 blur-xl group-hover:blur-2xl transition-all duration-500" />
-              <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ff2d95] to-[#7c3aed] flex items-center justify-center shadow-[0_0_30px_rgba(255,45,149,0.4)] group-hover:shadow-[0_0_40px_rgba(255,45,149,0.6)] transition-all duration-500">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff2d95]/20 to-[#7c3aed]/20 flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(255,45,149,0.3)] transition-all duration-300">
                 <img 
                   src="/favicon.ico" 
                   alt="BluPrint" 
-                  className="w-8 h-8 object-contain"
+                  className="w-7 h-7 object-contain"
                 />
               </div>
-            </motion.div>
-            <div className="flex flex-col leading-none">
+            </div>
+            <div className="flex">
               <span className="text-white font-bold text-xl tracking-tight">Blu</span>
-              <span className="text-[#ff2d95] font-bold text-xl tracking-tight -mt-1">Print</span>
+              <span className="text-[#ff2d95] font-bold text-xl tracking-tight">Print</span>
             </div>
           </Link>
         </div>
@@ -214,12 +195,6 @@ export default function Sidebar() {
               )}
             </button>
           </div>
-          
-          {/* Theme & Language */}
-          <div className="flex items-center justify-between gap-2 px-1 pt-1">
-            <ThemeToggle />
-            <LanguageSwitcher />
-          </div>
         </div>
       </div>
     </>
@@ -240,12 +215,12 @@ export default function Sidebar() {
       <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-[#050507]/95 backdrop-blur-2xl border-b border-[#ff2d95]/15">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#ff2d95] to-[#7c3aed] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#ff2d95]/20 to-[#7c3aed]/20 flex items-center justify-center">
               <img src="/favicon.ico" alt="BluPrint" className="w-6 h-6" />
             </div>
-            <div className="flex flex-col leading-none">
+            <div className="flex">
               <span className="text-white font-bold text-lg">Blu</span>
-              <span className="text-[#ff2d95] font-bold text-lg -mt-1">Print</span>
+              <span className="text-[#ff2d95] font-bold text-lg">Print</span>
             </div>
           </Link>
 
