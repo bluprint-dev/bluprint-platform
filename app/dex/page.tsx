@@ -1,298 +1,503 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { motion } from "framer-motion";
-import Footer from "../components/Footer";
-import PageTransition from "../components/PageTransition";
+import {
+  TrendingUp,
+  TrendingDown,
+  Flame,
+  Clock,
+  Star,
+  Crown,
+  Search,
+  Filter,
+  ArrowUpRight,
+  ArrowDownRight,
+  Zap,
+  Wallet,
+  RefreshCw,
+  ChevronDown,
+  BarChart3,
+  Activity,
+  Users,
+  DollarSign,
+} from "lucide-react";
 
-interface BondingCurveToken {
-  mint: string;
-  name: string;
+interface Token {
+  address: string;
   symbol: string;
+  name: string;
+  price: number;
+  priceChange24h: number;
+  volume24h: number;
+  marketCap: number;
+  liquidity: number;
+  age: string;
   image?: string;
-  totalSupply: string;
-  virtualSolReserves: string;
-  virtualTokenReserves: string;
-  creatorFeeAccrued: string;
-  isComplete: boolean;
-  createdAt: number;
+  isTrending?: boolean;
+  isNew?: boolean;
 }
 
 export default function DexPage() {
-  const { publicKey, sendTransaction } = useWallet();
-  const [tokens, setTokens] = useState<BondingCurveToken[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedToken, setSelectedToken] = useState<BondingCurveToken | null>(null);
+  const { connected } = useWallet();
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"volume" | "price" | "age" | "marketCap">("volume");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedToken, setSelectedToken] = useState<Token | null>(null);
   const [buyAmount, setBuyAmount] = useState("");
   const [sellAmount, setSellAmount] = useState("");
-  const [quote, setQuote] = useState<{ amountOut: string; fee: string; creatorFee: string } | null>(null);
-  const [processing, setProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy");
+  const [timeframe, setTimeframe] = useState<"1m" | "5m" | "15m" | "1h" | "6h" | "24h">("5m");
 
+  // Mock token verileri
   useEffect(() => {
-    fetchTokens();
-    const interval = setInterval(fetchTokens, 30000);
-    return () => clearInterval(interval);
+    const mockTokens: Token[] = [
+      {
+        address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        symbol: "BONK",
+        name: "Bonk",
+        price: 0.00000234,
+        priceChange24h: 156.4,
+        volume24h: 1250000,
+        marketCap: 89000000,
+        liquidity: 1250000,
+        age: "2m",
+        image: "🔥",
+        isTrending: true,
+      },
+      {
+        address: "So11111111111111111111111111111111111111112",
+        symbol: "WIF",
+        name: "Dogwifhat",
+        price: 2.45,
+        priceChange24h: 45.2,
+        volume24h: 890000,
+        marketCap: 245000000,
+        liquidity: 890000,
+        age: "1m",
+        image: "🐕",
+        isTrending: true,
+      },
+      {
+        address: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        symbol: "POPCAT",
+        name: "Popcat",
+        price: 0.89,
+        priceChange24h: -12.5,
+        volume24h: 456000,
+        marketCap: 89000000,
+        liquidity: 456000,
+        age: "3m",
+        image: "🐱",
+      },
+      {
+        address: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+        symbol: "MEW",
+        name: "Cat in a Dogs World",
+        price: 0.0056,
+        priceChange24h: 234.8,
+        volume24h: 2340000,
+        marketCap: 123000000,
+        liquidity: 2340000,
+        age: "1m",
+        image: "🐱",
+        isNew: true,
+        isTrending: true,
+      },
+      {
+        address: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
+        symbol: "SAMO",
+        name: "Samoyed Coin",
+        price: 0.0123,
+        priceChange24h: 23.4,
+        volume24h: 234000,
+        marketCap: 45600000,
+        liquidity: 234000,
+        age: "6m",
+        image: "🐕",
+      },
+    ];
+
+    setTimeout(() => {
+      setTokens(mockTokens);
+      setIsLoading(false);
+    }, 1000);
   }, []);
 
-  const fetchTokens = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/bonding-curve/tokens');
-      const data = await res.json();
-      if (data.success) setTokens(data.tokens);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const formatNumber = (num: number) => {
+    if (num >= 1e6) return `$${(num / 1e6).toFixed(1)}M`;
+    if (num >= 1e3) return `$${(num / 1e3).toFixed(1)}K`;
+    return `$${num.toFixed(2)}`;
   };
 
-  const fetchQuote = async (mint: string, amount: string, isBuy: boolean) => {
-    if (!amount || Number(amount) <= 0) {
-      setQuote(null);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/bonding-curve/quote?mint=${mint}&amount=${amount}&isBuy=${isBuy}`);
-      const data = await res.json();
-      if (data.success) setQuote(data.quote);
-      else setQuote(null);
-    } catch (err) {
-      console.error(err);
-      setQuote(null);
-    }
+  const formatPrice = (price: number) => {
+    if (price < 0.000001) return price.toExponential(4);
+    if (price < 0.00001) return price.toFixed(8);
+    if (price < 0.001) return price.toFixed(6);
+    if (price < 1) return price.toFixed(4);
+    return price.toFixed(2);
   };
 
-  const handleBuy = async () => {
-    if (!publicKey || !selectedToken || !buyAmount) return;
-    setProcessing(true);
-    try {
-      const res = await fetch('/api/bonding-curve/swap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mintAddress: selectedToken.mint,
-          amount: buyAmount,
-          userPublicKey: publicKey.toString(),
-          isBuy: true,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(`✅ Buy successful! Signature: ${data.signature.slice(0, 20)}...`);
-        setBuyAmount('');
-        setQuote(null);
-        fetchTokens();
-      } else {
-        alert(`❌ Error: ${data.error}`);
+  const filteredTokens = tokens
+    .filter(
+      (token) =>
+        token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        token.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      let aVal = a[sortBy];
+      let bVal = b[sortBy];
+      if (sortBy === "age") {
+        aVal = parseInt(a.age);
+        bVal = parseInt(b.age);
       }
-    } catch (err: any) {
-      alert(`❌ ${err.message}`);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleSell = async () => {
-    if (!publicKey || !selectedToken || !sellAmount) return;
-    setProcessing(true);
-    try {
-      const res = await fetch('/api/bonding-curve/swap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mintAddress: selectedToken.mint,
-          amount: sellAmount,
-          userPublicKey: publicKey.toString(),
-          isBuy: false,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(`✅ Sell successful! Signature: ${data.signature.slice(0, 20)}...`);
-        setSellAmount('');
-        setQuote(null);
-        fetchTokens();
-      } else {
-        alert(`❌ Error: ${data.error}`);
-      }
-    } catch (err: any) {
-      alert(`❌ ${err.message}`);
-    } finally {
-      setProcessing(false);
-    }
-  };
+      return sortOrder === "desc" ? (bVal as number) - (aVal as number) : (aVal as number) - (bVal as number);
+    });
 
   return (
-    <PageTransition>
-      <div className="relative min-h-screen bg-black">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900/50 via-purple-900/30 to-black" />
-        <div className="relative z-10 pt-20 sm:pt-24 max-w-7xl mx-auto px-4 pb-16">
-          <h1 className="text-3xl font-bold text-white mb-2">BluPrint DEX</h1>
-          <p className="text-gray-500 mb-8">Trade bonding curve tokens instantly – no pool, pure curve</p>
-
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Token Listesi */}
-            <div className="lg:col-span-1 bg-gray-900/40 backdrop-blur-sm rounded-2xl border border-gray-800/60 p-4">
-              <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                Active Tokens
-              </h2>
-              {loading ? (
-                <div className="text-center py-8 text-gray-500">Loading...</div>
-              ) : tokens.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No bonding curve tokens yet</div>
-              ) : (
-                <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-                  {tokens.map((token) => (
-                    <button
-                      key={token.mint}
-                      onClick={() => {
-                        setSelectedToken(token);
-                        setBuyAmount('');
-                        setSellAmount('');
-                        setQuote(null);
-                      }}
-                      className={`w-full text-left p-3 rounded-xl transition-all ${
-                        selectedToken?.mint === token.mint
-                          ? 'bg-blue-600/20 border border-blue-500/50'
-                          : 'bg-gray-800/30 hover:bg-gray-800/50 border border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        {token.image ? (
-                          <img src={token.image} className="w-8 h-8 rounded-full object-cover" alt={token.symbol} />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                            {token.symbol?.charAt(0) || '?'}
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <div className="font-semibold text-white text-sm">{token.name}</div>
-                          <div className="text-xs text-gray-400">{token.symbol}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs text-gray-500">{token.totalSupply ? token.totalSupply.slice(0, 6) : '0'} supply</div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+    <div className="min-h-screen bg-[#0A192F]">
+      {/* Header */}
+      <div className="sticky top-0 z-40 border-b border-[#233554] bg-[#0A192F]/95 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#64FFDA] to-[#4ECDC4] rounded-xl flex items-center justify-center">
+                <BarChart3 className="w-4 h-4 text-[#0A192F]" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">BluPrint DEX</h1>
+                <p className="text-xs text-[#8892B0]">Trade meme coins instantly</p>
+              </div>
             </div>
 
-            {/* Trading Panel */}
-            <div className="lg:col-span-2 bg-gray-900/40 backdrop-blur-sm rounded-2xl border border-gray-800/60 p-6">
-              {selectedToken ? (
-                <>
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-800">
-                    {selectedToken.image ? (
-                      <img src={selectedToken.image} className="w-12 h-12 rounded-full object-cover" alt={selectedToken.symbol} />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-xl font-bold">
-                        {selectedToken.symbol?.charAt(0) || '?'}
-                      </div>
-                    )}
-                    <div>
-                      <h2 className="text-2xl font-bold text-white">{selectedToken.name}</h2>
-                      <p className="text-gray-400">{selectedToken.symbol}</p>
-                    </div>
-                    <div className="ml-auto text-right">
-                      <div className="text-xs text-gray-500">Virtual SOL</div>
-                      <div className="text-sm text-white font-mono">{selectedToken.virtualSolReserves} SOL</div>
-                    </div>
-                  </div>
-
-                  {/* Buy */}
-                  <div className="mb-6 p-4 bg-gray-800/30 rounded-xl">
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="text-white font-medium">Buy with SOL</label>
-                      <span className="text-xs text-gray-400">Estimated</span>
-                    </div>
-                    <input
-                      type="number"
-                      value={buyAmount}
-                      onChange={(e) => {
-                        setBuyAmount(e.target.value);
-                        fetchQuote(selectedToken.mint, e.target.value, true);
-                      }}
-                      placeholder="Amount in SOL"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {quote && (
-                      <div className="mt-2 text-sm text-gray-300 space-y-1">
-                        <div className="flex justify-between">
-                          <span>You get:</span>
-                          <span className="font-mono text-green-400">{quote.amountOut} tokens</span>
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>Fee (protocol+platform):</span>
-                          <span>{quote.fee} SOL</span>
-                        </div>
-                      </div>
-                    )}
-                    <button
-                      onClick={handleBuy}
-                      disabled={!buyAmount || processing || Number(buyAmount) <= 0}
-                      className="mt-3 w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg transition"
-                    >
-                      {processing ? 'Processing...' : 'Buy'}
-                    </button>
-                  </div>
-
-                  {/* Sell */}
-                  <div className="p-4 bg-gray-800/30 rounded-xl">
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="text-white font-medium">Sell tokens</label>
-                      <span className="text-xs text-gray-400">You get SOL</span>
-                    </div>
-                    <input
-                      type="number"
-                      value={sellAmount}
-                      onChange={(e) => {
-                        setSellAmount(e.target.value);
-                        fetchQuote(selectedToken.mint, e.target.value, false);
-                      }}
-                      placeholder="Token amount"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {quote && (
-                      <div className="mt-2 text-sm text-gray-300 space-y-1">
-                        <div className="flex justify-between">
-                          <span>You get:</span>
-                          <span className="font-mono text-green-400">{quote.amountOut} SOL</span>
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>Fee (protocol+platform):</span>
-                          <span>{quote.fee} SOL</span>
-                        </div>
-                      </div>
-                    )}
-                    <button
-                      onClick={handleSell}
-                      disabled={!sellAmount || processing || Number(sellAmount) <= 0}
-                      className="mt-3 w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg transition"
-                    >
-                      {processing ? 'Processing...' : 'Sell'}
-                    </button>
-                  </div>
-
-                  <div className="mt-4 text-xs text-gray-600 text-center">
-                    * Bonding curve formula: price = supply² / constant. 0.5% protocol fee + 0.3% platform fee.
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-16 text-gray-500">
-                  <div className="text-5xl mb-3">📊</div>
-                  <p>Select a token from the list to start trading</p>
-                </div>
-              )}
+            {/* Stats */}
+            <div className="hidden md:flex items-center gap-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#112240] border border-[#233554]">
+                <Activity className="w-4 h-4 text-[#64FFDA]" />
+                <span className="text-sm text-white">$4.2M</span>
+                <span className="text-xs text-[#8892B0]">24h Volume</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#112240] border border-[#233554]">
+                <Users className="w-4 h-4 text-[#64FFDA]" />
+                <span className="text-sm text-white">1,234</span>
+                <span className="text-xs text-[#8892B0]">Active Traders</span>
+              </div>
             </div>
           </div>
         </div>
-        <Footer />
       </div>
-    </PageTransition>
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Sol Taraf - Token Listesi */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Search & Filters */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8892B0]" />
+                <input
+                  type="text"
+                  placeholder="Search tokens..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#112240] border border-[#233554] text-white placeholder-[#8892B0] focus:outline-none focus:border-[#64FFDA] transition-all"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button className="px-3 py-2 rounded-xl bg-[#112240] border border-[#233554] text-[#8892B0] hover:border-[#64FFDA] hover:text-[#64FFDA] transition-all">
+                  <Filter className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setIsLoading(true)}
+                  className="px-3 py-2 rounded-xl bg-[#112240] border border-[#233554] text-[#8892B0] hover:border-[#64FFDA] hover:text-[#64FFDA] transition-all"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Sort Tabs */}
+            <div className="flex flex-wrap gap-2 pb-2 border-b border-[#233554]">
+              {(["volume", "price", "age", "marketCap"] as const).map((sort) => (
+                <button
+                  key={sort}
+                  onClick={() => {
+                    if (sortBy === sort) {
+                      setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+                    } else {
+                      setSortBy(sort);
+                      setSortOrder("desc");
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    sortBy === sort
+                      ? "bg-[#1A365D] text-[#64FFDA] border border-[#64FFDA]/30"
+                      : "text-[#8892B0] hover:text-white"
+                  }`}
+                >
+                  {sort === "volume" ? "Volume" : sort === "price" ? "Price" : sort === "age" ? "New" : "Market Cap"}
+                  {sortBy === sort && (
+                    <span className="ml-1">{sortOrder === "desc" ? "↓" : "↑"}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Token List */}
+            <div className="space-y-2">
+              {isLoading ? (
+                // Loading skeletons
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="animate-pulse bg-[#112240] rounded-xl p-4 border border-[#233554]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#1A365D]" />
+                        <div>
+                          <div className="h-4 w-20 bg-[#1A365D] rounded" />
+                          <div className="h-3 w-16 bg-[#1A365D] rounded mt-1" />
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="h-4 w-16 bg-[#1A365D] rounded" />
+                        <div className="h-3 w-12 bg-[#1A365D] rounded mt-1" />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                filteredTokens.map((token, index) => (
+                  <motion.div
+                    key={token.address}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    onClick={() => setSelectedToken(token)}
+                    className={`bg-[#112240] rounded-xl p-4 border transition-all duration-200 cursor-pointer ${
+                      selectedToken?.address === token.address
+                        ? "border-[#64FFDA] shadow-lg shadow-[#64FFDA]/20"
+                        : "border-[#233554] hover:border-[#64FFDA]/50 hover:bg-[#1A365D]/20"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1A365D] to-[#0A192F] flex items-center justify-center text-xl border border-[#64FFDA]/30">
+                          {token.image || "🪙"}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white">{token.symbol}</span>
+                            {token.isTrending && (
+                              <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-[#64FFDA]/20 text-[#64FFDA]">
+                                <Flame className="w-2.5 h-2.5" />
+                                TRENDING
+                              </span>
+                            )}
+                            {token.isNew && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
+                                NEW
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-[#8892B0]">{token.name}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium text-white">${formatPrice(token.price)}</div>
+                        <div className={`flex items-center gap-1 text-sm ${token.priceChange24h >= 0 ? "text-[#64FFDA]" : "text-red-400"}`}>
+                          {token.priceChange24h >= 0 ? (
+                            <ArrowUpRight className="w-3 h-3" />
+                          ) : (
+                            <ArrowDownRight className="w-3 h-3" />
+                          )}
+                          {Math.abs(token.priceChange24h).toFixed(1)}%
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-[#233554] text-xs">
+                      <div>
+                        <p className="text-[#8892B0]">Volume</p>
+                        <p className="text-white">{formatNumber(token.volume24h)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[#8892B0]">Market Cap</p>
+                        <p className="text-white">{formatNumber(token.marketCap)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[#8892B0]">Age</p>
+                        <p className="text-white">{token.age}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Sağ Taraf - Trading Panel */}
+          <div className="space-y-4">
+            {selectedToken ? (
+              <>
+                {/* Token Info */}
+                <div className="bg-[#112240] rounded-2xl border border-[#233554] p-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A365D] to-[#0A192F] flex items-center justify-center text-2xl border border-[#64FFDA]/30">
+                      {selectedToken.image || "🪙"}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-white">{selectedToken.symbol}</h2>
+                        {selectedToken.isTrending && <Crown className="w-4 h-4 text-[#64FFDA]" />}
+                      </div>
+                      <p className="text-sm text-[#8892B0]">{selectedToken.name}</p>
+                    </div>
+                  </div>
+
+                  {/* Price Stats */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-[#0A192F] rounded-xl p-3 text-center">
+                      <p className="text-xs text-[#8892B0]">Price</p>
+                      <p className="text-xl font-bold text-white">${formatPrice(selectedToken.price)}</p>
+                    </div>
+                    <div className="bg-[#0A192F] rounded-xl p-3 text-center">
+                      <p className="text-xs text-[#8892B0]">24h Change</p>
+                      <p className={`text-xl font-bold ${selectedToken.priceChange24h >= 0 ? "text-[#64FFDA]" : "text-red-400"}`}>
+                        {selectedToken.priceChange24h >= 0 ? "+" : ""}{selectedToken.priceChange24h.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Timeframe Selector */}
+                  <div className="flex gap-1 mb-4">
+                    {(["1m", "5m", "15m", "1h", "6h", "24h"] as const).map((tf) => (
+                      <button
+                        key={tf}
+                        onClick={() => setTimeframe(tf)}
+                        className={`flex-1 py-1.5 text-xs rounded-lg transition-all ${
+                          timeframe === tf
+                            ? "bg-[#1A365D] text-[#64FFDA]"
+                            : "text-[#8892B0] hover:text-white"
+                        }`}
+                      >
+                        {tf}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Mini Chart */}
+                  <div className="h-24 mb-4 bg-[#0A192F] rounded-xl flex items-center justify-center">
+                    <div className="flex items-end gap-0.5 h-16">
+                      {[45, 52, 48, 55, 62, 58, 65, 70, 68, 72, 75, 78, 82, 80, 85, 88, 92, 95, 98, 100].map((height, i) => (
+                        <div
+                          key={i}
+                          className="w-2 bg-gradient-to-t from-[#64FFDA] to-[#4ECDC4] rounded-t"
+                          style={{ height: `${height * 0.6}%` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Buy/Sell Tabs */}
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      onClick={() => setActiveTab("buy")}
+                      className={`flex-1 py-2 rounded-xl font-semibold transition-all ${
+                        activeTab === "buy"
+                          ? "bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] text-[#0A192F]"
+                          : "bg-[#0A192F] text-[#8892B0] hover:text-white"
+                      }`}
+                    >
+                      Buy
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("sell")}
+                      className={`flex-1 py-2 rounded-xl font-semibold transition-all ${
+                        activeTab === "sell"
+                          ? "bg-gradient-to-r from-red-500 to-orange-500 text-white"
+                          : "bg-[#0A192F] text-[#8892B0] hover:text-white"
+                      }`}
+                    >
+                      Sell
+                    </button>
+                  </div>
+
+                  {/* Buy/Sell Form */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm text-[#8892B0] mb-1 block">Amount (SOL)</label>
+                      <input
+                        type="number"
+                        value={activeTab === "buy" ? buyAmount : sellAmount}
+                        onChange={(e) =>
+                          activeTab === "buy"
+                            ? setBuyAmount(e.target.value)
+                            : setSellAmount(e.target.value)
+                        }
+                        placeholder="0.00"
+                        className="w-full px-4 py-3 rounded-xl bg-[#0A192F] border border-[#233554] text-white focus:outline-none focus:border-[#64FFDA] transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-[#8892B0] mb-1 block">You get</label>
+                      <div className="w-full px-4 py-3 rounded-xl bg-[#0A192F] border border-[#233554] text-[#64FFDA] font-medium">
+                        ~{parseFloat(activeTab === "buy" ? buyAmount || "0" : sellAmount || "0") * selectedToken.price} {selectedToken.symbol}
+                      </div>
+                    </div>
+                    <button
+                      disabled={!connected}
+                      className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                        activeTab === "buy"
+                          ? "bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] text-[#0A192F] hover:shadow-lg hover:shadow-[#64FFDA]/30"
+                          : "bg-gradient-to-r from-red-500 to-orange-500 text-white hover:shadow-lg hover:shadow-red-500/30"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {!connected
+                        ? "Connect Wallet"
+                        : activeTab === "buy"
+                        ? `Buy ${selectedToken.symbol}`
+                        : `Sell ${selectedToken.symbol}`}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Token Stats */}
+                <div className="bg-[#112240] rounded-2xl border border-[#233554] p-4">
+                  <h3 className="font-semibold text-white mb-3">Token Stats</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-[#8892B0]">Liquidity</span>
+                      <span className="text-white">{formatNumber(selectedToken.liquidity)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#8892B0]">Market Cap</span>
+                      <span className="text-white">{formatNumber(selectedToken.marketCap)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#8892B0]">24h Volume</span>
+                      <span className="text-white">{formatNumber(selectedToken.volume24h)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#8892B0]">Age</span>
+                      <span className="text-white">{selectedToken.age}</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              // No token selected
+              <div className="bg-[#112240] rounded-2xl border border-[#233554] p-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-[#1A365D] flex items-center justify-center">
+                  <BarChart3 className="w-8 h-8 text-[#8892B0]" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Select a Token</h3>
+                <p className="text-sm text-[#8892B0]">Choose a token from the list to start trading</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
