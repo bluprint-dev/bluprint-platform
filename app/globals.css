@@ -2,18 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ==================== PREMIUM MINIMAL PINK WHALE ==================== */
+/* ==================== APPLE PREMIUM PINK THEME ==================== */
 
 @layer base {
   :root {
     --pink: oklch(51.8% 0.253 323.949);
-    --pink-soft: oklch(55% 0.15 323.949);
-    --bg: #0D0D0F;
-    --card: #131316;
-    --card-hover: #1A1A1F;
+    --bg: #0A0A0A;
+    --card: #141414;
+    --card-light: #1C1C1E;
     --text: #FFFFFF;
-    --text-muted: #8A8A99;
-    --border: #22222A;
+    --text-secondary: #8E8E93;
+    --border: #252525;
   }
 
   body {
@@ -24,21 +23,19 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-space);
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: -0.02em;
   }
 
   ::-webkit-scrollbar {
-    width: 5px;
+    width: 6px;
   }
-
   ::-webkit-scrollbar-track {
     background: var(--card);
   }
-
   ::-webkit-scrollbar-thumb {
     background: var(--pink);
-    border-radius: 10px;
+    border-radius: 20px;
   }
 
   ::selection {
@@ -51,23 +48,19 @@
   .text-pink {
     color: var(--pink);
   }
-  
   .bg-pink {
     background-color: var(--pink);
   }
-  
-  .border-pink {
-    border-color: var(--pink);
+  .card-apple {
+    @apply rounded-2xl bg-[#141414] border border-[#252525] transition-all duration-300;
+  }
+  .card-apple:hover {
+    @apply border-[oklch(51.8%_0.253_323.949)/0.5] translate-y-[-2px];
   }
 }
 
-/* Mobile */
 @media (max-width: 768px) {
   button, a {
     min-height: 44px;
   }
-}
-
-* {
-  -webkit-tap-highlight-color: transparent;
 }

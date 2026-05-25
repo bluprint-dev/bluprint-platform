@@ -1,96 +1,42 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Shield, Zap, BarChart3, Lock, Rocket, Users, Crown, Wallet } from "lucide-react";
-
-interface WhyBluPrintProps {
-  t?: (key: string) => string;
-}
+import { Zap, Shield, BarChart3, Lock, Rocket, Users } from "lucide-react";
 
 const features = [
-  {
-    icon: Zap,
-    title: "Lightning Fast",
-    description: "Launch your token in seconds with Solana's blazing fast transaction speeds.",
-    color: "#64FFDA",
-  },
-  {
-    icon: Shield,
-    title: "Secure & Audited",
-    description: "Smart contracts fully audited with rug-pull protection mechanisms.",
-    color: "#4ECDC4",
-  },
-  {
-    icon: BarChart3,
-    title: "Real-time Analytics",
-    description: "Track your token's performance with detailed charts and metrics.",
-    color: "#64FFDA",
-  },
-  {
-    icon: Crown,
-    title: "Whale Tier Benefits",
-    description: "Exclusive features for high-volume traders and large launches.",
-    color: "#4ECDC4",
-  },
-  {
-    icon: Lock,
-    title: "Liquidity Locking",
-    description: "Automatic liquidity locking to ensure trust and stability.",
-    color: "#64FFDA",
-  },
-  {
-    icon: Users,
-    title: "Community Tools",
-    description: "Integrated referral system and community management features.",
-    color: "#4ECDC4",
-  },
+  { icon: Zap, title: "Lightning Fast", description: "Launch your token in seconds with Solana speed." },
+  { icon: Shield, title: "Secure & Audited", description: "Smart contracts fully audited." },
+  { icon: BarChart3, title: "Real-time Analytics", description: "Track your token's performance." },
+  { icon: Rocket, title: "Built-in Marketing", description: "Reach thousands of traders." },
+  { icon: Lock, title: "Liquidity Locking", description: "Automatic liquidity locking system." },
+  { icon: Users, title: "Community Tools", description: "Integrated referral system." },
 ];
 
-export default function WhyBluPrint({ t }: WhyBluPrintProps) {
+export default function WhyBluPrint() {
   return (
-    <section className="px-4 py-16 md:py-24 bg-gradient-to-b from-[#0A192F] to-[#020C1A]">
-      <div className="container mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-12 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#64FFDA]/30 bg-[#1A365D]/20 px-4 py-1.5 text-sm font-medium text-[#64FFDA] backdrop-blur-sm">
-            <Crown className="h-3.5 w-3.5" />
-            <span>Why Choose BluPrint</span>
-          </div>
-          <h2 className="mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">
-            Why{" "}
-            <span className="bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] bg-clip-text text-transparent">
-              BluPrint
-            </span>
-            ?
-          </h2>
-          <p className="mx-auto max-w-2xl text-[#8892B0]">
-            The most advanced launchpad on Solana with features designed for whales
-          </p>
-        </div>
-
-        {/* Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -4, scale: 1.01 }}
-              className="group relative rounded-2xl border border-[#233554] bg-[#112240] p-6 backdrop-blur-sm transition-all duration-300 hover:border-[#64FFDA]/50 hover:shadow-xl hover:shadow-[#64FFDA]/10"
-            >
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#64FFDA]/0 via-[#4ECDC4]/0 to-[#64FFDA]/0 opacity-0 transition-opacity duration-300 group-hover:opacity-5" />
-              
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#1A365D] shadow-lg" style={{ color: feature.color }}>
-                <feature.icon className="h-6 w-6" />
-              </div>
-              
-              <h3 className="mb-2 text-xl font-semibold text-white">{feature.title}</h3>
-              <p className="text-[#8892B0]">{feature.description}</p>
-            </motion.div>
-          ))}
-        </div>
+    <section className="px-4 py-20 max-w-6xl mx-auto">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl md:text-4xl font-bold mb-3">
+          Why <span className="text-[oklch(51.8%_0.253_323.949)]">BluPrint</span>?
+        </h2>
+        <p className="text-[#8E8E93] max-w-2xl mx-auto">The most advanced launchpad on Solana</p>
+      </div>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {features.map((f, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="card-apple p-6"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#1C1C1E] flex items-center justify-center mb-4">
+              <f.icon className="w-5 h-5 text-[oklch(51.8%_0.253_323.949)]" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
+            <p className="text-sm text-[#8E8E93]">{f.description}</p>
+          </motion.div>
+        ))}
       </div>
     </section>
   );
