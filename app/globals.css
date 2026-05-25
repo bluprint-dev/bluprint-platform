@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==================== APPLE PREMIUM PINK THEME ==================== */
+
+@layer base {
+  :root {
+    --pink: oklch(51.8% 0.253 323.949);
+    --bg: #0A0A0A;
+    --card: #141414;
+    --card-light: #1C1C1E;
+    --text: #FFFFFF;
+    --text-secondary: #8E8E93;
+    --border: #252525;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-inter);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-space);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+}
+
 /* ==================== ANİMASYONLAR ==================== */
 
 @keyframes spin-slow {
@@ -55,14 +81,20 @@
   animation: ping-slow ease-out infinite;
 }
 
-/* ==================== KART STILLERI ==================== */
+/* ==================== KART STILLERI (MANUEL) ==================== */
 
 .card-apple {
-  @apply rounded-2xl bg-[#141414] border border-[#252525] transition-all duration-300;
+  border-radius: 1rem;
+  background-color: #141414;
+  border: 1px solid #252525;
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
 }
 
 .card-apple:hover {
-  @apply border-[oklch(51.8%_0.253_323.949)]/50 translate-y-[-2px];
+  border-color: oklch(51.8% 0.253 323.949 / 0.5);
+  transform: translateY(-2px);
 }
 
 /* ==================== SCROLLBAR ==================== */
@@ -73,11 +105,23 @@
 
 ::-webkit-scrollbar-track {
   background: #141414;
+  border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: oklch(51.8% 0.253 323.949);
   border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(61.8% 0.253 323.949);
+}
+
+/* ==================== SELECTION ==================== */
+
+::selection {
+  background: oklch(51.8% 0.253 323.949);
+  color: white;
 }
 
 /* ==================== MOBİL ==================== */
