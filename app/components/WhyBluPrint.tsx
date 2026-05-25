@@ -3,6 +3,10 @@
 import { motion } from "framer-motion";
 import { Shield, Zap, BarChart3, Lock, Rocket, Users } from "lucide-react";
 
+interface WhyBluPrintProps {
+  t?: (key: string) => string;
+}
+
 const features = [
   {
     icon: Zap,
@@ -42,7 +46,7 @@ const features = [
   },
 ];
 
-export default function WhyBluPrint() {
+export default function WhyBluPrint({ t }: WhyBluPrintProps) {
   return (
     <section className="px-4 py-16 md:py-24">
       <div className="container mx-auto max-w-7xl">
@@ -50,13 +54,13 @@ export default function WhyBluPrint() {
         <div className="mb-12 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-sm font-medium text-blue-400">
             <Zap className="h-3.5 w-3.5" />
-            <span>Why Choose Us</span>
+            <span>{t ? t("why_choose_us") : "Why Choose Us"}</span>
           </div>
           <h2 className="mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">
             Why <span className="bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">BluPrint</span>?
           </h2>
           <p className="mx-auto max-w-2xl text-gray-400">
-            The most advanced launchpad on Solana with features designed for success
+            {t ? t("why_description") : "The most advanced launchpad on Solana with features designed for success"}
           </p>
         </div>
 

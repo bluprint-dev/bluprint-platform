@@ -3,6 +3,10 @@
 import { motion } from "framer-motion";
 import { Shield, CheckCircle, Clock, Users, Lock, FileCheck } from "lucide-react";
 
+interface TrustSectionProps {
+  t?: (key: string) => string;
+}
+
 const trustItems = [
   {
     icon: Shield,
@@ -42,7 +46,7 @@ const trustItems = [
   },
 ];
 
-export default function TrustSection() {
+export default function TrustSection({ t }: TrustSectionProps) {
   return (
     <section className="px-4 py-16 md:py-24">
       <div className="container mx-auto max-w-7xl">
@@ -50,13 +54,13 @@ export default function TrustSection() {
         <div className="mb-12 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-1.5 text-sm font-medium text-green-400">
             <Shield className="h-3.5 w-3.5" />
-            <span>Trust & Security</span>
+            <span>{t ? t("trust_security") : "Trust & Security"}</span>
           </div>
           <h2 className="mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">
             Built on <span className="bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">Trust</span>
           </h2>
           <p className="mx-auto max-w-2xl text-gray-400">
-            Your security is our top priority. Here's why you can trust BluPrint
+            {t ? t("trust_description") : "Your security is our top priority. Here's why you can trust BluPrint"}
           </p>
         </div>
 

@@ -3,6 +3,10 @@
 import { motion } from "framer-motion";
 import { Users, TrendingUp, Gift, Megaphone, BarChart3, Wallet } from "lucide-react";
 
+interface UseCaseProps {
+  t?: (key: string) => string;
+}
+
 const useCases = [
   {
     icon: Users,
@@ -42,7 +46,7 @@ const useCases = [
   },
 ];
 
-export default function UseCase() {
+export default function UseCase({ t }: UseCaseProps) {
   return (
     <section className="px-4 py-16 md:py-24">
       <div className="container mx-auto max-w-7xl">
@@ -50,7 +54,7 @@ export default function UseCase() {
         <div className="mb-12 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-1.5 text-sm font-medium text-cyan-400">
             <Wallet className="h-3.5 w-3.5" />
-            <span>Use Cases</span>
+            <span>{t ? t("use_cases") : "Use Cases"}</span>
           </div>
           <h2 className="mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">
             Perfect for{" "}
@@ -59,7 +63,7 @@ export default function UseCase() {
             </span>
           </h2>
           <p className="mx-auto max-w-2xl text-gray-400">
-            Whatever your vision, BluPrint provides the tools to bring it to life
+            {t ? t("use_cases_description") : "Whatever your vision, BluPrint provides the tools to bring it to life"}
           </p>
         </div>
 

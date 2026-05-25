@@ -3,6 +3,10 @@
 import { motion } from "framer-motion";
 import { Coins, Rocket, TrendingUp, Gift, Shield, Award } from "lucide-react";
 
+interface HowItWorksProps {
+  t?: (key: string) => string;
+}
+
 const steps = [
   {
     step: "01",
@@ -48,7 +52,7 @@ const steps = [
   },
 ];
 
-export default function HowItWorks() {
+export default function HowItWorks({ t }: HowItWorksProps) {
   return (
     <section className="px-4 py-16 md:py-24">
       <div className="container mx-auto max-w-7xl">
@@ -56,13 +60,13 @@ export default function HowItWorks() {
         <div className="mb-12 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 text-sm font-medium text-purple-400">
             <Rocket className="h-3.5 w-3.5" />
-            <span>Simple Process</span>
+            <span>{t ? t("simple_process") : "Simple Process"}</span>
           </div>
           <h2 className="mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">
             How It <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Works</span>
           </h2>
           <p className="mx-auto max-w-2xl text-gray-400">
-            Launch your token in minutes with our streamlined process
+            {t ? t("how_it_works_description") : "Launch your token in minutes with our streamlined process"}
           </p>
         </div>
 
