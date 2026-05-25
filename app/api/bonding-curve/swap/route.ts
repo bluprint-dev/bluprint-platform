@@ -9,7 +9,7 @@ import {
   swapBondingCurveV2,
   SwapDirection
 } from '@metaplex-foundation/genesis';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection } from '@solana/web3.js';
 
 const WSOL_MINT = 'So11111111111111111111111111111111111111112';
 
@@ -46,12 +46,15 @@ export async function POST(req: NextRequest) {
 
     // Direction + Quote
     const direction = isBuy ? SwapDirection.Buy : SwapDirection.Sell;
-    const quote = getSwapResult(bucket, BigInt(amount), direction);
+    const amountBigInt = BigInt(amount);
+    const quote = getSwapResult(bucket, amountBigInt, direction);
 
     // %1 slippage toleransı
-    const minAmountOut = (quote.amountOut * BigInt(99)) / BigInt(100);
+    const slippageNumerator = BigInt(99);
+    const slippageDenominator = BigInt(100);
+    const minAmountOutScaled = (quote.amountOut * slippageNumerator) / slippageDenominator;
 
-    // Builder — tip tanımına göre tam parametreler
+    // Builder - minAmountOutScaled ZORUNLU
     const swapBuilder = swapBondingCurveV2(umi, {
       genesisAccount: umiMint,
       bucket: bucketPda,
@@ -59,12 +62,11 @@ export async function POST(req: NextRequest) {
       quoteMint: umiWSOL,
       baseTokenAccount: userBaseTokenAccount,
       quoteTokenAccount: userQuoteTokenAccount,
-      quoteTokenOwner: umiUser,   // Buy'da quote imzalayan
-      baseTokenOwner: umiUser,    // Sell'de base imzalayan
-      // Data args
+      quoteTokenOwner: umiUser,
+      baseTokenOwner: umiUser,
       swapDirection: direction,
       amount: quote.amountIn,
-      minAmountOutScaled: minAmountOut,
+      minAmountOutScaled: minAmountOutScaled,  // ✅ ZORUNLU
     });
 
     // Build
