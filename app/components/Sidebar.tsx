@@ -87,18 +87,14 @@ export default function Sidebar() {
           </div>
         </div>
         
-        {/* Logo - Sade logo + BluPrint yazısı */}
+        {/* Logo - Sadece favicon + yazı, taban yok */}
         <div className="px-5 py-4">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff2d95]/20 to-[#7c3aed]/20 flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(255,45,149,0.3)] transition-all duration-300">
-                <img 
-                  src="/favicon.ico" 
-                  alt="BluPrint" 
-                  className="w-7 h-7 object-contain"
-                />
-              </div>
-            </div>
+            <img 
+              src="/favicon.ico" 
+              alt="BluPrint" 
+              className="w-8 h-8 object-contain group-hover:drop-shadow-[0_0_10px_rgba(255,45,149,0.5)] transition-all duration-300"
+            />
             <div className="flex">
               <span className="text-white font-bold text-xl tracking-tight">Blu</span>
               <span className="text-[#ff2d95] font-bold text-xl tracking-tight">Print</span>
@@ -215,9 +211,11 @@ export default function Sidebar() {
       <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-[#050507]/95 backdrop-blur-2xl border-b border-[#ff2d95]/15">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#ff2d95]/20 to-[#7c3aed]/20 flex items-center justify-center">
-              <img src="/favicon.ico" alt="BluPrint" className="w-6 h-6" />
-            </div>
+            <img 
+              src="/favicon.ico" 
+              alt="BluPrint" 
+              className="w-7 h-7 object-contain"
+            />
             <div className="flex">
               <span className="text-white font-bold text-lg">Blu</span>
               <span className="text-[#ff2d95] font-bold text-lg">Print</span>
