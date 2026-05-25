@@ -4,6 +4,10 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Zap, Rocket, TrendingUp, Shield, Star } from "lucide-react";
 
+interface BoostSectionProps {
+  t?: (key: string) => string;
+}
+
 interface Token {
   address: string;
   symbol: string;
@@ -11,7 +15,7 @@ interface Token {
   logo?: string;
 }
 
-export default function BoostSection() {
+export default function BoostSection({ t }: BoostSectionProps) {
   const [selectedToken, setSelectedToken] = useState<Token | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -29,7 +33,6 @@ export default function BoostSection() {
     setIsDropdownOpen(false);
   };
 
-  // Mobil grid: 2 kolon
   return (
     <section className="px-4 py-16 md:py-24">
       <div className="container mx-auto max-w-7xl">
@@ -37,13 +40,13 @@ export default function BoostSection() {
         <div className="mb-12 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 text-sm font-medium text-purple-400">
             <Rocket className="h-3.5 w-3.5" />
-            <span>Boost Your Launch</span>
+            <span>{t ? t("boost_title") : "Boost Your Launch"}</span>
           </div>
           <h2 className="mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">
             Get More <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Visibility</span>
           </h2>
           <p className="mx-auto max-w-2xl text-gray-400">
-            Boost your token to reach more traders and increase your launch success rate
+            {t ? t("boost_description") : "Boost your token to reach more traders and increase your launch success rate"}
           </p>
         </div>
 
@@ -107,7 +110,7 @@ export default function BoostSection() {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex w-full items-center justify-between rounded-lg border border-gray-700 bg-gray-800/50 px-4 py-2.5 text-white transition-all duration-200 hover:border-cyan-500 hover:bg-cyan-500/20"
               >
-                <span>{selectedToken ? selectedToken.symbol : "Select a token"}</span>
+                <span>{selectedToken ? selectedToken.symbol : (t ? t("select_token") : "Select a token")}</span>
                 <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`} />
               </button>
 
@@ -148,4 +151,4 @@ export default function BoostSection() {
       </div>
     </section>
   );
-} 
+}
