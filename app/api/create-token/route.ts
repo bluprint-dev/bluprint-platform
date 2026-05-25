@@ -8,7 +8,7 @@ import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.
 // ============================================
 // CREATE TOKEN FEE DAĞITIM KONFİGÜRASYONU
 // ============================================
-const CREATE_FEE_SOL = 0.01;
+const CREATE_FEE_SOL = 0.02;
 
 const CREATE_FEE_DISTRIBUTION = [
   { address: 'aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x', percentage: 58 },
@@ -16,7 +16,7 @@ const CREATE_FEE_DISTRIBUTION = [
   { address: 'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X', percentage: 10 },
 ];
 
-const BONDING_CURVE_FEE_WALLET = 'aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x';
+const BONDING_CURVE_FEE_WALLET = 'Hn5UBz1BSDNzJVwbTx3KAK64gFBwtWoAaFbg2jCg6Vq5';
 
 export async function POST(req: NextRequest) {
   try {
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ============================================
-    // 2. BONDING CURVE TOKEN OLUŞTUR (Umi ile)
+    // 2. BONDING CURVE TOKEN OLUŞTUR
     // ============================================
     const umi = getPlatformUmi();
 
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     const mintAddress = tokenResult.mintAddress;
 
     // ============================================
-    // 3. FEE TRANSACTION'INI HAZIRLA (KULLANICI İMZALAYACAK)
+    // 3. FEE TRANSACTION'INI HAZIRLA
     // ============================================
     const feeTransaction = new Transaction();
     
@@ -104,12 +104,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Blockhash ekle
+    // Blockhash ve fee payer ayarla
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
     feeTransaction.recentBlockhash = blockhash;
     feeTransaction.lastValidBlockHeight = lastValidBlockHeight;
     feeTransaction.feePayer = userWallet;
 
+    // Transaction'ı serialize et (partial - kullanıcı imzalayacak)
     const serializedFeeTransaction = feeTransaction.serialize({ requireAllSignatures: false });
     const feeTransactionBase64 = serializedFeeTransaction.toString('base64');
 
@@ -129,19 +130,14 @@ export async function POST(req: NextRequest) {
       mintAddress,
       name,
       symbol,
-      feeDistribution: CREATE_FEE_DISTRIBUTION,
     });
 
-    // Frontend'e hem token bilgisini hem de fee transaction'ını döndür
     return NextResponse.json({
       success: true,
       mintAddress,
       launchLink: tokenResult.launch.link,
-      feeTransaction: feeTransactionBase64, // Frontend'de imzalanacak
-      feeConfig: {
-        totalFee: CREATE_FEE_SOL,
-        distribution: CREATE_FEE_DISTRIBUTION,
-      },
+      feeTransaction: feeTransactionBase64,
+      feeAmount: CREATE_FEE_SOL,
     });
     
   } catch (error: any) {
