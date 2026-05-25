@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import HeroSection from "./components/HeroSection";
-import MarqueeBanner from "./components/MarqueeBanner";
 import WhyBluPrint from "./components/WhyBluPrint";
 import HowItWorks from "./components/HowItWorks";
 import TrustSection from "./components/TrustSection";
@@ -18,7 +17,7 @@ export default function Home() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
+    <div className="relative z-10">
       <HeroSection />
       <WhyBluPrint />
       <HowItWorks />

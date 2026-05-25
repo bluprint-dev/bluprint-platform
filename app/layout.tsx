@@ -1,23 +1,39 @@
 import type { Metadata } from "next";
-import { Sora } from "next/font/google";
+import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import "./globals.css";
 import Providers from "./providers";
-import Background from "./components/Background";
 import Sidebar from "./components/Sidebar";
+import Background3D from "./components/3D/Background3D";
 import MarqueeBanner from "./components/MarqueeBanner";
 import ChatbaseEmbed from "./components/ChatbaseEmbed";
-import "./globals.css";
 
-const sora = Sora({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"], 
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const space = Space_Grotesk({ 
+  subsets: ["latin"], 
+  variable: "--font-space",
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({ 
+  subsets: ["latin"], 
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "BluPrint - Solana Meme Coin Launchpad",
-  description: "Create your own Solana meme coin in 10 seconds.",
+  title: "BluPrint - Pink Whale Launchpad",
+  description: "Launch your meme coin on Solana in seconds. No code. No friction. Just pink power.",
   icons: {
     icon: "/favicon.ico",
   },
   openGraph: {
-    title: "BluPrint - Solana Meme Coin Launchpad",
-    description: "Create your own Solana meme coin in 10 seconds.",
+    title: "BluPrint - Pink Whale Launchpad",
+    description: "Launch your meme coin on Solana in seconds.",
     url: "https://bluprint.fun",
     siteName: "BluPrint",
     images: [{ url: "https://bluprint.fun/favicon.ico", width: 256, height: 256 }],
@@ -26,8 +42,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "BluPrint - Solana Meme Coin Launchpad",
-    description: "Create your own Solana meme coin in 10 seconds.",
+    title: "BluPrint - Pink Whale Launchpad",
+    description: "Launch your meme coin on Solana in seconds.",
     images: ["https://bluprint.fun/favicon.ico"],
     creator: "@bluprint",
   },
@@ -39,20 +55,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={sora.className}>
+    <html lang="en" suppressHydrationWarning className="dark">
+      <body className={`${inter.variable} ${space.variable} ${mono.variable} antialiased bg-[#0A0A0F]`}>
         <Providers>
-          <Background />
+          {/* 3D Arkaplan - En arkada */}
+          <Background3D />
           
-          <div className="fixed top-0 left-0 right-0 z-10">
+          {/* Üst Banner - Sabit */}
+          <div className="fixed top-0 left-0 right-0 z-20">
             <MarqueeBanner />
           </div>
           
-          <div className="fixed top-10 left-0 bottom-0 z-20">
+          {/* Sidebar - Sol tarafta */}
+          <div className="fixed top-9 left-0 bottom-0 z-30">
             <Sidebar />
           </div>
           
-          <main className="md:ml-56 pt-14 min-h-screen">
+          {/* Ana İçerik */}
+          <main className="md:ml-56 pt-14 min-h-screen relative z-10">
             {children}
           </main>
 
