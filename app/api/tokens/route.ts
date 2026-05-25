@@ -1,53 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, KEYS } from '@/app/lib/redis';
+import { redis } from '@/app/lib/redis';
 
-// POST: Yeni token kaydet
-export async function POST(req: NextRequest) {
-  try {
-    const { mint, name, symbol, createdBy, createdAt, image, twitter, telegram, website } = await req.json();
-
-    if (!mint || !name || !symbol || !createdBy) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
-    }
-
-    const tokenData = {
-      mint,
-      name,
-      symbol: symbol.toUpperCase(),
-      createdAt: createdAt || new Date().toISOString(),
-      createdBy,
-      image: image || '',
-      twitter: twitter || '',
-      telegram: telegram || '',
-      website: website || '',
-    };
-
-    await redis.lpush(KEYS.tokens, JSON.stringify(tokenData));
-    await redis.ltrim(KEYS.tokens, 0, 99);
-    await redis.incr(KEYS.tokenCount);
-    await redis.sadd(KEYS.users, createdBy);
-
-    return NextResponse.json({ success: true, token: tokenData });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
-
-// GET: Tüm token'ları getir
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = parseInt(searchParams.get('offset') || '0');
     
-    const tokens = await redis.lrange(KEYS.tokens, 0, limit - 1);
-    const parsedTokens = tokens.map((t: any) => typeof t === 'string' ? JSON.parse(t) : t);
+    // Redis'ten token listesini al
+    const tokenMints = await redis.smembers('bonding-curve:tokens');
+    const tokenList = Array.isArray(tokenMints) ? tokenMints : [];
+    const reversed = tokenList.reverse();
+    const paginated = reversed.slice(offset, offset + limit);
+    
+    const tokens = [];
+    
+    for (const mint of paginated) {
+      if (typeof mint === 'string') {
+        const metadataRaw = await redis.get(`token:metadata:${mint}`);
+        if (metadataRaw && typeof metadataRaw === 'string') {
+          const metadata = JSON.parse(metadataRaw);
+          tokens.push({
+            mint,
+            ...metadata,
+          });
+        }
+      }
+    }
     
     return NextResponse.json({
       success: true,
-      tokens: parsedTokens,
-      total: await redis.get(KEYS.tokenCount) || 0,
+      tokens,
+      total: tokenList.length,
     });
+    
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Tokens error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

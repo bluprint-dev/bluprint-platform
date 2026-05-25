@@ -1,71 +1,42 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import Irys from '@irys/sdk';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const file = formData.get('file') as File;
-
+    const file = formData.get('file') as File | null;
+    
     if (!file) {
-      return NextResponse.json(
-        { success: false, error: 'No file uploaded' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json(
-        { success: false, error: 'File must be an image' },
-        { status: 400 }
-      );
-    }
+    // Rate limit kontrolü (IP bazlı)
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    // TODO: Rate limit implementasyonu
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { success: false, error: 'File must be less than 5MB' },
-        { status: 400 }
-      );
-    }
-
-    const pinataFormData = new FormData();
-    pinataFormData.append('file', file);
-
-    const pinataRes = await fetch(
-      'https://api.pinata.cloud/pinning/pinFileToIPFS',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.PINATA_JWT}`,
-        },
-        body: pinataFormData,
-      }
-    );
-
-    if (!pinataRes.ok) {
-      const error = await pinataRes.text();
-      console.error('Pinata error:', error);
-      return NextResponse.json(
-        { success: false, error: 'Pinata upload failed' },
-        { status: 500 }
-      );
-    }
-
-    const data = await pinataRes.json();
-
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const secretKeyArray = JSON.parse(process.env.PLATFORM_SECRET_KEY!);
+    
+    const irys = new Irys({
+      network: 'mainnet',
+      token: 'solana',
+      key: secretKeyArray,
+    });
+    
+    const receipt = await irys.upload(buffer, {
+      tags: [{ name: 'Content-Type', value: file.type }],
+    });
+    
+    const imageUrl = `https://gateway.irys.xyz/${receipt.id}`;
+    
     return NextResponse.json({
       success: true,
-      url: `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`,
-      hash: data.IpfsHash,
+      imageUrl,
+      id: receipt.id,
     });
-  } catch (err: any) {
-    console.error('Upload error:', err);
-    return NextResponse.json(
-      {
-        success: false,
-        error: err.message,
-      },
-      { status: 500 }
-    );
+    
+  } catch (error: any) {
+    console.error('Upload error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
