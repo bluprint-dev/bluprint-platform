@@ -4,39 +4,32 @@
 
 /* ==================== ANİMASYONLAR ==================== */
 
-/* Data line animations - Solana transaction stream hissi */
+/* Data line animations */
 @keyframes dataLine1 {
   0% { transform: translateX(-100%); opacity: 0; }
-  10% { opacity: 0.04; }
-  90% { opacity: 0.04; }
+  10% { opacity: 0.08; }
+  90% { opacity: 0.08; }
   100% { transform: translateX(100%); opacity: 0; }
 }
 
 @keyframes dataLine2 {
   0% { transform: translateX(-100%); opacity: 0; }
-  10% { opacity: 0.03; }
-  90% { opacity: 0.03; }
+  10% { opacity: 0.06; }
+  90% { opacity: 0.06; }
   100% { transform: translateX(100%); opacity: 0; }
 }
 
 @keyframes dataLine3 {
   0% { transform: translateX(-100%); opacity: 0; }
-  10% { opacity: 0.04; }
-  90% { opacity: 0.04; }
+  10% { opacity: 0.08; }
+  90% { opacity: 0.08; }
   100% { transform: translateX(100%); opacity: 0; }
 }
 
 @keyframes dataLine4 {
   0% { transform: translateX(-100%); opacity: 0; }
-  10% { opacity: 0.03; }
-  90% { opacity: 0.03; }
-  100% { transform: translateX(100%); opacity: 0; }
-}
-
-@keyframes dataLine5 {
-  0% { transform: translateX(-100%); opacity: 0; }
-  10% { opacity: 0.02; }
-  90% { opacity: 0.02; }
+  10% { opacity: 0.06; }
+  90% { opacity: 0.06; }
   100% { transform: translateX(100%); opacity: 0; }
 }
 
@@ -44,58 +37,54 @@
 @keyframes floatParticle {
   0%, 100% {
     transform: translate(0, 0);
-    opacity: 0.02;
+    opacity: 0.05;
   }
   25% {
-    transform: translate(20px, -30px);
-    opacity: 0.08;
+    transform: translate(15px, -25px);
+    opacity: 0.15;
   }
   50% {
-    transform: translate(-15px, -50px);
-    opacity: 0.12;
+    transform: translate(-10px, -45px);
+    opacity: 0.2;
   }
   75% {
-    transform: translate(10px, -25px);
-    opacity: 0.06;
+    transform: translate(8px, -20px);
+    opacity: 0.12;
   }
 }
 
 /* Animation classes */
 .animate-data-line-1 {
-  animation: dataLine1 12s ease-in-out infinite;
+  animation: dataLine1 14s ease-in-out infinite;
 }
 
 .animate-data-line-2 {
-  animation: dataLine2 15s ease-in-out infinite;
-  animation-delay: 2s;
+  animation: dataLine2 18s ease-in-out infinite;
+  animation-delay: 3s;
 }
 
 .animate-data-line-3 {
-  animation: dataLine3 18s ease-in-out infinite;
-  animation-delay: 5s;
+  animation: dataLine3 22s ease-in-out infinite;
+  animation-delay: 7s;
 }
 
 .animate-data-line-4 {
-  animation: dataLine4 14s ease-in-out infinite;
-  animation-delay: 8s;
-}
-
-.animate-data-line-5 {
-  animation: dataLine5 20s ease-in-out infinite;
-  animation-delay: 11s;
+  animation: dataLine4 16s ease-in-out infinite;
+  animation-delay: 10s;
 }
 
 .animate-float-particle {
   animation: floatParticle ease-in-out infinite;
 }
 
-/* ==================== SCROLLBAR ==================== */
+/* ==================== SCROLLBAR - PINK THEME ==================== */
 ::-webkit-scrollbar {
   width: 6px;
 }
 
 ::-webkit-scrollbar-track {
   background: #0A0A0F;
+  border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb {
