@@ -59,6 +59,69 @@
   }
 }
 
+/* ==================== ANİMASYONLAR ==================== */
+
+@keyframes spin-slow {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(-30px);
+    opacity: 0.5;
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes ping-slow {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.4;
+  }
+  75%, 100% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* Animasyon sınıfları */
+.animate-spin-slow {
+  animation: spin-slow linear infinite;
+}
+
+.animate-float {
+  animation: float ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow ease-in-out infinite;
+}
+
+.animate-ping-slow {
+  animation: ping-slow ease-out infinite;
+}
+
+/* ==================== MOBİL UYUMLULUK ==================== */
+
 @media (max-width: 768px) {
   button, a {
     min-height: 44px;
