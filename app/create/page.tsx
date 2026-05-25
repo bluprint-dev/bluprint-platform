@@ -1,117 +1,575 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import Footer from "../components/Footer";
-import PageTransition from "../components/PageTransition";
-import { useToast } from "../components/ToastProvider";
+import {
+  ArrowLeft,
+  Rocket,
+  Upload,
+  Image as ImageIcon,
+  Coins,
+  Users,
+  TrendingUp,
+  Shield,
+  Sparkles,
+  Check,
+  AlertCircle,
+  Crown,
+} from "lucide-react";
 
 export default function CreatePage() {
-  const { publicKey, connected } = useWallet();
+  const { connected } = useWallet();
   const router = useRouter();
-  const { showToast } = useToast();
-  const [name, setName] = useState("");
-  const [symbol, setSymbol] = useState("");
-  const [logo, setLogo] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const handleCreate = async () => {
-    if (!connected) {
-      showToast("Connect wallet first", "warning");
-      return;
-    }
-    if (!name || !symbol || !logo) {
-      showToast("Fill all fields", "warning");
-      return;
-    }
+  // Form state
+  const [tokenName, setTokenName] = useState("");
+  const [tokenSymbol, setTokenSymbol] = useState("");
+  const [tokenDescription, setTokenDescription] = useState("");
+  const [tokenSupply, setTokenSupply] = useState("1,000,000");
+  const [tokenImage, setTokenImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [buyAmount, setBuyAmount] = useState("0.1");
+  const [slippage, setSlippage] = useState("10");
 
-    setLoading(true);
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("symbol", symbol);
-    formData.append("logo", logo);
-    formData.append("userPublicKey", publicKey!.toString());
+  // Validasyon
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-    try {
-      const res = await fetch("/api/create-token", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast("✅ Token created! Launching on bonding curve...", "success");
-        router.push("/");
-      } else {
-        showToast(`❌ ${data.error}`, "error");
-      }
-    } catch (err: any) {
-      showToast(`❌ ${err.message}`, "error");
-    } finally {
-      setLoading(false);
+  // Whale tier kontrolü
+  const [isWhaleTier, setIsWhaleTier] = useState(false);
+
+  useEffect(() => {
+    // Check if user qualifies for Whale tier
+    const checkWhaleStatus = async () => {
+      // Simülasyon - gerçek API'den kontrol edilecek
+      setIsWhaleTier(Math.random() > 0.7);
+    };
+    checkWhaleStatus();
+  }, []);
+
+  const validateStep1 = () => {
+    const newErrors: { [key: string]: string } = {};
+    if (!tokenName.trim()) newErrors.tokenName = "Token name is required";
+    if (tokenName.length < 2) newErrors.tokenName = "Name too short";
+    if (tokenName.length > 32) newErrors.tokenName = "Name too long";
+    
+    if (!tokenSymbol.trim()) newErrors.tokenSymbol = "Symbol is required";
+    if (tokenSymbol.length < 2) newErrors.tokenSymbol = "Symbol too short";
+    if (tokenSymbol.length > 10) newErrors.tokenSymbol = "Symbol too long";
+    if (!/^[A-Za-z0-9]+$/.test(tokenSymbol)) newErrors.tokenSymbol = "Only letters and numbers";
+    
+    if (!tokenImage) newErrors.tokenImage = "Token image is required";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setTokenImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
+  const handleCreateToken = async () => {
+    if (!connected) {
+      alert("Please connect your wallet first");
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    // Simülasyon
+    setTimeout(() => {
+      setIsLoading(false);
+      setSuccess(true);
+      setTimeout(() => {
+        router.push("/");
+      }, 2000);
+    }, 3000);
+  };
+
+  const totalCost = isWhaleTier ? 0.5 : 0.1;
+  const estimatedGas = 0.002;
+  const total = totalCost + estimatedGas;
+
   return (
-    <PageTransition>
-      <div className="relative min-h-screen bg-black">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900/50 via-purple-900/30 to-black" />
-        
-        <div className="relative z-10 pt-20 sm:pt-24 max-w-md mx-auto px-4 pb-16">
-          <div className="bg-gray-900/60 backdrop-blur-sm rounded-2xl border border-gray-800 p-6">
-            <h1 className="text-2xl font-bold text-white text-center mb-6">
-              🚀 Create Token
-            </h1>
-            <p className="text-gray-400 text-sm text-center mb-6">
-              Your token will launch on bonding curve. Only network fee applies.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-gray-400 block mb-1">Token Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., My Awesome Token"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                />
+    <div className="min-h-screen bg-[#0A192F]">
+      {/* Header */}
+      <div className="sticky top-0 z-50 border-b border-[#233554] bg-[#0A192F]/95 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.back()}
+              className="p-2 rounded-xl hover:bg-[#1A365D]/30 transition-all duration-200 group"
+            >
+              <ArrowLeft className="w-5 h-5 text-[#8892B0] group-hover:text-[#64FFDA]" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#64FFDA] to-[#4ECDC4] rounded-xl flex items-center justify-center">
+                <Rocket className="w-4 h-4 text-[#0A192F]" />
               </div>
-
               <div>
-                <label className="text-sm text-gray-400 block mb-1">Token Symbol</label>
-                <input
-                  type="text"
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                  placeholder="e.g., MAT"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none uppercase"
-                />
+                <h1 className="text-xl font-bold text-white">Create Token</h1>
+                <p className="text-xs text-[#8892B0]">Launch on Solana in seconds</p>
               </div>
-
-              <div>
-                <label className="text-sm text-gray-400 block mb-1">Logo</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setLogo(e.target.files?.[0] || null)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white file:mr-2 file:py-1 file:px-3 file:rounded-lg file:bg-blue-600 file:text-white file:border-0"
-                />
-              </div>
-
-              <button
-                onClick={handleCreate}
-                disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 text-white font-bold rounded-xl transition transform hover:scale-105 mt-4"
-              >
-                {loading ? "Creating..." : "✨ Create Token"}
-              </button>
             </div>
           </div>
         </div>
-        <Footer />
       </div>
-    </PageTransition>
+
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Sol Taraf - Form */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Step Progress */}
+            <div className="bg-[#112240] rounded-2xl border border-[#233554] p-6">
+              <div className="flex items-center justify-between mb-6">
+                {[1, 2, 3].map((s) => (
+                  <div key={s} className="flex items-center flex-1">
+                    <div className="relative">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                        step >= s 
+                          ? "bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] text-[#0A192F]" 
+                          : "bg-[#1A365D] text-[#8892B0]"
+                      }`}>
+                        {step > s ? <Check className="w-5 h-5" /> : s}
+                      </div>
+                      {s < 3 && (
+                        <div className={`absolute top-1/2 -translate-y-1/2 w-full h-0.5 ${
+                          step > s ? "bg-[#64FFDA]" : "bg-[#233554]"
+                        }`} style={{ left: "100%", width: "calc(100% - 2rem)" }} />
+                      )}
+                    </div>
+                    <span className="ml-3 text-sm text-[#8892B0] hidden sm:inline">
+                      {s === 1 ? "Token Info" : s === 2 ? "Configure" : "Review"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Step 1: Token Info */}
+            {step === 1 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[#112240] rounded-2xl border border-[#233554] p-6 space-y-6"
+              >
+                <h2 className="text-xl font-bold text-white">Token Information</h2>
+                
+                {/* Token Image Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Token Image *
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      {imagePreview ? (
+                        <div className="relative group">
+                          <img
+                            src={imagePreview}
+                            alt="Token preview"
+                            className="w-24 h-24 rounded-2xl object-cover border-2 border-[#64FFDA]"
+                          />
+                          <button
+                            onClick={() => {
+                              setTokenImage(null);
+                              setImagePreview(null);
+                            }}
+                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:scale-110 transition"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="w-24 h-24 rounded-2xl border-2 border-dashed border-[#233554] bg-[#0A192F] flex flex-col items-center justify-center cursor-pointer hover:border-[#64FFDA] transition-all duration-200">
+                          <Upload className="w-6 h-6 text-[#8892B0]" />
+                          <span className="text-xs text-[#8892B0] mt-1">Upload</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-[#8892B0]">
+                        Recommended: 400x400px, PNG or JPG. <br />
+                        Max 2MB.
+                      </p>
+                    </div>
+                  </div>
+                  {errors.tokenImage && (
+                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {errors.tokenImage}
+                    </p>
+                  )}
+                </div>
+
+                {/* Token Name */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Token Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={tokenName}
+                    onChange={(e) => setTokenName(e.target.value)}
+                    placeholder="e.g., My Awesome Token"
+                    className="w-full px-4 py-3 rounded-xl bg-[#0A192F] border border-[#233554] text-white placeholder-[#8892B0] focus:outline-none focus:border-[#64FFDA] transition-all duration-200"
+                  />
+                  {errors.tokenName && (
+                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {errors.tokenName}
+                    </p>
+                  )}
+                </div>
+
+                {/* Token Symbol */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Token Symbol *
+                  </label>
+                  <input
+                    type="text"
+                    value={tokenSymbol}
+                    onChange={(e) => setTokenSymbol(e.target.value.toUpperCase())}
+                    placeholder="e.g., MYC"
+                    className="w-full px-4 py-3 rounded-xl bg-[#0A192F] border border-[#233554] text-white placeholder-[#8892B0] focus:outline-none focus:border-[#64FFDA] transition-all duration-200 uppercase"
+                  />
+                  {errors.tokenSymbol && (
+                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {errors.tokenSymbol}
+                    </p>
+                  )}
+                </div>
+
+                {/* Token Description */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Description (Optional)
+                  </label>
+                  <textarea
+                    value={tokenDescription}
+                    onChange={(e) => setTokenDescription(e.target.value)}
+                    placeholder="Tell the community about your token..."
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl bg-[#0A192F] border border-[#233554] text-white placeholder-[#8892B0] focus:outline-none focus:border-[#64FFDA] transition-all duration-200 resize-none"
+                  />
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (validateStep1()) setStep(2);
+                  }}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] text-[#0A192F] font-semibold hover:shadow-lg hover:shadow-[#64FFDA]/30 transition-all duration-200"
+                >
+                  Continue →
+                </button>
+              </motion.div>
+            )}
+
+            {/* Step 2: Configure */}
+            {step === 2 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[#112240] rounded-2xl border border-[#233554] p-6 space-y-6"
+              >
+                <h2 className="text-xl font-bold text-white">Configure Launch</h2>
+
+                {/* Total Supply */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Total Supply
+                  </label>
+                  <div className="relative">
+                    <Coins className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8892B0]" />
+                    <input
+                      type="text"
+                      value={tokenSupply}
+                      onChange={(e) => setTokenSupply(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#0A192F] border border-[#233554] text-white focus:outline-none focus:border-[#64FFDA] transition-all duration-200"
+                    />
+                  </div>
+                  <p className="text-xs text-[#8892B0] mt-1">Recommended: 1,000,000</p>
+                </div>
+
+                {/* Initial Buy Amount */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Initial Buy Amount (SOL)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8892B0]">◎</span>
+                    <input
+                      type="number"
+                      value={buyAmount}
+                      onChange={(e) => setBuyAmount(e.target.value)}
+                      step="0.1"
+                      min="0.1"
+                      className="w-full pl-8 pr-4 py-3 rounded-xl bg-[#0A192F] border border-[#233554] text-white focus:outline-none focus:border-[#64FFDA] transition-all duration-200"
+                    />
+                  </div>
+                  <p className="text-xs text-[#8892B0] mt-1">Minimum: 0.1 SOL</p>
+                </div>
+
+                {/* Slippage */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Slippage Tolerance
+                  </label>
+                  <div className="flex gap-2">
+                    {["5", "10", "15"].map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setSlippage(s)}
+                        className={`px-4 py-2 rounded-xl transition-all duration-200 ${
+                          slippage === s
+                            ? "bg-[#64FFDA] text-[#0A192F]"
+                            : "bg-[#0A192F] text-[#8892B0] border border-[#233554] hover:border-[#64FFDA]"
+                        }`}
+                      >
+                        {s}%
+                      </button>
+                    ))}
+                    <input
+                      type="number"
+                      value={slippage}
+                      onChange={(e) => setSlippage(e.target.value)}
+                      className="w-24 px-3 py-2 rounded-xl bg-[#0A192F] border border-[#233554] text-white text-center focus:outline-none focus:border-[#64FFDA]"
+                    />
+                  </div>
+                </div>
+
+                {/* Whale Tier Banner */}
+                {isWhaleTier && (
+                  <div className="bg-gradient-to-r from-[#64FFDA]/10 to-[#4ECDC4]/10 rounded-xl p-4 border border-[#64FFDA]/30">
+                    <div className="flex items-center gap-3">
+                      <Crown className="w-8 h-8 text-[#64FFDA]" />
+                      <div>
+                        <p className="font-semibold text-white">Whale Tier Activated!</p>
+                        <p className="text-sm text-[#8892B0]">You qualify for premium benefits including lower fees and featured placement.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setStep(1)}
+                    className="flex-1 py-3 rounded-xl border border-[#233554] text-white hover:bg-[#1A365D]/30 transition-all duration-200"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setStep(3)}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] text-[#0A192F] font-semibold hover:shadow-lg hover:shadow-[#64FFDA]/30 transition-all duration-200"
+                  >
+                    Review →
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 3: Review */}
+            {step === 3 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[#112240] rounded-2xl border border-[#233554] p-6 space-y-6"
+              >
+                <h2 className="text-xl font-bold text-white">Review & Launch</h2>
+
+                {/* Token Preview */}
+                <div className="flex items-center gap-4 p-4 bg-[#0A192F] rounded-xl">
+                  {imagePreview ? (
+                    <img src={imagePreview} alt={tokenName} className="w-16 h-16 rounded-xl object-cover" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-xl bg-[#1A365D] flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6 text-[#8892B0]" />
+                    </div>
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-bold text-white">{tokenName}</span>
+                      <span className="text-sm text-[#64FFDA]">({tokenSymbol})</span>
+                    </div>
+                    <p className="text-xs text-[#8892B0] mt-1">{tokenDescription || "No description"}</p>
+                  </div>
+                </div>
+
+                {/* Launch Details */}
+                <div className="space-y-3">
+                  <div className="flex justify-between py-2 border-b border-[#233554]">
+                    <span className="text-[#8892B0]">Total Supply</span>
+                    <span className="text-white font-medium">{tokenSupply}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-[#233554]">
+                    <span className="text-[#8892B0]">Initial Buy</span>
+                    <span className="text-white font-medium">{buyAmount} SOL</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-[#233554]">
+                    <span className="text-[#8892B0]">Slippage</span>
+                    <span className="text-white font-medium">{slippage}%</span>
+                  </div>
+                </div>
+
+                {/* Cost Breakdown */}
+                <div className="bg-[#0A192F] rounded-xl p-4 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-[#8892B0]">Launch Fee</span>
+                    <span className="text-white">{totalCost} SOL</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#8892B0]">Estimated Gas</span>
+                    <span className="text-white">{estimatedGas} SOL</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-[#233554]">
+                    <span className="text-white font-semibold">Total</span>
+                    <span className="text-[#64FFDA] font-bold">{total} SOL</span>
+                  </div>
+                </div>
+
+                {/* Warning */}
+                <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/30">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-red-400">Important</p>
+                      <p className="text-xs text-[#8892B0] mt-1">
+                        Once launched, you cannot change token parameters. Please double-check all information.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setStep(2)}
+                    className="flex-1 py-3 rounded-xl border border-[#233554] text-white hover:bg-[#1A365D]/30 transition-all duration-200"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleCreateToken}
+                    disabled={isLoading || !connected}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] text-[#0A192F] font-semibold hover:shadow-lg hover:shadow-[#64FFDA]/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-[#0A192F] border-t-transparent rounded-full animate-spin" />
+                        Launching...
+                      </>
+                    ) : (
+                      <>
+                        <Rocket className="w-5 h-5" />
+                        Launch Token
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Success State */}
+            <AnimatePresence>
+              {success && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+                >
+                  <div className="bg-[#112240] rounded-2xl border border-[#64FFDA]/30 p-8 text-center max-w-md mx-4">
+                    <div className="w-16 h-16 bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Check className="w-8 h-8 text-[#0A192F]" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Success!</h3>
+                    <p className="text-[#8892B0] mb-4">
+                      Your token has been created successfully!
+                    </p>
+                    <p className="text-sm text-[#64FFDA]">Redirecting to homepage...</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Sağ Taraf - Info Panel */}
+          <div className="space-y-6">
+            {/* Wallet Status */}
+            <div className="bg-[#112240] rounded-2xl border border-[#233554] p-6">
+              <h3 className="font-semibold text-white mb-4">Wallet Status</h3>
+              <div className={`flex items-center gap-3 p-3 rounded-xl ${
+                connected ? "bg-[#64FFDA]/10 border border-[#64FFDA]/30" : "bg-[#1A365D]/30"
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${connected ? "bg-[#64FFDA] animate-pulse" : "bg-red-500"}`} />
+                <span className="text-sm text-white">
+                  {connected ? "Wallet Connected" : "Wallet Not Connected"}
+                </span>
+              </div>
+              {!connected && (
+                <p className="text-xs text-[#8892B0] mt-3">
+                  Please connect your wallet to create a token
+                </p>
+              )}
+            </div>
+
+            {/* Info Cards */}
+            <div className="bg-gradient-to-br from-[#112240] to-[#0A192F] rounded-2xl border border-[#233554] p-6">
+              <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[#64FFDA]" />
+                Launch Benefits
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 text-sm">
+                  <Check className="w-4 h-4 text-[#64FFDA]" />
+                  <span className="text-[#8892B0]">No coding required</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Check className="w-4 h-4 text-[#64FFDA]" />
+                  <span className="text-[#8892B0]">Instant liquidity</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Check className="w-4 h-4 text-[#64FFDA]" />
+                  <span className="text-[#8892B0]">Automatic Raydium migration</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Check className="w-4 h-4 text-[#64FFDA]" />
+                  <span className="text-[#8892B0]">Referral rewards</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="bg-[#112240] rounded-2xl border border-[#233554] p-6">
+              <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#64FFDA]" />
+                Pro Tips
+              </h3>
+              <ul className="space-y-2 text-sm text-[#8892B0]">
+                <li>• Choose a unique token name</li>
+                <li>• Add a high-quality logo for better visibility</li>
+                <li>• Start with a reasonable supply</li>
+                <li>• Join our Telegram for marketing support</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
