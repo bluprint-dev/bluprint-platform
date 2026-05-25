@@ -1,235 +1,116 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-
 export default function Background() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isDarkRef = useRef(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Dark mode kontrolü
-    const checkDarkMode = () => {
-      isDarkRef.current = document.documentElement.classList.contains("dark");
-    };
-    checkDarkMode();
-    
-    // Dark mode değişimini izle
-    const observer = new MutationObserver(() => {
-      checkDarkMode();
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
-
-    let particles: { x: number; y: number; radius: number; speed: number; alpha: number }[] = [];
-    let mouseX = 0;
-    let mouseY = 0;
-
-    const drawGrid = () => {
-      const gridSize = 50;
-      ctx.strokeStyle = isDarkRef.current ? "rgba(59, 130, 246, 0.08)" : "rgba(59, 130, 246, 0.04)";
-      ctx.lineWidth = 1;
-      
-      for (let x = 0; x < canvas.width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      
-      for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-    };
-
-    const drawDots = () => {
-      const spacing = 40;
-      for (let x = spacing; x < canvas.width; x += spacing) {
-        for (let y = spacing; y < canvas.height; y += spacing) {
-          const opacity = Math.random() * 0.3 + 0.1;
-          ctx.fillStyle = `rgba(59, 130, 246, ${isDarkRef.current ? opacity : opacity * 0.5})`;
-          
-          ctx.beginPath();
-          ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-          ctx.fill();
-          
-          if (Math.random() > 0.7) {
-            ctx.fillStyle = `rgba(139, 92, 246, ${isDarkRef.current ? opacity * 0.5 : opacity * 0.3})`;
-            ctx.beginPath();
-            ctx.arc(x, y, 3, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-      }
-    };
-
-    const drawGradient = () => {
-      if (isDarkRef.current) {
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        gradient.addColorStop(0, "#0a0f1a");
-        gradient.addColorStop(0.3, "#0f172a");
-        gradient.addColorStop(0.6, "#1e1b4b");
-        gradient.addColorStop(1, "#0a0f1a");
-        ctx.fillStyle = gradient;
-      } else {
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        gradient.addColorStop(0, "#f8fafc");
-        gradient.addColorStop(0.3, "#eff6ff");
-        gradient.addColorStop(0.6, "#f5f3ff");
-        gradient.addColorStop(1, "#f8fafc");
-        ctx.fillStyle = gradient;
-      }
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    };
-
-    const drawLightOrbs = () => {
-      const orbColor = isDarkRef.current ? "rgba(59, 130, 246, 0.15)" : "rgba(59, 130, 246, 0.08)";
-      const orbColor2 = isDarkRef.current ? "rgba(139, 92, 246, 0.12)" : "rgba(139, 92, 246, 0.06)";
-      const orbColor3 = isDarkRef.current ? "rgba(56, 189, 248, 0.08)" : "rgba(56, 189, 248, 0.04)";
-      
-      const gradient1 = ctx.createRadialGradient(
-        canvas.width * 0.2, canvas.height * 0.3, 0,
-        canvas.width * 0.2, canvas.height * 0.3, canvas.width * 0.4
-      );
-      gradient1.addColorStop(0, orbColor);
-      gradient1.addColorStop(1, "rgba(59, 130, 246, 0)");
-      ctx.fillStyle = gradient1;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const gradient2 = ctx.createRadialGradient(
-        canvas.width * 0.8, canvas.height * 0.7, 0,
-        canvas.width * 0.8, canvas.height * 0.7, canvas.width * 0.5
-      );
-      gradient2.addColorStop(0, orbColor2);
-      gradient2.addColorStop(1, "rgba(139, 92, 246, 0)");
-      ctx.fillStyle = gradient2;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const gradient3 = ctx.createRadialGradient(
-        mouseX, mouseY, 0,
-        mouseX, mouseY, 150
-      );
-      gradient3.addColorStop(0, orbColor3);
-      gradient3.addColorStop(1, "rgba(56, 189, 248, 0)");
-      ctx.fillStyle = gradient3;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    };
-
-    const initParticles = () => {
-      const particleCount = Math.min(80, Math.floor(window.innerWidth / 20));
-      particles = [];
-      for (let i = 0; i < particleCount; i++) {
-        particles.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          radius: Math.random() * 2 + 1,
-          speed: Math.random() * 0.5 + 0.2,
-          alpha: Math.random() * 0.3 + 0.1,
-        });
-      }
-    };
-
-    const updateParticles = () => {
-      for (const p of particles) {
-        p.y += p.speed;
-        if (p.y > canvas.height) {
-          p.y = 0;
-          p.x = Math.random() * canvas.width;
-        }
-      }
-    };
-
-    const drawParticles = () => {
-      for (const p of particles) {
-        ctx.fillStyle = `rgba(59, 130, 246, ${isDarkRef.current ? p.alpha : p.alpha * 0.6})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    };
-
-    const drawHexagons = () => {
-      const hexSize = 60;
-      const hexWidth = hexSize * Math.sqrt(3);
-      const hexHeight = hexSize * 2;
-      
-      for (let x = -hexSize; x < canvas.width + hexSize; x += hexWidth) {
-        for (let y = -hexSize; y < canvas.height + hexSize; y += hexHeight * 0.75) {
-          const offset = (Math.floor(x / hexWidth) % 2) * (hexHeight / 2);
-          
-          ctx.strokeStyle = isDarkRef.current ? "rgba(59, 130, 246, 0.03)" : "rgba(59, 130, 246, 0.02)";
-          ctx.lineWidth = 1;
-          
-          ctx.beginPath();
-          for (let i = 0; i < 6; i++) {
-            const angle = (i * 60) * Math.PI / 180;
-            const px = x + Math.cos(angle) * hexSize;
-            const py = y + offset + Math.sin(angle) * hexSize;
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-          }
-          ctx.closePath();
-          ctx.stroke();
-        }
-      }
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-
-    let animationId: number;
-    const animate = () => {
-      drawGradient();
-      drawGrid();
-      drawHexagons();
-      drawDots();
-      drawLightOrbs();
-      updateParticles();
-      drawParticles();
-      animationId = requestAnimationFrame(animate);
-    };
-
-    initParticles();
-    animate();
-
-    return () => {
-      window.removeEventListener("resize", resizeCanvas);
-      window.removeEventListener("mousemove", handleMouseMove);
-      observer.disconnect();
-      cancelAnimationFrame(animationId);
-    };
-  }, []);
-
   return (
-    <>
-      <canvas
-        ref={canvasRef}
-        className="fixed top-0 left-0 w-full h-full -z-20"
-        style={{ pointerEvents: "none" }}
-      />
+    <div className="fixed inset-0 z-0 overflow-hidden bg-[#0A0A0F]">
+      {/* Ana gradient zemin */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0A0A0F] via-[#0F0A14] to-[#0A0A0F]" />
       
-      <div className="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 dark:bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/10 dark:bg-purple-500/5 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl animate-pulse delay-500" />
+      {/* Pembe glow - merkezden yayılan */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-[oklch(51.8%_0.253_323.949)]/5 blur-[150px]" />
+      <div className="absolute top-[20%] left-[10%] w-[400px] h-[400px] rounded-full bg-[oklch(51.8%_0.253_323.949)]/8 blur-[100px]" />
+      <div className="absolute bottom-[10%] right-[5%] w-[500px] h-[500px] rounded-full bg-[oklch(51.8%_0.253_323.949)]/5 blur-[120px]" />
+
+      {/* Blockchain bağlantı ağı - SVG */}
+      <svg className="absolute inset-0 w-full h-full opacity-[0.04] pointer-events-none">
+        <defs>
+          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="oklch(51.8%_0.253_323.949)" />
+            <stop offset="100%" stopColor="oklch(70%_0.25_150)" />
+          </linearGradient>
+        </defs>
+        
+        {/* Bağlantı çizgileri */}
+        <line x1="15%" y1="25%" x2="35%" y2="45%" stroke="url(#lineGradient)" strokeWidth="0.5" strokeDasharray="3" />
+        <line x1="35%" y1="45%" x2="55%" y2="30%" stroke="url(#lineGradient)" strokeWidth="0.5" strokeDasharray="3" />
+        <line x1="55%" y1="30%" x2="75%" y2="50%" stroke="url(#lineGradient)" strokeWidth="0.5" strokeDasharray="3" />
+        <line x1="75%" y1="50%" x2="85%" y2="25%" stroke="url(#lineGradient)" strokeWidth="0.5" strokeDasharray="3" />
+        <line x1="15%" y1="25%" x2="25%" y2="70%" stroke="url(#lineGradient)" strokeWidth="0.5" strokeDasharray="3" />
+        <line x1="25%" y1="70%" x2="50%" y2="80%" stroke="url(#lineGradient)" strokeWidth="0.5" strokeDasharray="3" />
+        <line x1="50%" y1="80%" x2="75%" y2="70%" stroke="url(#lineGradient)" strokeWidth="0.5" strokeDasharray="3" />
+        <line x1="75%" y1="70%" x2="85%" y2="25%" stroke="url(#lineGradient)" strokeWidth="0.5" strokeDasharray="3" />
+        <line x1="35%" y1="45%" x2="50%" y2="80%" stroke="url(#lineGradient)" strokeWidth="0.5" strokeDasharray="3" />
+        <line x1="55%" y1="30%" x2="75%" y2="70%" stroke="url(#lineGradient)" strokeWidth="0.5" strokeDasharray="3" />
+        
+        {/* Noktalar (node'lar) */}
+        <circle cx="15%" cy="25%" r="2" fill="oklch(51.8%_0.253_323.949)" opacity="0.3">
+          <animate attributeName="opacity" values="0.1;0.4;0.1" dur="3s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="35%" cy="45%" r="2" fill="oklch(51.8%_0.253_323.949)" opacity="0.3">
+          <animate attributeName="opacity" values="0.1;0.5;0.1" dur="4s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="55%" cy="30%" r="2" fill="oklch(51.8%_0.253_323.949)" opacity="0.3">
+          <animate attributeName="opacity" values="0.1;0.3;0.1" dur="3.5s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="75%" cy="50%" r="2" fill="oklch(51.8%_0.253_323.949)" opacity="0.3">
+          <animate attributeName="opacity" values="0.1;0.45;0.1" dur="4.5s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="85%" cy="25%" r="2" fill="oklch(51.8%_0.253_323.949)" opacity="0.3">
+          <animate attributeName="opacity" values="0.1;0.35;0.1" dur="5s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="25%" cy="70%" r="2" fill="oklch(51.8%_0.253_323.949)" opacity="0.3">
+          <animate attributeName="opacity" values="0.1;0.4;0.1" dur="3.8s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="50%" cy="80%" r="2.5" fill="oklch(51.8%_0.253_323.949)" opacity="0.3">
+          <animate attributeName="opacity" values="0.1;0.5;0.1" dur="4.2s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="75%" cy="70%" r="2" fill="oklch(51.8%_0.253_323.949)" opacity="0.3">
+          <animate attributeName="opacity" values="0.1;0.35;0.1" dur="3.2s" repeatCount="indefinite" />
+        </circle>
+      </svg>
+
+      {/* Blockchain blok deseni - sol alt */}
+      <div className="absolute bottom-[8%] left-[5%] opacity-[0.03]">
+        <svg width="120" height="120" viewBox="0 0 100 100">
+          <rect x="10" y="10" width="30" height="30" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" fill="none" />
+          <rect x="45" y="10" width="30" height="30" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" fill="none" />
+          <rect x="10" y="45" width="30" height="30" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" fill="none" />
+          <rect x="45" y="45" width="30" height="30" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" fill="none" />
+          <line x1="40" y1="25" x2="45" y2="25" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" />
+          <line x1="25" y1="40" x2="25" y2="45" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" />
+          <line x1="60" y1="25" x2="75" y2="25" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" />
+          <line x1="60" y1="60" x2="75" y2="60" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" />
+        </svg>
       </div>
-    </>
+
+      {/* Blockchain blok deseni - sağ üst */}
+      <div className="absolute top-[5%] right-[8%] opacity-[0.03]">
+        <svg width="80" height="80" viewBox="0 0 100 100">
+          <rect x="20" y="20" width="25" height="25" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" fill="none" />
+          <rect x="50" y="20" width="25" height="25" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" fill="none" />
+          <rect x="20" y="50" width="25" height="25" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" fill="none" />
+          <rect x="50" y="50" width="25" height="25" stroke="oklch(51.8%_0.253_323.949)" strokeWidth="1" fill="none" />
+        </svg>
+      </div>
+
+      {/* Kripto sembolleri - çok hafif */}
+      <div className="absolute top-[20%] left-[15%] opacity-[0.02] font-mono text-8xl font-black text-white">
+        ₿
+      </div>
+      <div className="absolute bottom-[25%] right-[10%] opacity-[0.02] font-mono text-7xl font-black text-white">
+        ◈
+      </div>
+      <div className="absolute top-[60%] right-[20%] opacity-[0.015] font-mono text-6xl font-black text-white">
+        Ξ
+      </div>
+      <div className="absolute bottom-[40%] left-[12%] opacity-[0.015] font-mono text-7xl font-black text-white">
+        ⎊
+      </div>
+
+      {/* Hareket eden ışık partikülleri */}
+      <div className="absolute top-[30%] left-[25%] w-1 h-1 rounded-full bg-[oklch(51.8%_0.253_323.949)]/20">
+        <div className="animate-ping w-full h-full rounded-full bg-[oklch(51.8%_0.253_323.949)]/20" />
+      </div>
+      <div className="absolute top-[50%] left-[60%] w-1 h-1 rounded-full bg-[oklch(51.8%_0.253_323.949)]/15">
+        <div className="animate-ping w-full h-full rounded-full bg-[oklch(51.8%_0.253_323.949)]/15" style={{ animationDuration: "2s" }} />
+      </div>
+      <div className="absolute top-[70%] left-[40%] w-1 h-1 rounded-full bg-[oklch(51.8%_0.253_323.949)]/25">
+        <div className="animate-ping w-full h-full rounded-full bg-[oklch(51.8%_0.253_323.949)]/25" style={{ animationDuration: "2.5s" }} />
+      </div>
+
+      {/* Gradient overlay - alt kısımda karartma */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0A0A0F] to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-[#0A0A0F] to-transparent" />
+    </div>
   );
 }

@@ -3,7 +3,7 @@ import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import Sidebar from "./components/Sidebar";
-import Background3D from "./components/3D/Background3D";
+import Background from "./components/Background";
 import MarqueeBanner from "./components/MarqueeBanner";
 import ChatbaseEmbed from "./components/ChatbaseEmbed";
 
@@ -42,8 +42,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="dark">
       <body className={`${inter.variable} ${space.variable} ${mono.variable} antialiased bg-[#0A0A0F]`}>
         <Providers>
-          {/* 3D Arkaplan - SADECE ANA SAYFA İÇİN */}
-          <Background3D />
+          {/* Kripto blockchain arkaplan */}
+          <Background />
           
           <div className="fixed top-0 left-0 right-0 z-20">
             <MarqueeBanner />
