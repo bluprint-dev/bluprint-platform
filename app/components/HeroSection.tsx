@@ -4,7 +4,11 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 
-export default function HeroSection() {
+interface HeroSectionProps {
+  onCreateClick?: () => void;
+}
+
+export default function HeroSection({ onCreateClick }: HeroSectionProps) {
   return (
     <section className="relative overflow-hidden px-4 py-20 md:py-28 lg:py-32">
       {/* Gradient arkaplan efekti */}
@@ -50,13 +54,23 @@ export default function HeroSection() {
               className="relative inline-block"
             >
               <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-500 opacity-75 blur-lg transition duration-300 group-hover:opacity-100" />
-              <Link
-                href="/create"
-                className="relative flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white transition-all duration-200 hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] md:px-10 md:py-5 md:text-xl"
-              >
-                Create Token
-                <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
-              </Link>
+              {onCreateClick ? (
+                <button
+                  onClick={onCreateClick}
+                  className="relative flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white transition-all duration-200 hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] md:px-10 md:py-5 md:text-xl"
+                >
+                  Create Token
+                  <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+                </button>
+              ) : (
+                <Link
+                  href="/create"
+                  className="relative flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white transition-all duration-200 hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] md:px-10 md:py-5 md:text-xl"
+                >
+                  Create Token
+                  <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+                </Link>
+              )}
             </motion.div>
           </motion.div>
 
@@ -67,7 +81,7 @@ export default function HeroSection() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="relative mx-auto w-full max-w-md lg:mx-0 lg:max-w-full"
           >
-            <div className="relative rounded-2xl border border-gray-800 bg-gradient-to-br from-gray-900/50 to-gray-950/50 p-2 shadow-2xl shadow-blue-500/10 backdrop-blur-sm transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/20">
+            <div className="group relative rounded-2xl border border-gray-800 bg-gradient-to-br from-gray-900/50 to-gray-950/50 p-2 shadow-2xl shadow-blue-500/10 backdrop-blur-sm transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/20">
               <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 opacity-20 blur-xl transition duration-300 group-hover:opacity-40" />
               <img
                 src="/phantom-mockup.png"
