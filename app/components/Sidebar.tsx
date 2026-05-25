@@ -12,7 +12,6 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import {
   Home,
   Sparkles,
-  Flame,
   LineChart,
   Users,
   Radio,
@@ -20,6 +19,7 @@ import {
   Wallet,
   X,
   Menu,
+  TrendingUp,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -30,10 +30,10 @@ export default function Sidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // New Pairs kaldırıldı - sadece ana menü item'ları
   const menuItems = [
     { href: "/", label: t("nav_home"), icon: Home, comingSoon: false },
     { href: "/create", label: t("nav_create"), icon: Sparkles, comingSoon: false },
-    { href: "/new-pairs", label: t("nav_new_pairs"), icon: Flame, comingSoon: false },
     { href: "/dex", label: "BluPrint DEX", icon: LineChart, comingSoon: false },
     { href: "/referral", label: t("nav_refer"), icon: Users, comingSoon: false },
     { href: "/live", label: t("nav_live"), icon: Radio, comingSoon: false },
@@ -61,9 +61,10 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <>
-      <div className="px-4 py-4 border-b border-gray-800">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 overflow-hidden">
+      {/* Logo - Whale Theme */}
+      <div className="px-4 py-5 border-b border-[#233554] bg-[#020C1A]">
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-gradient-to-br from-[#64FFDA] to-[#0A192F] rounded-xl flex items-center justify-center shadow-lg shadow-[#64FFDA]/20 overflow-hidden border border-[#64FFDA]/30 group-hover:scale-105 transition-transform duration-300">
             <img 
               src="/favicon.ico" 
               alt="BluPrint" 
@@ -71,42 +72,52 @@ export default function Sidebar() {
             />
           </div>
           <div>
-            <span className="text-white font-bold text-lg tracking-tight">{t("sidebar_bluprint")}</span>
-            <p className="text-[10px] text-gray-500 -mt-1">{t("sidebar_launchpad")}</p>
+            <span className="text-white font-bold text-lg tracking-tight group-hover:text-[#64FFDA] transition-colors duration-300">
+              {t("sidebar_bluprint")}
+            </span>
+            <p className="text-[10px] text-[#64FFDA] -mt-1 font-medium">Whale Launchpad</p>
           </div>
         </Link>
       </div>
 
-      <nav className="flex-1 px-3 py-3 space-y-0.5">
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-6 space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
+          const active = isActive(item.href);
           return (
             <div key={item.href} className="relative">
               {item.comingSoon ? (
-                <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-gray-500 bg-gray-800/30 cursor-not-allowed">
+                <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-[#8892B0] bg-[#1A365D]/20 cursor-not-allowed">
                   <div className="flex items-center gap-3">
                     <Icon className="w-5 h-5 opacity-50" />
                     <span className="text-sm font-medium opacity-50">{item.label}</span>
                   </div>
-                  <span className="text-[9px] font-bold bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 px-1.5 py-0.5 rounded-full animate-pulse border border-yellow-500/30">
-                    COMING SOON
+                  <span className="text-[9px] font-bold bg-[#1A365D] text-[#64FFDA] px-1.5 py-0.5 rounded-full border border-[#64FFDA]/30">
+                    SOON
                   </span>
                 </div>
               ) : (
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 ${
-                    isActive(item.href)
-                      ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25"
-                      : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
+                    active
+                      ? "bg-[#1A365D] text-white border-l-2 border-[#64FFDA]"
+                      : "text-[#8892B0] hover:text-white hover:bg-[#1A365D]/30"
                   }`}
                 >
-                  <Icon className={`w-5 h-5 ${isActive(item.href) ? "text-white" : "text-gray-400 group-hover:text-white"}`} />
+                  <Icon 
+                    className={`w-5 h-5 transition-all duration-200 ${
+                      active 
+                        ? "text-[#64FFDA] drop-shadow-[0_0_2px_rgba(100,255,218,0.5)]" 
+                        : "text-[#8892B0] group-hover:text-[#64FFDA]"
+                    }`} 
+                  />
                   <span className="text-sm font-medium">{item.label}</span>
-                  {isActive(item.href) && (
+                  {active && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-lg"
+                      className="ml-auto w-1.5 h-1.5 rounded-full bg-[#64FFDA] shadow-lg shadow-[#64FFDA]/50"
                       transition={{ type: "spring", duration: 0.3 }}
                     />
                   )}
@@ -117,23 +128,33 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="px-3 pt-2 pb-4 space-y-2.5">
+      {/* Alt kısım - Statü göstergesi */}
+      <div className="px-3 pt-2 pb-5 space-y-3 border-t border-[#233554] mt-auto">
+        {/* Network Status */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#020C1A]/50 border border-[#233554]">
+          <div className="w-2 h-2 rounded-full bg-[#64FFDA] animate-pulse" />
+          <span className="text-xs text-[#8892B0]">Solana Mainnet</span>
+          <TrendingUp className="w-3 h-3 text-[#64FFDA] ml-auto" />
+        </div>
+
+        {/* Wallet Button */}
         <button
           onClick={handleWalletClick}
-          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-green-600/20 to-green-500/10 border border-green-500/30 hover:from-green-600/30 hover:to-green-500/20 transition-all duration-200 group"
+          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#1A365D]/30 border border-[#64FFDA]/30 hover:bg-[#1A365D] hover:border-[#64FFDA] transition-all duration-200 group"
         >
-          <div className="w-6 h-6 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-lg">
-            <Wallet className="w-3 h-3 text-white" />
+          <div className="w-6 h-6 bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] rounded-full flex items-center justify-center">
+            <Wallet className="w-3 h-3 text-[#0A192F]" />
           </div>
-          <span className="text-gray-200 text-sm font-medium truncate">
+          <span className="text-white text-sm font-medium truncate">
             {connected && publicKey ? shortenAddress(publicKey.toString()) : t("nav_connect")}
           </span>
           {connected && (
-            <span className="ml-auto w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="ml-auto w-2 h-2 bg-[#64FFDA] rounded-full animate-pulse shadow-lg shadow-[#64FFDA]/50" />
           )}
         </button>
         
-        <div className="flex items-center justify-between gap-2 px-1">
+        {/* Theme & Language */}
+        <div className="flex items-center justify-between gap-2 px-1 pt-2">
           <ThemeToggle />
           <LanguageSwitcher />
         </div>
@@ -145,32 +166,37 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className="fixed left-0 top-0 bottom-0 w-56 bg-gray-900/95 backdrop-blur-xl border-r border-gray-800 z-40 hidden md:flex flex-col">
+      {/* Desktop Sidebar */}
+      <aside className="fixed left-0 top-0 bottom-0 w-56 bg-[#0A192F] border-r border-[#233554] z-40 hidden md:flex flex-col shadow-xl">
         {sidebarContent}
       </aside>
 
-      <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-gray-900/95 backdrop-blur-xl border-b border-gray-800">
+      {/* Mobile Header */}
+      <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-[#0A192F]/95 backdrop-blur-xl border-b border-[#233554]">
         <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-8 h-8 bg-gradient-to-br from-[#64FFDA] to-[#0A192F] rounded-xl flex items-center justify-center overflow-hidden border border-[#64FFDA]/30">
               <img src="/favicon.ico" alt="BluPrint" className="w-full h-full object-cover" />
             </div>
-            <span className="text-white font-bold text-lg">{t("sidebar_bluprint")}</span>
+            <span className="text-white font-bold text-lg group-hover:text-[#64FFDA] transition-colors">
+              {t("sidebar_bluprint")}
+            </span>
           </Link>
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="w-10 h-10 rounded-xl bg-gray-800/50 flex items-center justify-center active:scale-95 transition"
+            className="w-10 h-10 rounded-xl bg-[#1A365D]/30 flex items-center justify-center active:scale-95 transition-all duration-200 hover:bg-[#1A365D] hover:border-[#64FFDA]/30 border border-transparent"
           >
             {isMobileMenuOpen ? (
-              <X className="w-6 h-6 text-white" />
+              <X className="w-5 h-5 text-white" />
             ) : (
-              <Menu className="w-6 h-6 text-white" />
+              <Menu className="w-5 h-5 text-white" />
             )}
           </button>
         </div>
       </div>
 
+      {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -178,15 +204,16 @@ export default function Sidebar() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 z-50 md:hidden"
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 md:hidden"
               onClick={() => setIsMobileMenuOpen(false)}
             />
             <motion.div
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{ type: "spring", damping: 25 }}
-              className="fixed left-0 top-0 bottom-0 w-64 bg-gray-900 z-50 md:hidden shadow-2xl flex flex-col"
+              initial={{ x: -280, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -280, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed left-0 top-0 bottom-0 w-64 bg-[#0A192F] z-50 shadow-2xl flex flex-col"
             >
               {sidebarContent}
             </motion.div>

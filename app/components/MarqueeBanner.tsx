@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Zap, Flame, TrendingUp, Rocket } from "lucide-react";
+import { TrendingUp, Flame, Rocket, Crown } from "lucide-react";
 
 interface MarqueeBannerProps {
   tokens?: Array<{ symbol: string; priceChange: number }>;
@@ -13,20 +13,16 @@ export default function MarqueeBanner({ tokens = [] }: MarqueeBannerProps) {
 
   useEffect(() => {
     // Boost kontrolü - gerçek API'den gelecek
-    const checkBoost = async () => {
-      // Simülasyon
-      setIsBoostActive(false);
-    };
-    checkBoost();
+    setIsBoostActive(false);
   }, []);
 
-  // Varsayılan token verileri
   const defaultTokens = [
-    { symbol: "BONK", priceChange: 15.4 },
-    { symbol: "WIF", priceChange: 8.2 },
-    { symbol: "POPCAT", priceChange: 22.1 },
-    { symbol: "MEW", priceChange: -3.5 },
-    { symbol: "SAMO", priceChange: 5.7 },
+    { symbol: "WHALE", priceChange: 25.4 },
+    { symbol: "SOL", priceChange: 12.2 },
+    { symbol: "BONK", priceChange: 8.1 },
+    { symbol: "WIF", priceChange: -2.5 },
+    { symbol: "POPCAT", priceChange: 18.7 },
+    { symbol: "MEW", priceChange: 5.3 },
   ];
 
   const displayTokens = tokens.length > 0 ? tokens : defaultTokens;
@@ -36,12 +32,12 @@ export default function MarqueeBanner({ tokens = [] }: MarqueeBannerProps) {
       (token) => (
         <div
           key={token.symbol}
-          className="flex items-center gap-2 rounded-full bg-gray-800/50 px-4 py-1.5 backdrop-blur-sm"
+          className="flex items-center gap-2 rounded-full bg-[#1A365D]/30 px-4 py-1.5 backdrop-blur-sm border border-[#233554]"
         >
           <span className="font-semibold text-white">{token.symbol}</span>
           <span
             className={`flex items-center gap-1 text-sm font-medium ${
-              token.priceChange >= 0 ? "text-green-400" : "text-red-400"
+              token.priceChange >= 0 ? "text-[#64FFDA]" : "text-red-400"
             }`}
           >
             {token.priceChange >= 0 ? (
@@ -54,40 +50,37 @@ export default function MarqueeBanner({ tokens = [] }: MarqueeBannerProps) {
         </div>
       )
     ),
-    // Boost mesajı - DAHA DİKKAT ÇEKİCİ (sadece boost yoksa göster)
     ...(!isBoostActive
       ? [
           <div
             key="boost-message"
-            className="flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 px-5 py-1.5 backdrop-blur-sm"
+            className="flex items-center gap-2 rounded-full bg-gradient-to-r from-[#64FFDA]/20 to-[#4ECDC4]/20 px-5 py-1.5 backdrop-blur-sm border border-[#64FFDA]/30"
           >
-            <Rocket className="h-4 w-4 text-purple-400" />
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text font-bold text-transparent">
-              BOOST YOUR TOKEN
+            <Rocket className="h-4 w-4 text-[#64FFDA]" />
+            <span className="bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] bg-clip-text font-bold text-transparent">
+              WHALE BOOST ACTIVE
             </span>
-            <Flame className="h-3.5 w-3.5 text-orange-400" />
+            <Crown className="h-3.5 w-3.5 text-[#64FFDA]" />
           </div>,
         ]
       : []),
   ];
 
-  // Banner yüksekliği azaltıldı (py-3 → py-1.5)
   return (
-    <div className="relative overflow-hidden border-y border-gray-800/50 bg-gray-950/50 py-1.5 backdrop-blur-sm">
+    <div className="relative overflow-hidden border-y border-[#233554] bg-[#020C1A]/80 py-1.5 backdrop-blur-sm">
       <div className="flex items-center">
-        <div className="absolute left-0 z-10 h-full w-20 bg-gradient-to-r from-gray-950 to-transparent" />
-        <div className="absolute right-0 z-10 h-full w-20 bg-gradient-to-l from-gray-950 to-transparent" />
+        <div className="absolute left-0 z-10 h-full w-20 bg-gradient-to-r from-[#020C1A] to-transparent" />
+        <div className="absolute right-0 z-10 h-full w-20 bg-gradient-to-l from-[#020C1A] to-transparent" />
 
         <motion.div
           className="flex gap-6 whitespace-nowrap px-4"
           animate={{ x: ["0%", "-50%"] }}
           transition={{
-            duration: 35, // 30s → 35s yavaşlatıldı
+            duration: 35,
             repeat: Infinity,
             ease: "linear",
           }}
         >
-          {/* İçeriği iki kez tekrarla (sonsuz kayma için) */}
           {[...bannerContent, ...bannerContent].map((content, index) => (
             <div key={index}>{content}</div>
           ))}

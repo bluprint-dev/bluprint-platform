@@ -2,82 +2,172 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==================== WHALE THEME - LACİVERT, BEYAZ, SİYAH ==================== */
+
 @layer base {
+  /* Whale Theme CSS Variables */
+  :root {
+    --whale-primary: #0A192F;
+    --whale-secondary: #112240;
+    --whale-tertiary: #1A365D;
+    --whale-accent: #64FFDA;
+    --whale-accent-dark: #4ECDC4;
+    --whale-text-primary: #FFFFFF;
+    --whale-text-secondary: #8892B0;
+    --whale-border: #233554;
+    --whale-deep: #020C1A;
+    --whale-card-bg: #112240;
+    --whale-hover: #1A365D;
+  }
+
   body {
-    background-color: white;
-    color: black;
+    background-color: var(--whale-primary);
+    color: var(--whale-text-primary);
     font-family: var(--font-inter);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Dark mode override - Whale temasında dark mode aynı kalır */
   .dark body {
-    background-color: #0a0a0a;
-    color: #ededed;
+    background-color: var(--whale-primary);
+    color: var(--whale-text-primary);
   }
-  
-  /* Başlıklar varsayılan Space Grotesk */
+
+  /* Başlıklar - Space Grotesk */
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-space);
     font-weight: 700;
   }
-  
+
   /* Butonlar */
   button {
     font-family: var(--font-space);
     font-weight: 600;
   }
-  
+
   /* Input, textarea */
   input, textarea {
     font-family: var(--font-inter);
   }
-  
+
   /* Code/mono */
   code, pre, .mono {
     font-family: var(--font-mono);
   }
 
-  /* ========== YENİ: Custom Scrollbar - Premium Dark Theme ========== */
+  /* ==================== CUSTOM SCROLLBAR - WHALE THEME ==================== */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0a0a0a;
+    background: var(--whale-primary);
     border-radius: 10px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    background: var(--whale-border);
     border-radius: 10px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    background: var(--whale-accent);
   }
 
-  /* ========== YENİ: Selection rengi ========== */
+  /* ==================== SELECTION RENGİ ==================== */
   ::selection {
-    background: rgba(59, 130, 246, 0.3);
-    color: #ffffff;
+    background: rgba(100, 255, 218, 0.2);
+    color: var(--whale-text-primary);
   }
 
   ::-moz-selection {
-    background: rgba(59, 130, 246, 0.3);
-    color: #ffffff;
+    background: rgba(100, 255, 218, 0.2);
+    color: var(--whale-text-primary);
+  }
+
+  /* ==================== YUMUŞAK KAYDIRMA ==================== */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Link hover efekti */
+  a {
+    transition: color 0.2s ease;
   }
 }
 
 @layer utilities {
-  .text-glow {
-    text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-  }
-  .text-glow-strong {
-    text-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+  /* ==================== WHALE TEMA UTILITIES ==================== */
+
+  /* Kart stilleri */
+  .whale-card {
+    @apply rounded-2xl border border-[#233554] bg-[#112240] transition-all duration-300;
   }
 
-  /* ========== YENİ: Tutarlı animasyon süreleri ========== */
+  .whale-card-hover {
+    @apply hover:border-[#64FFDA] hover:shadow-lg hover:shadow-[#64FFDA]/10 hover:-translate-y-1;
+  }
+
+  .whale-card-active {
+    @apply border-[#64FFDA] shadow-md shadow-[#64FFDA]/20;
+  }
+
+  /* Gradient arkaplanlar */
+  .whale-gradient-primary {
+    background: linear-gradient(135deg, #0A192F 0%, #112240 50%, #1A365D 100%);
+  }
+
+  .whale-gradient-accent {
+    background: linear-gradient(135deg, #64FFDA 0%, #4ECDC4 100%);
+  }
+
+  .whale-gradient-dark {
+    background: linear-gradient(180deg, #020C1A 0%, #0A192F 100%);
+  }
+
+  /* Glow efektleri */
+  .whale-glow {
+    box-shadow: 0 0 20px rgba(100, 255, 218, 0.15);
+  }
+
+  .whale-glow-strong {
+    box-shadow: 0 0 30px rgba(100, 255, 218, 0.3);
+  }
+
+  .whale-glow-hover {
+    @apply transition-shadow duration-300;
+  }
+
+  .whale-glow-hover:hover {
+    box-shadow: 0 0 25px rgba(100, 255, 218, 0.25);
+  }
+
+  /* Text glow - sadece accent renkte */
+  .text-glow {
+    text-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+  }
+
+  .text-glow-strong {
+    text-shadow: 0 0 30px rgba(100, 255, 218, 0.5);
+  }
+
+  /* Border gradient */
+  .border-gradient {
+    border-image: linear-gradient(135deg, #64FFDA, #0A192F) 1;
+  }
+
+  /* Buton stilleri */
+  .btn-whale {
+    @apply relative overflow-hidden rounded-xl bg-gradient-to-r from-[#1A365D] to-[#112240] px-6 py-3 font-semibold text-white transition-all duration-300 border border-[#64FFDA]/30 hover:border-[#64FFDA] hover:shadow-lg hover:shadow-[#64FFDA]/20;
+  }
+
+  .btn-whale-primary {
+    @apply relative overflow-hidden rounded-xl bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] px-6 py-3 font-semibold text-[#0A192F] transition-all duration-300 hover:shadow-lg hover:shadow-[#64FFDA]/30 hover:scale-[1.02];
+  }
+
+  /* ==================== TUTARLI ANİMASYON SÜRELERİ ==================== */
   .transition-smooth {
     transition-property: all;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -90,7 +180,16 @@
     transition-duration: 300ms;
   }
 
-  /* ========== YENİ: Gradient glow efekti ========== */
+  /* Card hover efekti */
+  .card-hover {
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
+  }
+
+  /* Glow border efekti */
   .gradient-glow {
     position: relative;
   }
@@ -99,7 +198,7 @@
     content: "";
     position: absolute;
     inset: -2px;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4);
+    background: linear-gradient(135deg, #64FFDA, #4ECDC4, #64FFDA);
     border-radius: inherit;
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -109,18 +208,9 @@
   .gradient-glow:hover::before {
     opacity: 1;
   }
-
-  /* ========== YENİ: Premium card hover ========== */
-  .card-hover {
-    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
-  }
-
-  .card-hover:hover {
-    transform: translateY(-4px);
-  }
 }
 
-/* ==================== MOBİL UYUMLULUK (MEVCUT KODU BOZMAZ) ==================== */
+/* ==================== MOBİL UYUMLULUK ==================== */
 
 /* 1. Dokunmatik hedef boyutları - sadece mobilde */
 @media (max-width: 768px) {
@@ -130,7 +220,7 @@
     min-height: 44px;
     min-width: 44px;
   }
-  
+
   /* iOS zoom'u engelle - inputlarda font 16px+ */
   input,
   textarea,
@@ -151,11 +241,6 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 4. Yumuşak kaydırma */
-html {
-  scroll-behavior: smooth;
-}
-
 /* ==================== KAYAN BANNER ANİMASYONU ==================== */
 
 @keyframes marquee {
@@ -172,7 +257,36 @@ html {
   display: inline-flex;
 }
 
-/* Banner hover'da yavaşlama (opsiyonel) */
+/* Banner hover'da yavaşlama */
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+/* ==================== WHALE TEMA ÖZEL EKSTRALAR ==================== */
+
+/* Grid desen arkaplan (opsiyonel) */
+.whale-grid-bg {
+  background-image: 
+    linear-gradient(to right, var(--whale-border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--whale-border) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Noise texture (opsiyonel) */
+.whale-noise {
+  position: relative;
+}
+
+.whale-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+/* Lacivertten siyaha gradient overlay */
+.whale-overlay {
+  background: linear-gradient(180deg, transparent 0%, var(--whale-deep) 100%);
 }

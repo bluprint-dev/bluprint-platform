@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Coins, Rocket, TrendingUp, Gift, Shield, Award } from "lucide-react";
+import { Coins, Rocket, TrendingUp, Gift, Shield, Award, Crown, ArrowRight } from "lucide-react";
 
 interface HowItWorksProps {
   t?: (key: string) => string;
@@ -13,42 +13,36 @@ const steps = [
     icon: Coins,
     title: "Create Token",
     description: "Enter token details, supply, and metadata. No coding required.",
-    color: "from-blue-500 to-cyan-500",
   },
   {
     step: "02",
     icon: Rocket,
     title: "Launch Bonding Curve",
     description: "Set your initial price and launch your bonding curve instantly.",
-    color: "from-purple-500 to-pink-500",
   },
   {
     step: "03",
     icon: TrendingUp,
     title: "Reach Market Cap",
     description: "When market cap hits $69k, migrate to Raydium automatically.",
-    color: "from-orange-500 to-red-500",
   },
   {
     step: "04",
-    icon: Gift,
-    title: "Claim Rewards",
-    description: "Earn referral bonuses and rewards from successful launches.",
-    color: "from-green-500 to-emerald-500",
+    icon: Crown,
+    title: "Whale Bonus",
+    description: "Large launches get premium placement and marketing support.",
   },
   {
     step: "05",
     icon: Shield,
     title: "Secure Trading",
     description: "Trade with confidence using our audited smart contracts.",
-    color: "from-cyan-500 to-blue-500",
   },
   {
     step: "06",
     icon: Award,
     title: "Community Growth",
     description: "Build your community with integrated marketing tools.",
-    color: "from-indigo-500 to-purple-500",
   },
 ];
 
@@ -58,19 +52,22 @@ export default function HowItWorks({ t }: HowItWorksProps) {
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-12 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 text-sm font-medium text-purple-400">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#64FFDA]/30 bg-[#1A365D]/20 px-4 py-1.5 text-sm font-medium text-[#64FFDA] backdrop-blur-sm">
             <Rocket className="h-3.5 w-3.5" />
-            <span>{t ? t("simple_process") : "Simple Process"}</span>
+            <span>Simple Process</span>
           </div>
           <h2 className="mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">
-            How It <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Works</span>
+            How It{" "}
+            <span className="bg-gradient-to-r from-[#64FFDA] to-[#4ECDC4] bg-clip-text text-transparent">
+              Works
+            </span>
           </h2>
-          <p className="mx-auto max-w-2xl text-gray-400">
-            {t ? t("how_it_works_description") : "Launch your token in minutes with our streamlined process"}
+          <p className="mx-auto max-w-2xl text-[#8892B0]">
+            Launch your token in minutes with our streamlined whale-friendly process
           </p>
         </div>
 
-        {/* Grid - rounded-2xl + yumuşak hover */}
+        {/* Steps Grid */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {steps.map((step, index) => (
             <motion.div
@@ -80,24 +77,22 @@ export default function HowItWorks({ t }: HowItWorksProps) {
               transition={{ duration: 0.5, delay: index * 0.1 }}
               viewport={{ once: true }}
               whileHover={{ y: -4, scale: 1.01 }}
-              className="group relative rounded-2xl border border-gray-800 bg-gradient-to-br from-gray-900/50 to-gray-950/50 p-6 backdrop-blur-sm transition-all duration-300 hover:border-purple-500/30 hover:shadow-xl"
+              className="relative rounded-2xl border border-[#233554] bg-[#112240] p-6 transition-all duration-300 hover:border-[#64FFDA]/50 hover:shadow-xl hover:shadow-[#64FFDA]/10"
             >
-              {/* Glow efekti */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/0 via-pink-500/0 to-purple-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-5" />
+              <div className="mb-2 text-sm font-semibold text-[#64FFDA]">{step.step}</div>
               
-              {/* Step numarası */}
-              <div className="mb-2 text-sm font-semibold text-purple-400">{step.step}</div>
-              
-              {/* İkon */}
-              <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${step.color} shadow-lg`}>
-                <step.icon className="h-6 w-6 text-white" />
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#1A365D]">
+                <step.icon className="h-6 w-6 text-[#64FFDA]" />
               </div>
               
-              {/* Başlık */}
               <h3 className="mb-2 text-xl font-semibold text-white">{step.title}</h3>
+              <p className="text-[#8892B0]">{step.description}</p>
               
-              {/* Açıklama */}
-              <p className="text-gray-400">{step.description}</p>
+              {index < steps.length - 1 && (
+                <div className="hidden lg:block absolute -right-3 top-1/2 -translate-y-1/2">
+                  <ArrowRight className="h-5 w-5 text-[#233554]" />
+                </div>
+              )}
             </motion.div>
           ))}
         </div>
