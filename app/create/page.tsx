@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -16,7 +16,6 @@ import {
   Sparkles,
   Check,
   AlertCircle,
-  Crown,
   Flame,
   PartyPopper,
 } from "lucide-react";
@@ -30,13 +29,11 @@ export default function CreatePage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  // Form state
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [tokenDescription, setTokenDescription] = useState("");
   const [tokenImage, setTokenImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [buyAmount, setBuyAmount] = useState("0.1");
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -96,31 +93,19 @@ export default function CreatePage() {
       const data = await res.json();
       
       if (data.success) {
-        // ============================================
-        // FEE TRANSACTION'INI İMZALA VE GÖNDER
-        // ============================================
         if (data.feeTransaction && signTransaction && sendTransaction) {
           try {
-            // Fee transaction'ını deserialize et
             const feeTx = Transaction.from(Buffer.from(data.feeTransaction, 'base64'));
-            
-            // İmzala
             const signedFeeTx = await signTransaction(feeTx);
-            
-            // Gönder ve onayla
             const signature = await sendTransaction(signedFeeTx, connection);
             await connection.confirmTransaction(signature);
-            
-            console.log('✅ Fee transaction confirmed:', signature);
           } catch (feeError: any) {
-            console.error('Fee transaction failed:', feeError);
-            setError(`Fee payment failed: ${feeError.message}`);
+            setError(`Payment failed: ${feeError.message}`);
             setIsLoading(false);
             return;
           }
         }
         
-        // Başarılı
         setSuccess(true);
         setTimeout(() => {
           router.push("/");
@@ -130,7 +115,6 @@ export default function CreatePage() {
         setIsLoading(false);
       }
     } catch (err: any) {
-      console.error("Create token error:", err);
       setError(err.message || "Network error");
       setIsLoading(false);
     }
@@ -139,7 +123,7 @@ export default function CreatePage() {
   return (
     <>
       <div className="relative z-10 min-h-screen">
-        {/* Header - Pink Theme */}
+        {/* Header */}
         <div className="sticky top-0 z-50 border-b border-[#ff2d95]/20 bg-[#0A0A0F]/95 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="flex items-center gap-4">
@@ -154,8 +138,8 @@ export default function CreatePage() {
                   <Rocket className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-white">Create Meme Coin</h1>
-                  <p className="text-xs text-gray-500">Launch on Solana bonding curve</p>
+                  <h1 className="text-xl font-bold text-white">Create Token</h1>
+                  <p className="text-xs text-gray-500">Launch on Solana</p>
                 </div>
               </div>
             </div>
@@ -164,9 +148,9 @@ export default function CreatePage() {
 
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Sol Taraf - Form */}
+            {/* Form */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Step Progress - Pink Theme */}
+              {/* Step Progress */}
               <div className="bg-[#141414] rounded-2xl border border-[#252525] p-6">
                 <div className="flex items-center justify-between mb-6">
                   {[1, 2, 3].map((s) => (
@@ -186,7 +170,7 @@ export default function CreatePage() {
                         )}
                       </div>
                       <span className="ml-3 text-sm text-gray-500 hidden sm:inline">
-                        {s === 1 ? "Token Info" : s === 2 ? "Configure" : "Review"}
+                        {s === 1 ? "Info" : s === 2 ? "Configure" : "Review"}
                       </span>
                     </div>
                   ))}
@@ -202,10 +186,10 @@ export default function CreatePage() {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Flame className="w-5 h-5 text-[#ff2d95]" />
-                    <h2 className="text-xl font-bold text-white">Token Information</h2>
+                    <h2 className="text-xl font-bold text-white">Token Info</h2>
                   </div>
                   
-                  {/* Token Image Upload */}
+                  {/* Token Image */}
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">
                       Token Image *
@@ -242,17 +226,9 @@ export default function CreatePage() {
                           </label>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <p className="text-xs text-gray-500">
-                          PNG or JPG, max 2MB.<br />
-                          Be creative fren! 🎨
-                        </p>
-                      </div>
                     </div>
                     {errors.tokenImage && (
-                      <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {errors.tokenImage}
-                      </p>
+                      <p className="text-xs text-red-400 mt-1">{errors.tokenImage}</p>
                     )}
                   </div>
 
@@ -265,7 +241,7 @@ export default function CreatePage() {
                       type="text"
                       value={tokenName}
                       onChange={(e) => setTokenName(e.target.value)}
-                      placeholder="e.g., Pink Whale Coin"
+                      placeholder="e.g., Pink Whale"
                       className="w-full px-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white placeholder-gray-500 focus:outline-none focus:border-[#ff2d95] transition-all"
                     />
                     {errors.tokenName && (
@@ -290,15 +266,15 @@ export default function CreatePage() {
                     )}
                   </div>
 
-                  {/* Token Description */}
+                  {/* Description */}
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">
-                      Description (Optional)
+                      Description
                     </label>
                     <textarea
                       value={tokenDescription}
                       onChange={(e) => setTokenDescription(e.target.value)}
-                      placeholder="Tell the community about your meme coin..."
+                      placeholder="Tell the community about your token..."
                       rows={3}
                       className="w-full px-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white placeholder-gray-500 focus:outline-none focus:border-[#ff2d95] transition-all resize-none"
                     />
@@ -310,7 +286,7 @@ export default function CreatePage() {
                     }}
                     className="w-full py-3 rounded-xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white font-semibold hover:shadow-lg hover:shadow-[#ff2d95]/30 transition-all"
                   >
-                    Continue →
+                    Continue
                   </button>
                 </motion.div>
               )}
@@ -324,35 +300,13 @@ export default function CreatePage() {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Coins className="w-5 h-5 text-[#ff2d95]" />
-                    <h2 className="text-xl font-bold text-white">Configure Launch</h2>
+                    <h2 className="text-xl font-bold text-white">Configure</h2>
                   </div>
 
-                  {/* Info Box - Pink Theme */}
                   <div className="bg-[#ff2d95]/10 rounded-xl p-4 border border-[#ff2d95]/30">
-                    <p className="text-sm text-[#ff2d95] mb-2">ℹ️ Bonding Curve Launch</p>
-                    <p className="text-xs text-gray-300">
+                    <p className="text-sm text-gray-300">
                       Your token will launch on a bonding curve. Price increases with each buy.
-                      Create fee: 0.01 SOL (58% Owner, 32% Cousin, 10% Platform)
                     </p>
-                  </div>
-
-                  {/* Create Fee Info */}
-                  <div className="bg-[#0A0A0F] rounded-xl p-4 border border-[#252525]">
-                    <p className="text-sm text-gray-400 mb-2">💰 Create Token Fee Distribution</p>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span>Owner (aJCqEs...)</span>
-                        <span className="text-[#ff2d95]">58% (0.0058 SOL)</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Cousin (2WyCLg...)</span>
-                        <span className="text-[#ff2d95]">32% (0.0032 SOL)</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Platform (A692Ua...)</span>
-                        <span className="text-[#ff2d95]">10% (0.0010 SOL)</span>
-                      </div>
-                    </div>
                   </div>
 
                   <div className="flex gap-3">
@@ -366,7 +320,7 @@ export default function CreatePage() {
                       onClick={() => setStep(3)}
                       className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white font-semibold hover:shadow-lg hover:shadow-[#ff2d95]/30 transition-all"
                     >
-                      Review →
+                      Review
                     </button>
                   </div>
                 </motion.div>
@@ -381,7 +335,7 @@ export default function CreatePage() {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <PartyPopper className="w-5 h-5 text-[#ff2d95]" />
-                    <h2 className="text-xl font-bold text-white">Review & Launch</h2>
+                    <h2 className="text-xl font-bold text-white">Review</h2>
                   </div>
 
                   {/* Token Preview */}
@@ -402,56 +356,27 @@ export default function CreatePage() {
                     </div>
                   </div>
 
-                  {/* Launch Details */}
                   <div className="space-y-3">
                     <div className="flex justify-between py-2 border-b border-[#252525]">
-                      <span className="text-gray-500">Token Name</span>
+                      <span className="text-gray-500">Name</span>
                       <span className="text-white font-medium">{tokenName}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-[#252525]">
-                      <span className="text-gray-500">Token Symbol</span>
+                      <span className="text-gray-500">Symbol</span>
                       <span className="text-white font-medium">{tokenSymbol}</span>
                     </div>
                   </div>
 
-                  {/* Cost Info */}
-                  <div className="bg-[#0A0A0F] rounded-xl p-4 space-y-2">
+                  <div className="bg-[#0A0A0F] rounded-xl p-4">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Create Token Fee</span>
+                      <span className="text-gray-500">Create Fee</span>
                       <span className="text-white">0.01 SOL</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Network Fee (est.)</span>
-                      <span className="text-white">~0.001 SOL</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-[#252525]">
-                      <span className="text-gray-400">Total Estimated</span>
-                      <span className="text-[#ff2d95] font-medium">~0.011 SOL</span>
-                    </div>
                   </div>
 
-                  {/* Warning */}
-                  <div className="bg-yellow-500/10 rounded-xl p-4 border border-yellow-500/30">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-yellow-400">Important</p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          You will need to approve TWO transactions: 
-                          1) Create fee payment (0.01 SOL) 
-                          2) Token creation
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Error Message */}
                   {error && (
                     <div className="bg-red-500/10 rounded-xl p-3 border border-red-500/30">
-                      <p className="text-sm text-red-400 flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4" />
-                        {error}
-                      </p>
+                      <p className="text-sm text-red-400">{error}</p>
                     </div>
                   )}
 
@@ -470,12 +395,12 @@ export default function CreatePage() {
                       {isLoading ? (
                         <>
                           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Launching...
+                          Creating...
                         </>
                       ) : (
                         <>
                           <Rocket className="w-5 h-5" />
-                          Launch Token
+                          Create Token
                         </>
                       )}
                     </button>
@@ -497,41 +422,33 @@ export default function CreatePage() {
                         <Check className="w-8 h-8 text-white" />
                       </div>
                       <h3 className="text-2xl font-bold text-white mb-2">Success! 🎉</h3>
-                      <p className="text-gray-400 mb-4">
-                        Your meme coin has been created fren!
-                      </p>
-                      <p className="text-sm text-[#ff2d95]">Redirecting to homepage...</p>
+                      <p className="text-gray-400 mb-4">Your token has been created!</p>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {/* Sağ Taraf - Info Panel */}
+            {/* Info Panel */}
             <div className="space-y-6">
               {/* Wallet Status */}
               <div className="bg-[#141414] rounded-2xl border border-[#252525] p-6">
-                <h3 className="font-semibold text-white mb-4">Wallet Status</h3>
+                <h3 className="font-semibold text-white mb-4">Wallet</h3>
                 <div className={`flex items-center gap-3 p-3 rounded-xl ${
                   connected ? "bg-[#ff2d95]/10 border border-[#ff2d95]/30" : "bg-[#1C1C1E]"
                 }`}>
                   <div className={`w-2 h-2 rounded-full ${connected ? "bg-[#ff2d95] animate-pulse" : "bg-red-500"}`} />
                   <span className="text-sm text-white">
-                    {connected ? "Wallet Connected 🐋" : "Wallet Not Connected"}
+                    {connected ? "Connected" : "Not Connected"}
                   </span>
                 </div>
-                {!connected && (
-                  <p className="text-xs text-gray-500 mt-3">
-                    Connect your wallet to launch a meme coin!
-                  </p>
-                )}
               </div>
 
-              {/* Launch Benefits */}
+              {/* Benefits */}
               <div className="bg-gradient-to-br from-[#141414] to-[#0A0A0F] rounded-2xl border border-[#252525] p-6">
                 <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
                   <Shield className="w-4 h-4 text-[#ff2d95]" />
-                  Launch Benefits
+                  Benefits
                 </h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm">
@@ -544,27 +461,9 @@ export default function CreatePage() {
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <Check className="w-4 h-4 text-[#ff2d95]" />
-                    <span className="text-gray-400">Fair price discovery</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <Check className="w-4 h-4 text-[#ff2d95]" />
-                    <span className="text-gray-400">No trading platform fees</span>
+                    <span className="text-gray-400">Fair pricing</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Tips */}
-              <div className="bg-[#141414] rounded-2xl border border-[#252525] p-6">
-                <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-yellow-500" />
-                  Meme Coin Tips
-                </h3>
-                <ul className="space-y-2 text-sm text-gray-500">
-                  <li>• Choose a meme-able name</li>
-                  <li>• Add a funny/trendy logo</li>
-                  <li>• Build community first</li>
-                  <li>• Hype it on Twitter/X</li>
-                </ul>
               </div>
             </div>
           </div>
