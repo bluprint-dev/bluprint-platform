@@ -5,10 +5,7 @@ import Irys from '@irys/sdk';
 import { redis } from '@/app/lib/redis';
 import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 
-// ============================================
-// CREATE TOKEN FEE DAĞITIM KONFİGÜRASYONU
-// ============================================
-const CREATE_FEE_SOL = 0.02;
+const CREATE_FEE_SOL = 0.01;
 
 const CREATE_FEE_DISTRIBUTION = [
   { address: 'aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x', percentage: 58 },
@@ -24,13 +21,11 @@ export async function POST(req: NextRequest) {
     const name = formData.get('name') as string;
     const symbol = formData.get('symbol') as string;
     const logoFile = formData.get('logo') as File | null;
+    const description = formData.get('description') as string || '';
     const userPublicKey = formData.get('userPublicKey') as string;
 
     if (!name || !symbol || !userPublicKey) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Missing required fields: name, symbol, userPublicKey' 
-      }, { status: 400 });
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!);
@@ -38,7 +33,7 @@ export async function POST(req: NextRequest) {
     const totalFeeLamports = CREATE_FEE_SOL * 1_000_000_000;
 
     // ============================================
-    // 1. LOGO YÜKLEME (Irys)
+    // 1. LOGO YÜKLE (Irys)
     // ============================================
     let imageUrl = "https://gateway.irys.xyz/default-token-logo.png";
     
@@ -58,16 +53,42 @@ export async function POST(req: NextRequest) {
         });
         
         imageUrl = `https://gateway.irys.xyz/${receipt.id}`;
-        console.log('✅ Logo uploaded to Irys:', imageUrl);
-        
-      } catch (irysError) {
-        console.error('❌ Irys upload failed:', irysError);
+      } catch (err) {
+        console.error('Irys error:', err);
       }
     }
 
     // ============================================
-    // 2. BONDING CURVE TOKEN OLUŞTUR
+    // 2. FEE TRANSACTION BUILD (İmzasız)
     // ============================================
+    const feeTransaction = new Transaction();
+    
+    for (const dist of CREATE_FEE_DISTRIBUTION) {
+      const amount = Math.floor((totalFeeLamports * dist.percentage) / 100);
+      feeTransaction.add(
+        SystemProgram.transfer({
+          fromPubkey: userWallet,
+          toPubkey: new PublicKey(dist.address),
+          lamports: amount,
+        })
+      );
+    }
+
+    const { blockhash } = await connection.getLatestBlockhash();
+    feeTransaction.recentBlockhash = blockhash;
+    feeTransaction.feePayer = userWallet;
+
+    const feeTxBase64 = feeTransaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    }).toString('base64');
+
+    // ============================================
+    // 3. TOKEN OLUŞTUR (Backend imzalıyor - geçici çözüm)
+    // ============================================
+    // NOT: Metaplex Genesis SDK'sı transaction build etmeyi direkt desteklemiyor.
+    // Bu nedenle token oluşturma işlemini backend yapıyor, fee'yi frontend alıyor.
+    
     const umi = getPlatformUmi();
 
     const tokenResult = await createAndRegisterLaunch(umi, {}, {
@@ -77,7 +98,7 @@ export async function POST(req: NextRequest) {
         name,
         symbol,
         image: imageUrl,
-        description: formData.get('description') as string || '',
+        description,
       },
       launch: {
         creatorFeeWallet: BONDING_CURVE_FEE_WALLET,
@@ -86,66 +107,25 @@ export async function POST(req: NextRequest) {
 
     const mintAddress = tokenResult.mintAddress;
 
-    // ============================================
-    // 3. FEE TRANSACTION'INI HAZIRLA
-    // ============================================
-    const feeTransaction = new Transaction();
-    
-    for (const dist of CREATE_FEE_DISTRIBUTION) {
-      const amount = (totalFeeLamports * dist.percentage) / 100;
-      const destinationWallet = new PublicKey(dist.address);
-      
-      feeTransaction.add(
-        SystemProgram.transfer({
-          fromPubkey: userWallet,
-          toPubkey: destinationWallet,
-          lamports: amount,
-        })
-      );
-    }
-
-    // Blockhash ve fee payer ayarla
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-    feeTransaction.recentBlockhash = blockhash;
-    feeTransaction.lastValidBlockHeight = lastValidBlockHeight;
-    feeTransaction.feePayer = userWallet;
-
-    // Transaction'ı serialize et (partial - kullanıcı imzalayacak)
-    const serializedFeeTransaction = feeTransaction.serialize({ requireAllSignatures: false });
-    const feeTransactionBase64 = serializedFeeTransaction.toString('base64');
-
-    // ============================================
-    // 4. REDIS'E KAYDET
-    // ============================================
-    await redis.set(`bonding-curve:creator:${mintAddress}`, userPublicKey);
-    await redis.sadd('bonding-curve:tokens', mintAddress);
-    
-    await redis.set(`create-fee-distribution:${mintAddress}`, JSON.stringify({
-      distribution: CREATE_FEE_DISTRIBUTION,
-      totalFee: CREATE_FEE_SOL,
-      timestamp: Date.now(),
-    }));
-
-    console.log('✅ Token created:', {
-      mintAddress,
+    // Token'ı geçici olarak Redis'e kaydet (fee ödenince onaylanacak)
+    await redis.set(`pending-token:${mintAddress}`, JSON.stringify({
+      userPublicKey,
       name,
       symbol,
-    });
+      imageUrl,
+      createdAt: Date.now(),
+    }));
 
     return NextResponse.json({
       success: true,
       mintAddress,
-      launchLink: tokenResult.launch.link,
-      feeTransaction: feeTransactionBase64,
+      feeTransaction: feeTxBase64,
       feeAmount: CREATE_FEE_SOL,
+      launchLink: tokenResult.launch?.link,
     });
     
   } catch (error: any) {
-    console.error('❌ Create token error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message || 'Internal server error',
-      details: error.toString(),
-    }, { status: 500 });
+    console.error('Build error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
