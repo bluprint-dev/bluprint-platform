@@ -2,63 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ==================== APPLE PREMIUM PINK THEME ==================== */
-
-@layer base {
-  :root {
-    --pink: oklch(51.8% 0.253 323.949);
-    --bg: #0A0A0A;
-    --card: #141414;
-    --card-light: #1C1C1E;
-    --text: #FFFFFF;
-    --text-secondary: #8E8E93;
-    --border: #252525;
-  }
-
-  body {
-    background-color: var(--bg);
-    color: var(--text);
-    font-family: var(--font-inter);
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-space);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-  }
-
-  ::-webkit-scrollbar {
-    width: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--card);
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--pink);
-    border-radius: 20px;
-  }
-
-  ::selection {
-    background: var(--pink);
-    color: white;
-  }
-}
-
-@layer utilities {
-  .text-pink {
-    color: var(--pink);
-  }
-  .bg-pink {
-    background-color: var(--pink);
-  }
-  .card-apple {
-    @apply rounded-2xl bg-[#141414] border border-[#252525] transition-all duration-300;
-  }
-  .card-apple:hover {
-    @apply border-[oklch(51.8%_0.253_323.949)/0.5] translate-y-[-2px];
-  }
-}
-
 /* ==================== ANİMASYONLAR ==================== */
 
 @keyframes spin-slow {
@@ -72,38 +15,34 @@
 
 @keyframes float {
   0%, 100% {
-    transform: translateY(0px);
+    transform: translateY(0px) translateX(0px);
     opacity: 0;
   }
-  50% {
-    transform: translateY(-30px);
-    opacity: 0.5;
-  }
-}
-
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 0.3;
-    transform: scale(1);
+  25% {
+    transform: translateY(-20px) translateX(10px);
+    opacity: 0.4;
   }
   50% {
+    transform: translateY(-40px) translateX(-10px);
     opacity: 0.6;
-    transform: scale(1.05);
+  }
+  75% {
+    transform: translateY(-20px) translateX(5px);
+    opacity: 0.3;
   }
 }
 
 @keyframes ping-slow {
   0% {
     transform: translate(-50%, -50%) scale(0.8);
-    opacity: 0.4;
+    opacity: 0.3;
   }
   75%, 100% {
-    transform: translate(-50%, -50%) scale(1.2);
+    transform: translate(-50%, -50%) scale(1.3);
     opacity: 0;
   }
 }
 
-/* Animasyon sınıfları */
 .animate-spin-slow {
   animation: spin-slow linear infinite;
 }
@@ -112,15 +51,36 @@
   animation: float ease-in-out infinite;
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow ease-in-out infinite;
-}
-
 .animate-ping-slow {
   animation: ping-slow ease-out infinite;
 }
 
-/* ==================== MOBİL UYUMLULUK ==================== */
+/* ==================== KART STILLERI ==================== */
+
+.card-apple {
+  @apply rounded-2xl bg-[#141414] border border-[#252525] transition-all duration-300;
+}
+
+.card-apple:hover {
+  @apply border-[oklch(51.8%_0.253_323.949)]/50 translate-y-[-2px];
+}
+
+/* ==================== SCROLLBAR ==================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #141414;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(51.8% 0.253 323.949);
+  border-radius: 20px;
+}
+
+/* ==================== MOBİL ==================== */
 
 @media (max-width: 768px) {
   button, a {
