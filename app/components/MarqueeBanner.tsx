@@ -43,40 +43,38 @@ export default function MarqueeBanner() {
     >
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#ff2d95]/5 to-transparent animate-shimmer" />
       
-      {/* Ana container - ortalanmış */}
-      <div className="relative flex items-center justify-center gap-4 text-sm font-medium max-w-7xl mx-auto px-4">
-        {/* Left badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff2d95]/10 border border-[#ff2d95]/20 flex-shrink-0">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff2d95] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff2d95]"></span>
-          </span>
-          <span className="text-[10px] font-mono text-[#ff2d95] tracking-wider">LIVE</span>
-        </div>
+      {/* Banner içeriği - sağa yaslı */}
+      <div className="relative flex items-center justify-end gap-4 text-sm font-medium w-full px-6">
+        
+        {/* Sol taraf boş */}
+        <div className="flex-1" />
 
-        {/* Animated message - ortada */}
+        {/* Animated message - SAĞA YASLI */}
         <AnimatePresence mode="wait">
           <motion.div
             key={currentIndex}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
-            className="flex items-center gap-2 text-gray-200 text-center justify-center flex-1"
+            className="flex items-center gap-2 text-gray-200"
           >
             <span className="text-base">{currentMessage.text.split(" ")[0]}</span>
             <span>{currentMessage.text.substring(currentMessage.text.indexOf(" "))}</span>
           </motion.div>
         </AnimatePresence>
 
-        {/* Right badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff2d95]/10 border border-[#ff2d95]/20 flex-shrink-0">
-          <span className="text-[10px] font-mono text-[#ff2d95] tracking-wider">TRENDING</span>
-          <span className="text-[10px] text-[#ff2d95]">🔥</span>
+        {/* Live badge - sağda */}
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff2d95]/10 border border-[#ff2d95]/20 flex-shrink-0">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff2d95] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff2d95]"></span>
+          </span>
+          <span className="text-[10px] font-mono text-[#ff2d95] tracking-wider">LIVE</span>
         </div>
       </div>
 
-      {/* Dot indicators - ortada */}
+      {/* Dot indicators */}
       <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
         {MARQUEE_MESSAGES.map((_, i) => (
           <button
