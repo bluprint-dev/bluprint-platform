@@ -22,7 +22,7 @@ export default function Sidebar() {
     { href: "/", label: t("nav_home"), icon: "🏠", comingSoon: false },
     { href: "/create", label: t("nav_create"), icon: "🪙", comingSoon: false },
     { href: "/new-pairs", label: t("nav_new_pairs"), icon: "🔥", comingSoon: false },
-    { href: "/dex", label: "BluPrint DEX", icon: "📊", comingSoon: true },
+    { href: "/dex", label: "BluPrint DEX", icon: "📊", comingSoon: false },
     { href: "/referral", label: t("nav_refer"), icon: "💰", comingSoon: false },
     { href: "/live", label: t("nav_live"), icon: "📢", comingSoon: false },
     { href: "/top-users", label: t("nav_top_users"), icon: "🏆", comingSoon: false },

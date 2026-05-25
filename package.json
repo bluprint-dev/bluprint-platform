@@ -11,6 +11,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@irys/sdk": "^0.2.11",
+    "@metaplex-foundation/genesis": "^0.36.2",
     "@metaplex-foundation/mpl-token-metadata": "^2.13.0",
     "@metaplex-foundation/umi": "^1.5.1",
     "@metaplex-foundation/umi-bundle-defaults": "^1.5.1",
