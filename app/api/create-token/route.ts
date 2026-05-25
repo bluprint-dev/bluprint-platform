@@ -3,7 +3,6 @@ import { getPlatformUmi } from '@/app/lib/umi';
 import { createAndRegisterLaunch } from '@metaplex-foundation/genesis';
 import Irys from '@irys/sdk';
 import { redis } from '@/app/lib/redis';
-import { Keypair } from '@solana/web3.js';
 import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 
 // ============================================
@@ -39,42 +38,13 @@ export async function POST(req: NextRequest) {
     const totalFeeLamports = CREATE_FEE_SOL * 1_000_000_000;
 
     // ============================================
-    // 1. TEK TRANSACTION İLE 3 CÜZDANA TRANSFER
-    // ============================================
-    const feeTransaction = new Transaction();
-    
-    for (const dist of CREATE_FEE_DISTRIBUTION) {
-      const amount = (totalFeeLamports * dist.percentage) / 100;
-      const destinationWallet = new PublicKey(dist.address);
-      
-      feeTransaction.add(
-        SystemProgram.transfer({
-          fromPubkey: userWallet,
-          toPubkey: destinationWallet,
-          lamports: amount,
-        })
-      );
-    }
-
-    // ✅ RECENT BLOCKHASH EKLE (ÇOK ÖNEMLİ!)
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-    feeTransaction.recentBlockhash = blockhash;
-    feeTransaction.lastValidBlockHeight = lastValidBlockHeight;
-    feeTransaction.feePayer = userWallet;
-
-    const serializedTransaction = feeTransaction.serialize({ requireAllSignatures: false });
-    const transactionBase64 = serializedTransaction.toString('base64');
-
-    // ============================================
-    // 2. LOGO YÜKLEME (Irys)
+    // 1. LOGO YÜKLEME (Irys)
     // ============================================
     let imageUrl = "https://gateway.irys.xyz/default-token-logo.png";
     
     if (logoFile && logoFile.size > 0) {
       try {
         const buffer = Buffer.from(await logoFile.arrayBuffer());
-        
-        // Irys için key olarak secret key array'ini kullan
         const secretKeyArray = JSON.parse(process.env.PLATFORM_SECRET_KEY!);
         
         const irys = new Irys({
@@ -96,11 +66,11 @@ export async function POST(req: NextRequest) {
     }
 
     // ============================================
-    // 3. BONDING CURVE TOKEN OLUŞTUR
+    // 2. BONDING CURVE TOKEN OLUŞTUR (Umi ile)
     // ============================================
     const umi = getPlatformUmi();
 
-    const result = await createAndRegisterLaunch(umi, {}, {
+    const tokenResult = await createAndRegisterLaunch(umi, {}, {
       wallet: userPublicKey,
       launchType: 'bondingCurve',
       token: {
@@ -114,7 +84,34 @@ export async function POST(req: NextRequest) {
       },
     } as any);
 
-    const mintAddress = result.mintAddress;
+    const mintAddress = tokenResult.mintAddress;
+
+    // ============================================
+    // 3. FEE TRANSACTION'INI HAZIRLA (KULLANICI İMZALAYACAK)
+    // ============================================
+    const feeTransaction = new Transaction();
+    
+    for (const dist of CREATE_FEE_DISTRIBUTION) {
+      const amount = (totalFeeLamports * dist.percentage) / 100;
+      const destinationWallet = new PublicKey(dist.address);
+      
+      feeTransaction.add(
+        SystemProgram.transfer({
+          fromPubkey: userWallet,
+          toPubkey: destinationWallet,
+          lamports: amount,
+        })
+      );
+    }
+
+    // Blockhash ekle
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+    feeTransaction.recentBlockhash = blockhash;
+    feeTransaction.lastValidBlockHeight = lastValidBlockHeight;
+    feeTransaction.feePayer = userWallet;
+
+    const serializedFeeTransaction = feeTransaction.serialize({ requireAllSignatures: false });
+    const feeTransactionBase64 = serializedFeeTransaction.toString('base64');
 
     // ============================================
     // 4. REDIS'E KAYDET
@@ -135,11 +132,12 @@ export async function POST(req: NextRequest) {
       feeDistribution: CREATE_FEE_DISTRIBUTION,
     });
 
+    // Frontend'e hem token bilgisini hem de fee transaction'ını döndür
     return NextResponse.json({
       success: true,
       mintAddress,
-      launchLink: result.launch.link,
-      feeTransaction: transactionBase64,
+      launchLink: tokenResult.launch.link,
+      feeTransaction: feeTransactionBase64, // Frontend'de imzalanacak
       feeConfig: {
         totalFee: CREATE_FEE_SOL,
         distribution: CREATE_FEE_DISTRIBUTION,
