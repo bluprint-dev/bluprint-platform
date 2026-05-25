@@ -41,12 +41,12 @@ export default function MarqueeBanner() {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#ff2d95]/5 to-transparent animate-shimmer" />
       
-      <div className="relative flex items-center justify-center gap-4 text-sm font-medium">
+      {/* Ana container - ortalanmış */}
+      <div className="relative flex items-center justify-center gap-4 text-sm font-medium max-w-7xl mx-auto px-4">
         {/* Left badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff2d95]/10 border border-[#ff2d95]/20">
+        <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff2d95]/10 border border-[#ff2d95]/20 flex-shrink-0">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff2d95] opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff2d95]"></span>
@@ -54,7 +54,7 @@ export default function MarqueeBanner() {
           <span className="text-[10px] font-mono text-[#ff2d95] tracking-wider">LIVE</span>
         </div>
 
-        {/* Animated message */}
+        {/* Animated message - ortada */}
         <AnimatePresence mode="wait">
           <motion.div
             key={currentIndex}
@@ -62,7 +62,7 @@ export default function MarqueeBanner() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="flex items-center gap-2 text-gray-200"
+            className="flex items-center gap-2 text-gray-200 text-center justify-center flex-1"
           >
             <span className="text-base">{currentMessage.text.split(" ")[0]}</span>
             <span>{currentMessage.text.substring(currentMessage.text.indexOf(" "))}</span>
@@ -70,13 +70,13 @@ export default function MarqueeBanner() {
         </AnimatePresence>
 
         {/* Right badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff2d95]/10 border border-[#ff2d95]/20">
+        <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff2d95]/10 border border-[#ff2d95]/20 flex-shrink-0">
           <span className="text-[10px] font-mono text-[#ff2d95] tracking-wider">TRENDING</span>
           <span className="text-[10px] text-[#ff2d95]">🔥</span>
         </div>
       </div>
 
-      {/* Dot indicators */}
+      {/* Dot indicators - ortada */}
       <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
         {MARQUEE_MESSAGES.map((_, i) => (
           <button
