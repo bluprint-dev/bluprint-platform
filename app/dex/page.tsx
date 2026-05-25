@@ -1,27 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import {
-  TrendingUp,
-  TrendingDown,
+  ArrowUpRight,
+  ArrowDownRight,
   Flame,
-  Clock,
-  Star,
   Crown,
   Search,
   Filter,
-  ArrowUpRight,
-  ArrowDownRight,
-  Zap,
-  Wallet,
   RefreshCw,
-  ChevronDown,
   BarChart3,
   Activity,
   Users,
-  DollarSign,
+  TrendingUp,
 } from "lucide-react";
 
 interface Token {
@@ -34,9 +27,10 @@ interface Token {
   marketCap: number;
   liquidity: number;
   age: string;
-  image?: string;
-  isTrending?: boolean;
-  isNew?: boolean;
+  ageMinutes: number;
+  image: string;
+  isTrending: boolean;
+  isNew: boolean;
 }
 
 export default function DexPage() {
@@ -44,7 +38,7 @@ export default function DexPage() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"volume" | "price" | "age" | "marketCap">("volume");
+  const [sortBy, setSortBy] = useState<"volume24h" | "price" | "ageMinutes" | "marketCap">("volume24h");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedToken, setSelectedToken] = useState<Token | null>(null);
   const [buyAmount, setBuyAmount] = useState("");
@@ -65,8 +59,10 @@ export default function DexPage() {
         marketCap: 89000000,
         liquidity: 1250000,
         age: "2m",
+        ageMinutes: 2,
         image: "🔥",
         isTrending: true,
+        isNew: false,
       },
       {
         address: "So11111111111111111111111111111111111111112",
@@ -78,8 +74,10 @@ export default function DexPage() {
         marketCap: 245000000,
         liquidity: 890000,
         age: "1m",
+        ageMinutes: 1,
         image: "🐕",
         isTrending: true,
+        isNew: false,
       },
       {
         address: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
@@ -91,7 +89,10 @@ export default function DexPage() {
         marketCap: 89000000,
         liquidity: 456000,
         age: "3m",
+        ageMinutes: 3,
         image: "🐱",
+        isTrending: false,
+        isNew: false,
       },
       {
         address: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
@@ -103,9 +104,10 @@ export default function DexPage() {
         marketCap: 123000000,
         liquidity: 2340000,
         age: "1m",
+        ageMinutes: 1,
         image: "🐱",
-        isNew: true,
         isTrending: true,
+        isNew: true,
       },
       {
         address: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
@@ -117,7 +119,10 @@ export default function DexPage() {
         marketCap: 45600000,
         liquidity: 234000,
         age: "6m",
+        ageMinutes: 6,
         image: "🐕",
+        isTrending: false,
+        isNew: false,
       },
     ];
 
@@ -148,14 +153,17 @@ export default function DexPage() {
         token.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
-      let aVal = a[sortBy];
-      let bVal = b[sortBy];
-      if (sortBy === "age") {
-        aVal = parseInt(a.age);
-        bVal = parseInt(b.age);
-      }
-      return sortOrder === "desc" ? (bVal as number) - (aVal as number) : (aVal as number) - (bVal as number);
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+      return sortOrder === "desc" ? bVal - aVal : aVal - bVal;
     });
+
+  const sortOptions: { key: "volume24h" | "price" | "ageMinutes" | "marketCap"; label: string }[] = [
+    { key: "volume24h", label: "Volume" },
+    { key: "price", label: "Price" },
+    { key: "ageMinutes", label: "New" },
+    { key: "marketCap", label: "Market Cap" },
+  ];
 
   return (
     <div className="min-h-screen bg-[#0A192F]">
@@ -173,7 +181,6 @@ export default function DexPage() {
               </div>
             </div>
 
-            {/* Stats */}
             <div className="hidden md:flex items-center gap-4">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#112240] border border-[#233554]">
                 <Activity className="w-4 h-4 text-[#64FFDA]" />
@@ -211,7 +218,12 @@ export default function DexPage() {
                   <Filter className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setIsLoading(true)}
+                  onClick={() => {
+                    setIsLoading(true);
+                    setTimeout(() => {
+                      setIsLoading(false);
+                    }, 1000);
+                  }}
                   className="px-3 py-2 rounded-xl bg-[#112240] border border-[#233554] text-[#8892B0] hover:border-[#64FFDA] hover:text-[#64FFDA] transition-all"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -221,25 +233,25 @@ export default function DexPage() {
 
             {/* Sort Tabs */}
             <div className="flex flex-wrap gap-2 pb-2 border-b border-[#233554]">
-              {(["volume", "price", "age", "marketCap"] as const).map((sort) => (
+              {sortOptions.map((option) => (
                 <button
-                  key={sort}
+                  key={option.key}
                   onClick={() => {
-                    if (sortBy === sort) {
+                    if (sortBy === option.key) {
                       setSortOrder(sortOrder === "desc" ? "asc" : "desc");
                     } else {
-                      setSortBy(sort);
+                      setSortBy(option.key);
                       setSortOrder("desc");
                     }
                   }}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                    sortBy === sort
+                    sortBy === option.key
                       ? "bg-[#1A365D] text-[#64FFDA] border border-[#64FFDA]/30"
                       : "text-[#8892B0] hover:text-white"
                   }`}
                 >
-                  {sort === "volume" ? "Volume" : sort === "price" ? "Price" : sort === "age" ? "New" : "Market Cap"}
-                  {sortBy === sort && (
+                  {option.label}
+                  {sortBy === option.key && (
                     <span className="ml-1">{sortOrder === "desc" ? "↓" : "↑"}</span>
                   )}
                 </button>
@@ -249,7 +261,6 @@ export default function DexPage() {
             {/* Token List */}
             <div className="space-y-2">
               {isLoading ? (
-                // Loading skeletons
                 Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="animate-pulse bg-[#112240] rounded-xl p-4 border border-[#233554]">
                     <div className="flex items-center justify-between">
@@ -284,14 +295,14 @@ export default function DexPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1A365D] to-[#0A192F] flex items-center justify-center text-xl border border-[#64FFDA]/30">
-                          {token.image || "🪙"}
+                          {token.image}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-white">{token.symbol}</span>
                             {token.isTrending && (
                               <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-[#64FFDA]/20 text-[#64FFDA]">
-                                <Flame className="w-2.5 h-2.5" />
+                                <TrendingUp className="w-2.5 h-2.5" />
                                 TRENDING
                               </span>
                             )}
@@ -340,11 +351,10 @@ export default function DexPage() {
           <div className="space-y-4">
             {selectedToken ? (
               <>
-                {/* Token Info */}
                 <div className="bg-[#112240] rounded-2xl border border-[#233554] p-4">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A365D] to-[#0A192F] flex items-center justify-center text-2xl border border-[#64FFDA]/30">
-                      {selectedToken.image || "🪙"}
+                      {selectedToken.image}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -355,7 +365,6 @@ export default function DexPage() {
                     </div>
                   </div>
 
-                  {/* Price Stats */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="bg-[#0A192F] rounded-xl p-3 text-center">
                       <p className="text-xs text-[#8892B0]">Price</p>
@@ -369,7 +378,6 @@ export default function DexPage() {
                     </div>
                   </div>
 
-                  {/* Timeframe Selector */}
                   <div className="flex gap-1 mb-4">
                     {(["1m", "5m", "15m", "1h", "6h", "24h"] as const).map((tf) => (
                       <button
@@ -386,7 +394,6 @@ export default function DexPage() {
                     ))}
                   </div>
 
-                  {/* Mini Chart */}
                   <div className="h-24 mb-4 bg-[#0A192F] rounded-xl flex items-center justify-center">
                     <div className="flex items-end gap-0.5 h-16">
                       {[45, 52, 48, 55, 62, 58, 65, 70, 68, 72, 75, 78, 82, 80, 85, 88, 92, 95, 98, 100].map((height, i) => (
@@ -399,7 +406,6 @@ export default function DexPage() {
                     </div>
                   </div>
 
-                  {/* Buy/Sell Tabs */}
                   <div className="flex gap-2 mb-4">
                     <button
                       onClick={() => setActiveTab("buy")}
@@ -423,7 +429,6 @@ export default function DexPage() {
                     </button>
                   </div>
 
-                  {/* Buy/Sell Form */}
                   <div className="space-y-3">
                     <div>
                       <label className="text-sm text-[#8892B0] mb-1 block">Amount (SOL)</label>
@@ -462,7 +467,6 @@ export default function DexPage() {
                   </div>
                 </div>
 
-                {/* Token Stats */}
                 <div className="bg-[#112240] rounded-2xl border border-[#233554] p-4">
                   <h3 className="font-semibold text-white mb-3">Token Stats</h3>
                   <div className="space-y-2 text-sm">
@@ -486,7 +490,6 @@ export default function DexPage() {
                 </div>
               </>
             ) : (
-              // No token selected
               <div className="bg-[#112240] rounded-2xl border border-[#233554] p-8 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-[#1A365D] flex items-center justify-center">
                   <BarChart3 className="w-8 h-8 text-[#8892B0]" />
