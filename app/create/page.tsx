@@ -10,8 +10,6 @@ import {
   Upload,
   Image as ImageIcon,
   Coins,
-  Users,
-  TrendingUp,
   Shield,
   Sparkles,
   Check,
@@ -22,31 +20,22 @@ import {
 } from "lucide-react";
 
 export default function CreatePage() {
-  const { connected } = useWallet();
+  const { connected, publicKey } = useWallet();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
   // Form state
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [tokenDescription, setTokenDescription] = useState("");
-  const [tokenSupply, setTokenSupply] = useState("1,000,000");
   const [tokenImage, setTokenImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [buyAmount, setBuyAmount] = useState("0.1");
-  const [slippage, setSlippage] = useState("10");
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [isWhaleTier, setIsWhaleTier] = useState(false);
-
-  useEffect(() => {
-    const checkWhaleStatus = async () => {
-      setIsWhaleTier(Math.random() > 0.7);
-    };
-    checkWhaleStatus();
-  }, []);
 
   const validateStep1 = () => {
     const newErrors: { [key: string]: string } = {};
@@ -78,48 +67,66 @@ export default function CreatePage() {
   };
 
   const handleCreateToken = async () => {
-    if (!connected) {
-      alert("Connect your wallet first fren!");
+    if (!connected || !publicKey) {
+      setError("Connect your wallet first");
       return;
     }
     
-    setIsLoading(true);
+    if (!validateStep1()) return;
     
-    setTimeout(() => {
+    setIsLoading(true);
+    setError("");
+    
+    try {
+      const formData = new FormData();
+      formData.append("name", tokenName);
+      formData.append("symbol", tokenSymbol);
+      formData.append("description", tokenDescription);
+      formData.append("logo", tokenImage!);
+      formData.append("userPublicKey", publicKey.toString());
+      
+      const res = await fetch("/api/create-token", {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setSuccess(true);
+        setTimeout(() => {
+          router.push("/");
+        }, 2000);
+      } else {
+        setError(data.error || "Failed to create token");
+        setIsLoading(false);
+      }
+    } catch (err: any) {
+      setError(err.message || "Network error");
       setIsLoading(false);
-      setSuccess(true);
-      setTimeout(() => {
-        router.push("/");
-      }, 2000);
-    }, 3000);
+    }
   };
-
-  const totalCost = isWhaleTier ? 0.5 : 0.1;
-  const estimatedGas = 0.002;
-  const total = totalCost + estimatedGas;
 
   return (
     <>
-      
-      
       <div className="relative z-10 min-h-screen">
         {/* Header - Pink Theme */}
-        <div className="sticky top-0 z-50 border-b border-[oklch(51.8%_0.253_323.949)/0.2] bg-[#0A0A0F]/95 backdrop-blur-xl">
+        <div className="sticky top-0 z-50 border-b border-[#ff2d95]/20 bg-[#0A0A0F]/95 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.back()}
-                className="p-2 rounded-xl hover:bg-[oklch(51.8%_0.253_323.949)/0.1] transition-all duration-200 group"
+                className="p-2 rounded-xl hover:bg-[#ff2d95]/10 transition-all duration-200 group"
               >
-                <ArrowLeft className="w-5 h-5 text-[#8E8E93] group-hover:text-[oklch(51.8%_0.253_323.949)]" />
+                <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-[#ff2d95]" />
               </button>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-[oklch(51.8%_0.253_323.949)] to-[oklch(70%_0.25_150)] rounded-xl flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-[#ff2d95] to-[#ff6bcb] rounded-xl flex items-center justify-center">
                   <Rocket className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-white">Create Meme Coin</h1>
-                  <p className="text-xs text-[#8E8E93]">Launch on Solana in seconds</p>
+                  <p className="text-xs text-gray-500">Launch on Solana bonding curve</p>
                 </div>
               </div>
             </div>
@@ -138,18 +145,18 @@ export default function CreatePage() {
                       <div className="relative">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                           step >= s 
-                            ? "bg-gradient-to-r from-[oklch(51.8%_0.253_323.949)] to-[oklch(70%_0.25_150)] text-white" 
-                            : "bg-[#1C1C1E] text-[#8E8E93]"
+                            ? "bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white" 
+                            : "bg-[#1C1C1E] text-gray-500"
                         }`}>
                           {step > s ? <Check className="w-5 h-5" /> : s}
                         </div>
                         {s < 3 && (
                           <div className={`absolute top-1/2 -translate-y-1/2 w-full h-0.5 ${
-                            step > s ? "bg-[oklch(51.8%_0.253_323.949)]" : "bg-[#252525]"
+                            step > s ? "bg-[#ff2d95]" : "bg-[#252525]"
                           }`} style={{ left: "100%", width: "calc(100% - 2rem)" }} />
                         )}
                       </div>
-                      <span className="ml-3 text-sm text-[#8E8E93] hidden sm:inline">
+                      <span className="ml-3 text-sm text-gray-500 hidden sm:inline">
                         {s === 1 ? "Token Info" : s === 2 ? "Configure" : "Review"}
                       </span>
                     </div>
@@ -165,7 +172,7 @@ export default function CreatePage() {
                   className="bg-[#141414] rounded-2xl border border-[#252525] p-6 space-y-6"
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <Flame className="w-5 h-5 text-[oklch(51.8%_0.253_323.949)]" />
+                    <Flame className="w-5 h-5 text-[#ff2d95]" />
                     <h2 className="text-xl font-bold text-white">Token Information</h2>
                   </div>
                   
@@ -181,7 +188,7 @@ export default function CreatePage() {
                             <img
                               src={imagePreview}
                               alt="Token preview"
-                              className="w-24 h-24 rounded-2xl object-cover border-2 border-[oklch(51.8%_0.253_323.949)]"
+                              className="w-24 h-24 rounded-2xl object-cover border-2 border-[#ff2d95]"
                             />
                             <button
                               onClick={() => {
@@ -194,9 +201,9 @@ export default function CreatePage() {
                             </button>
                           </div>
                         ) : (
-                          <label className="w-24 h-24 rounded-2xl border-2 border-dashed border-[#252525] bg-[#0A0A0F] flex flex-col items-center justify-center cursor-pointer hover:border-[oklch(51.8%_0.253_323.949)] transition-all duration-200">
-                            <Upload className="w-6 h-6 text-[#8E8E93]" />
-                            <span className="text-xs text-[#8E8E93] mt-1">Upload</span>
+                          <label className="w-24 h-24 rounded-2xl border-2 border-dashed border-[#252525] bg-[#0A0A0F] flex flex-col items-center justify-center cursor-pointer hover:border-[#ff2d95] transition-all duration-200">
+                            <Upload className="w-6 h-6 text-gray-500" />
+                            <span className="text-xs text-gray-500 mt-1">Upload</span>
                             <input
                               type="file"
                               accept="image/*"
@@ -207,7 +214,7 @@ export default function CreatePage() {
                         )}
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs text-[#8E8E93]">
+                        <p className="text-xs text-gray-500">
                           PNG or JPG, max 2MB.<br />
                           Be creative fren! 🎨
                         </p>
@@ -230,12 +237,10 @@ export default function CreatePage() {
                       value={tokenName}
                       onChange={(e) => setTokenName(e.target.value)}
                       placeholder="e.g., Pink Whale Coin"
-                      className="w-full px-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white placeholder-[#8E8E93] focus:outline-none focus:border-[oklch(51.8%_0.253_323.949)] transition-all duration-200"
+                      className="w-full px-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white placeholder-gray-500 focus:outline-none focus:border-[#ff2d95] transition-all"
                     />
                     {errors.tokenName && (
-                      <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {errors.tokenName}
-                      </p>
+                      <p className="text-xs text-red-400 mt-1">{errors.tokenName}</p>
                     )}
                   </div>
 
@@ -249,12 +254,10 @@ export default function CreatePage() {
                       value={tokenSymbol}
                       onChange={(e) => setTokenSymbol(e.target.value.toUpperCase())}
                       placeholder="e.g., PINK"
-                      className="w-full px-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white placeholder-[#8E8E93] focus:outline-none focus:border-[oklch(51.8%_0.253_323.949)] transition-all duration-200 uppercase"
+                      className="w-full px-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white placeholder-gray-500 focus:outline-none focus:border-[#ff2d95] transition-all uppercase"
                     />
                     {errors.tokenSymbol && (
-                      <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {errors.tokenSymbol}
-                      </p>
+                      <p className="text-xs text-red-400 mt-1">{errors.tokenSymbol}</p>
                     )}
                   </div>
 
@@ -268,7 +271,7 @@ export default function CreatePage() {
                       onChange={(e) => setTokenDescription(e.target.value)}
                       placeholder="Tell the community about your meme coin..."
                       rows={3}
-                      className="w-full px-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white placeholder-[#8E8E93] focus:outline-none focus:border-[oklch(51.8%_0.253_323.949)] transition-all duration-200 resize-none"
+                      className="w-full px-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white placeholder-gray-500 focus:outline-none focus:border-[#ff2d95] transition-all resize-none"
                     />
                   </div>
 
@@ -276,7 +279,7 @@ export default function CreatePage() {
                     onClick={() => {
                       if (validateStep1()) setStep(2);
                     }}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[oklch(51.8%_0.253_323.949)] to-[oklch(70%_0.25_150)] text-white font-semibold hover:shadow-lg hover:shadow-[oklch(51.8%_0.253_323.949)/30] transition-all duration-200"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white font-semibold hover:shadow-lg hover:shadow-[#ff2d95]/30 transition-all"
                   >
                     Continue →
                   </button>
@@ -291,97 +294,48 @@ export default function CreatePage() {
                   className="bg-[#141414] rounded-2xl border border-[#252525] p-6 space-y-6"
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <Coins className="w-5 h-5 text-[oklch(51.8%_0.253_323.949)]" />
+                    <Coins className="w-5 h-5 text-[#ff2d95]" />
                     <h2 className="text-xl font-bold text-white">Configure Launch</h2>
                   </div>
 
-                  {/* Total Supply */}
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-2">
-                      Total Supply
-                    </label>
-                    <div className="relative">
-                      <Coins className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8E8E93]" />
-                      <input
-                        type="text"
-                        value={tokenSupply}
-                        onChange={(e) => setTokenSupply(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white focus:outline-none focus:border-[oklch(51.8%_0.253_323.949)] transition-all duration-200"
-                      />
-                    </div>
-                    <p className="text-xs text-[#8E8E93] mt-1">Recommended: 1,000,000</p>
+                  {/* Info Box - Pink Theme */}
+                  <div className="bg-[#ff2d95]/10 rounded-xl p-4 border border-[#ff2d95]/30">
+                    <p className="text-sm text-[#ff2d95] mb-2">ℹ️ Bonding Curve Launch</p>
+                    <p className="text-xs text-gray-300">
+                      Your token will launch on a bonding curve. Price increases with each buy.
+                      No platform fees, only Solana network gas fee (~0.001 SOL).
+                    </p>
                   </div>
 
                   {/* Initial Buy Amount */}
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">
-                      Initial Buy (SOL)
+                      Initial Buy (SOL) - Optional
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E93]">◎</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">◎</span>
                       <input
                         type="number"
                         value={buyAmount}
                         onChange={(e) => setBuyAmount(e.target.value)}
                         step="0.1"
-                        min="0.1"
-                        className="w-full pl-8 pr-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white focus:outline-none focus:border-[oklch(51.8%_0.253_323.949)] transition-all duration-200"
+                        min="0"
+                        className="w-full pl-8 pr-4 py-3 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white focus:outline-none focus:border-[#ff2d95] transition-all"
                       />
                     </div>
-                    <p className="text-xs text-[#8E8E93] mt-1">Minimum: 0.1 SOL</p>
+                    <p className="text-xs text-gray-500 mt-1">First buy after launch (you can skip)</p>
                   </div>
-
-                  {/* Slippage */}
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-2">
-                      Slippage Tolerance
-                    </label>
-                    <div className="flex gap-2">
-                      {["5", "10", "15"].map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => setSlippage(s)}
-                          className={`px-4 py-2 rounded-xl transition-all duration-200 ${
-                            slippage === s
-                              ? "bg-[oklch(51.8%_0.253_323.949)] text-white"
-                              : "bg-[#0A0A0F] text-[#8E8E93] border border-[#252525] hover:border-[oklch(51.8%_0.253_323.949)]"
-                          }`}
-                        >
-                          {s}%
-                        </button>
-                      ))}
-                      <input
-                        type="number"
-                        value={slippage}
-                        onChange={(e) => setSlippage(e.target.value)}
-                        className="w-24 px-3 py-2 rounded-xl bg-[#0A0A0F] border border-[#252525] text-white text-center focus:outline-none focus:border-[oklch(51.8%_0.253_323.949)]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Whale Tier Banner - Pink Theme */}
-                  {isWhaleTier && (
-                    <div className="bg-gradient-to-r from-[oklch(51.8%_0.253_323.949)/0.1] to-[oklch(70%_0.25_150)/0.1] rounded-xl p-4 border border-[oklch(51.8%_0.253_323.949)/0.3]">
-                      <div className="flex items-center gap-3">
-                        <Crown className="w-8 h-8 text-[oklch(51.8%_0.253_323.949)]" />
-                        <div>
-                          <p className="font-semibold text-white">Pink Whale Tier Activated! 🐋</p>
-                          <p className="text-sm text-[#8E8E93]">Premium benefits, lower fees, featured placement.</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   <div className="flex gap-3">
                     <button
                       onClick={() => setStep(1)}
-                      className="flex-1 py-3 rounded-xl border border-[#252525] text-white hover:bg-[#1C1C1E] transition-all duration-200"
+                      className="flex-1 py-3 rounded-xl border border-[#252525] text-white hover:bg-[#1C1C1E] transition-all"
                     >
                       Back
                     </button>
                     <button
                       onClick={() => setStep(3)}
-                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[oklch(51.8%_0.253_323.949)] to-[oklch(70%_0.25_150)] text-white font-semibold hover:shadow-lg hover:shadow-[oklch(51.8%_0.253_323.949)/30] transition-all duration-200"
+                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white font-semibold hover:shadow-lg hover:shadow-[#ff2d95]/30 transition-all"
                     >
                       Review →
                     </button>
@@ -397,7 +351,7 @@ export default function CreatePage() {
                   className="bg-[#141414] rounded-2xl border border-[#252525] p-6 space-y-6"
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <PartyPopper className="w-5 h-5 text-[oklch(51.8%_0.253_323.949)]" />
+                    <PartyPopper className="w-5 h-5 text-[#ff2d95]" />
                     <h2 className="text-xl font-bold text-white">Review & Launch</h2>
                   </div>
 
@@ -407,74 +361,80 @@ export default function CreatePage() {
                       <img src={imagePreview} alt={tokenName} className="w-16 h-16 rounded-xl object-cover" />
                     ) : (
                       <div className="w-16 h-16 rounded-xl bg-[#1C1C1E] flex items-center justify-center">
-                        <ImageIcon className="w-6 h-6 text-[#8E8E93]" />
+                        <ImageIcon className="w-6 h-6 text-gray-500" />
                       </div>
                     )}
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xl font-bold text-white">{tokenName}</span>
-                        <span className="text-sm text-[oklch(51.8%_0.253_323.949)]">({tokenSymbol})</span>
+                        <span className="text-sm text-[#ff2d95]">({tokenSymbol})</span>
                       </div>
-                      <p className="text-xs text-[#8E8E93] mt-1">{tokenDescription || "No description"}</p>
+                      <p className="text-xs text-gray-500 mt-1">{tokenDescription || "No description"}</p>
                     </div>
                   </div>
 
                   {/* Launch Details */}
                   <div className="space-y-3">
                     <div className="flex justify-between py-2 border-b border-[#252525]">
-                      <span className="text-[#8E8E93]">Total Supply</span>
-                      <span className="text-white font-medium">{tokenSupply}</span>
+                      <span className="text-gray-500">Token Name</span>
+                      <span className="text-white font-medium">{tokenName}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-[#252525]">
-                      <span className="text-[#8E8E93]">Initial Buy</span>
+                      <span className="text-gray-500">Token Symbol</span>
+                      <span className="text-white font-medium">{tokenSymbol}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-[#252525]">
+                      <span className="text-gray-500">Initial Buy</span>
                       <span className="text-white font-medium">{buyAmount} SOL</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-[#252525]">
-                      <span className="text-[#8E8E93]">Slippage</span>
-                      <span className="text-white font-medium">{slippage}%</span>
                     </div>
                   </div>
 
-                  {/* Cost Breakdown */}
+                  {/* Cost Info */}
                   <div className="bg-[#0A0A0F] rounded-xl p-4 space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-[#8E8E93]">Launch Fee</span>
-                      <span className="text-white">{totalCost} SOL</span>
+                      <span className="text-gray-500">Platform Fee</span>
+                      <span className="text-green-400">0 SOL</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[#8E8E93]">Estimated Gas</span>
-                      <span className="text-white">{estimatedGas} SOL</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-[#252525]">
-                      <span className="text-white font-semibold">Total</span>
-                      <span className="text-[oklch(51.8%_0.253_323.949)] font-bold">{total} SOL</span>
+                      <span className="text-gray-500">Network Fee (est.)</span>
+                      <span className="text-white">~0.001 SOL</span>
                     </div>
                   </div>
 
                   {/* Warning */}
-                  <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/30">
+                  <div className="bg-yellow-500/10 rounded-xl p-4 border border-yellow-500/30">
                     <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-red-400">Important</p>
-                        <p className="text-xs text-[#8E8E93] mt-1">
+                        <p className="text-sm font-medium text-yellow-400">Important</p>
+                        <p className="text-xs text-gray-400 mt-1">
                           Once launched, you cannot change token parameters. Double-check everything fren!
                         </p>
                       </div>
                     </div>
                   </div>
 
+                  {/* Error Message */}
+                  {error && (
+                    <div className="bg-red-500/10 rounded-xl p-3 border border-red-500/30">
+                      <p className="text-sm text-red-400 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
+                        {error}
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex gap-3">
                     <button
                       onClick={() => setStep(2)}
-                      className="flex-1 py-3 rounded-xl border border-[#252525] text-white hover:bg-[#1C1C1E] transition-all duration-200"
+                      className="flex-1 py-3 rounded-xl border border-[#252525] text-white hover:bg-[#1C1C1E] transition-all"
                     >
                       Back
                     </button>
                     <button
                       onClick={handleCreateToken}
                       disabled={isLoading || !connected}
-                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[oklch(51.8%_0.253_323.949)] to-[oklch(70%_0.25_150)] text-white font-semibold hover:shadow-lg hover:shadow-[oklch(51.8%_0.253_323.949)/30] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] hover:from-[#ff2d95]/80 hover:to-[#ff6bcb]/80 disabled:opacity-50 text-white font-semibold transition-all flex items-center justify-center gap-2"
                     >
                       {isLoading ? (
                         <>
@@ -501,15 +461,15 @@ export default function CreatePage() {
                     exit={{ opacity: 0, scale: 0.9 }}
                     className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
                   >
-                    <div className="bg-[#141414] rounded-2xl border border-[oklch(51.8%_0.253_323.949)]/30 p-8 text-center max-w-md mx-4">
-                      <div className="w-16 h-16 bg-gradient-to-r from-[oklch(51.8%_0.253_323.949)] to-[oklch(70%_0.25_150)] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="bg-[#141414] rounded-2xl border border-[#ff2d95]/30 p-8 text-center max-w-md mx-4">
+                      <div className="w-16 h-16 bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] rounded-full flex items-center justify-center mx-auto mb-4">
                         <Check className="w-8 h-8 text-white" />
                       </div>
                       <h3 className="text-2xl font-bold text-white mb-2">Success! 🎉</h3>
-                      <p className="text-[#8E8E93] mb-4">
+                      <p className="text-gray-400 mb-4">
                         Your meme coin has been created fren!
                       </p>
-                      <p className="text-sm text-[oklch(51.8%_0.253_323.949)]">Redirecting to homepage...</p>
+                      <p className="text-sm text-[#ff2d95]">Redirecting to homepage...</p>
                     </div>
                   </motion.div>
                 )}
@@ -522,53 +482,53 @@ export default function CreatePage() {
               <div className="bg-[#141414] rounded-2xl border border-[#252525] p-6">
                 <h3 className="font-semibold text-white mb-4">Wallet Status</h3>
                 <div className={`flex items-center gap-3 p-3 rounded-xl ${
-                  connected ? "bg-[oklch(51.8%_0.253_323.949)/0.1] border border-[oklch(51.8%_0.253_323.949)/0.3]" : "bg-[#1C1C1E]"
+                  connected ? "bg-[#ff2d95]/10 border border-[#ff2d95]/30" : "bg-[#1C1C1E]"
                 }`}>
-                  <div className={`w-2 h-2 rounded-full ${connected ? "bg-[oklch(51.8%_0.253_323.949)] animate-pulse" : "bg-red-500"}`} />
+                  <div className={`w-2 h-2 rounded-full ${connected ? "bg-[#ff2d95] animate-pulse" : "bg-red-500"}`} />
                   <span className="text-sm text-white">
                     {connected ? "Wallet Connected 🐋" : "Wallet Not Connected"}
                   </span>
                 </div>
                 {!connected && (
-                  <p className="text-xs text-[#8E8E93] mt-3">
+                  <p className="text-xs text-gray-500 mt-3">
                     Connect your wallet to launch a meme coin!
                   </p>
                 )}
               </div>
 
-              {/* Info Cards */}
+              {/* Launch Benefits */}
               <div className="bg-gradient-to-br from-[#141414] to-[#0A0A0F] rounded-2xl border border-[#252525] p-6">
                 <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-[oklch(51.8%_0.253_323.949)]" />
+                  <Shield className="w-4 h-4 text-[#ff2d95]" />
                   Launch Benefits
                 </h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm">
-                    <Check className="w-4 h-4 text-[oklch(51.8%_0.253_323.949)]" />
-                    <span className="text-[#8E8E93]">No coding required</span>
+                    <Check className="w-4 h-4 text-[#ff2d95]" />
+                    <span className="text-gray-400">No coding required</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <Check className="w-4 h-4 text-[oklch(51.8%_0.253_323.949)]" />
-                    <span className="text-[#8E8E93]">Instant liquidity</span>
+                    <Check className="w-4 h-4 text-[#ff2d95]" />
+                    <span className="text-gray-400">Instant liquidity</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <Check className="w-4 h-4 text-[oklch(51.8%_0.253_323.949)]" />
-                    <span className="text-[#8E8E93]">Auto Raydium migration</span>
+                    <Check className="w-4 h-4 text-[#ff2d95]" />
+                    <span className="text-gray-400">Fair price discovery</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <Check className="w-4 h-4 text-[oklch(51.8%_0.253_323.949)]" />
-                    <span className="text-[#8E8E93]">Referral rewards</span>
+                    <Check className="w-4 h-4 text-[#ff2d95]" />
+                    <span className="text-gray-400">No platform fees</span>
                   </div>
                 </div>
               </div>
 
-              {/* Tips - Pink Theme */}
+              {/* Tips */}
               <div className="bg-[#141414] rounded-2xl border border-[#252525] p-6">
                 <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[oklch(51.8%_0.253_323.949)]" />
+                  <Sparkles className="w-4 h-4 text-yellow-500" />
                   Meme Coin Tips
                 </h3>
-                <ul className="space-y-2 text-sm text-[#8E8E93]">
+                <ul className="space-y-2 text-sm text-gray-500">
                   <li>• Choose a meme-able name</li>
                   <li>• Add a funny/trendy logo</li>
                   <li>• Build community first</li>
