@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
-import CreateBackground3D from "../components/3D/CreateBackground3D";
 import {
   ArrowLeft,
   Rocket,
@@ -101,7 +100,7 @@ export default function CreatePage() {
 
   return (
     <>
-      <CreateBackground3D />
+      
       
       <div className="relative z-10 min-h-screen">
         {/* Header - Pink Theme */}

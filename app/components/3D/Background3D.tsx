@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Spline from "@splinetool/react-spline";
 
 export default function Background3D() {
   const [mounted, setMounted] = useState(false);
@@ -14,14 +13,16 @@ export default function Background3D() {
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none">
-      <Spline
-        scene="https://prod.spline.design/453d7aa6-c536-4598-a5dc-ac35a1d4af1d/scene.splinecode"
-        style={{
-          width: "100%",
-          height: "100%",
-          opacity: 0.25,
-          transform: "scale(1.2)",
+      <iframe
+        src="https://my.spline.design/worldplanet-XxVf76hEixRLn1Zeyf0TvP2i/"
+        className="w-full h-full"
+        style={{ 
+          opacity: 0.2,
+          transform: "scale(1.1)",
+          border: "none"
         }}
+        allow="autoplay; fullscreen"
+        loading="lazy"
       />
     </div>
   );
