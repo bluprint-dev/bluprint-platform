@@ -12,7 +12,7 @@ import { genesis } from "@metaplex-foundation/genesis";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Rocket, Upload, Shield, Check, AlertCircle,
-  Flame, PartyPopper, ExternalLink, Copy, Loader2, ImageIcon,
+  Flame, PartyPopper, ExternalLink, Copy, Loader2, ImageIcon, Sparkles,
 } from "lucide-react";
 
 const CREATE_FEE_SOL = 0.01;
@@ -22,7 +22,6 @@ const FEE_DISTRIBUTION = [
   { address: "A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X", percentage: 10 },
 ];
 const BONDING_CURVE_FEE_WALLET = "Hn5UBz1BSDNzJVwbTx3KAK64gFBwtWoAaFbg2jCg6Vq5";
-
 const STEPS = ["Info", "Review", "Launch"];
 
 export default function CreatePage() {
@@ -36,7 +35,6 @@ export default function CreatePage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [tokenDescription, setTokenDescription] = useState("");
@@ -71,138 +69,97 @@ export default function CreatePage() {
       formData.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
-      if (data.success) {
-        setUploadedImageUrl(data.imageUrl);
-      } else {
-        setErrors((prev) => ({ ...prev, image: data.error || "Upload failed" }));
-        setImagePreview(null);
-      }
+      if (data.success) { setUploadedImageUrl(data.imageUrl); }
+      else { setErrors((prev) => ({ ...prev, image: data.error || "Upload failed" })); setImagePreview(null); }
     } catch {
-      setErrors((prev) => ({ ...prev, image: "Upload failed" }));
-      setImagePreview(null);
-    } finally {
-      setUploadingImage(false);
-    }
+      setErrors((prev) => ({ ...prev, image: "Upload failed" })); setImagePreview(null);
+    } finally { setUploadingImage(false); }
   };
 
   const handleCreate = async () => {
     if (!connected || !publicKey) { setError("Connect your wallet first"); return; }
     if (!wallet?.adapter) { setError("Wallet adapter not ready"); return; }
     if (!uploadedImageUrl) { setError("Image upload not complete"); return; }
-
-    setIsLoading(true);
-    setError("");
-
+    setIsLoading(true); setError("");
     try {
-      // 1. FEE ÖDE
       const tx = new Transaction();
       const totalLamports = Math.floor(CREATE_FEE_SOL * 1_000_000_000);
       for (const dist of FEE_DISTRIBUTION) {
         const amount = Math.floor((totalLamports * dist.percentage) / 100);
-        if (amount > 0) {
-          tx.add(SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: new PublicKey(dist.address),
-            lamports: amount,
-          }));
-        }
+        if (amount > 0) tx.add(SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: new PublicKey(dist.address), lamports: amount }));
       }
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-      tx.recentBlockhash = blockhash;
-      tx.feePayer = publicKey;
+      tx.recentBlockhash = blockhash; tx.feePayer = publicKey;
       const feeSig = await sendTransaction(tx, connection);
       await connection.confirmTransaction({ signature: feeSig, blockhash, lastValidBlockHeight }, "confirmed");
-
-      // 2. TOKEN OLUŞTUR
       const umi = createUmi(connection.rpcEndpoint).use(genesis());
       umi.use(walletAdapterIdentity(wallet.adapter));
       const result = await createAndRegisterLaunch(umi, {}, {
-        wallet: publicKey.toString(),
-        launchType: "bondingCurve",
-        token: {
-          name: tokenName,
-          symbol: tokenSymbol,
-          image: uploadedImageUrl,
-          description: tokenDescription || "",
-        },
+        wallet: publicKey.toString(), launchType: "bondingCurve",
+        token: { name: tokenName, symbol: tokenSymbol, image: uploadedImageUrl, description: tokenDescription || "" },
         launch: { creatorFeeWallet: BONDING_CURVE_FEE_WALLET },
       } as any);
-
-      // 3. KAYDET
       await fetch("/api/track-launch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mintAddress: result.mintAddress,
-          name: tokenName,
-          symbol: tokenSymbol,
-          imageUrl: uploadedImageUrl,
-          userPublicKey: publicKey.toString(),
-          signature: feeSig,
-        }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mintAddress: result.mintAddress, name: tokenName, symbol: tokenSymbol, imageUrl: uploadedImageUrl, userPublicKey: publicKey.toString(), signature: feeSig }),
       });
-
-      setMintAddress(result.mintAddress);
-      setLaunchLink(result.launch?.link || null);
-      setSuccess(true);
+      setMintAddress(result.mintAddress); setLaunchLink(result.launch?.link || null); setSuccess(true);
     } catch (err: any) {
-      if (err.message?.includes("rejected") || err.message?.includes("User rejected")) {
-        setError("Transaction cancelled");
-      } else {
-        setError(err.message || "Something went wrong");
-      }
-    } finally {
-      setIsLoading(false);
-    }
+      setError(err.message?.includes("rejected") ? "Transaction cancelled" : err.message || "Something went wrong");
+    } finally { setIsLoading(false); }
   };
 
   const copyMint = () => {
     if (!mintAddress) return;
     navigator.clipboard.writeText(mintAddress);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
   };
 
+  const inputStyle = (hasError?: boolean) => ({
+    background: "rgba(255,255,255,0.03)",
+    border: `1px solid ${hasError ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}`,
+  });
+
   return (
-    <div className="relative z-10 min-h-screen bg-[#0A0A0F]">
-      {/* Header */}
-      <div className="sticky top-0 z-40 border-b border-[#1A1A1A] bg-[#0A0A0F]/95 backdrop-blur-xl">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-4">
+    <div className="relative z-10 min-h-screen">
+
+      {/* ── TOPBAR ── */}
+      <div className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0A0A0F]/90 backdrop-blur-2xl">
+        <div className="max-w-2xl mx-auto px-5 h-14 flex items-center gap-4">
           <button
-            onClick={() => (step > 0 ? setStep(step - 1) : router.back())}
-            className="p-2 rounded-xl hover:bg-white/5 transition group"
+            onClick={() => step > 0 ? setStep(step - 1) : router.back()}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/6 text-gray-600 hover:text-white transition"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-500 group-hover:text-white transition" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#ff2d95] to-[#ff6bcb] rounded-xl flex items-center justify-center shadow-lg shadow-[#ff2d95]/20">
-              <Rocket className="w-4 h-4 text-white" />
+
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-xl flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg,#ff2d95,#ff6bcb)", boxShadow: "0 4px 14px rgba(255,45,149,0.35)" }}>
+              <Rocket className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-white leading-none">Create Token</h1>
-              <p className="text-xs text-gray-600 mt-0.5">Bonding curve launch · 0.01 SOL</p>
+              <p className="text-sm font-black text-white leading-none">Create Token</p>
+              <p className="text-[10px] text-gray-600 mt-0.5">Bonding curve · 0.01 SOL</p>
             </div>
           </div>
-          {/* Step indicator */}
-          <div className="ml-auto flex items-center gap-2">
+
+          {/* Steps */}
+          <div className="ml-auto flex items-center gap-1.5">
             {STEPS.map((s, i) => (
-              <div key={s} className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 text-xs font-medium transition ${
-                  i === step ? "text-[#ff2d95]" : i < step ? "text-green-400" : "text-gray-600"
-                }`}>
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition ${
-                    i < step
-                      ? "bg-green-500/20 text-green-400"
-                      : i === step
-                      ? "bg-[#ff2d95]/20 text-[#ff2d95]"
-                      : "bg-white/5 text-gray-600"
-                  }`}>
-                    {i < step ? <Check className="w-3 h-3" /> : i + 1}
-                  </div>
+              <div key={s} className="flex items-center gap-1.5">
+                <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full transition ${
+                  i < step ? "text-green-400" : i === step ? "text-[#ff2d95]" : "text-gray-700"
+                }`}
+                  style={{
+                    background: i < step ? "rgba(34,197,94,0.1)" : i === step ? "rgba(255,45,149,0.12)" : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${i < step ? "rgba(34,197,94,0.2)" : i === step ? "rgba(255,45,149,0.25)" : "rgba(255,255,255,0.06)"}`,
+                  }}>
+                  {i < step ? <Check className="w-2.5 h-2.5" /> : <span>{i+1}</span>}
                   <span className="hidden sm:inline">{s}</span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className={`w-6 h-px transition ${i < step ? "bg-green-500/40" : "bg-white/10"}`} />
+                  <div className="w-4 h-px" style={{ background: i < step ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.06)" }} />
                 )}
               </div>
             ))}
@@ -210,65 +167,62 @@ export default function CreatePage() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-5 py-8">
         <AnimatePresence mode="wait">
 
-          {/* STEP 0 — Info */}
+          {/* ── STEP 0: INFO ── */}
           {step === 0 && (
-            <motion.div
-              key="step0"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-5"
-            >
-              <div className="bg-[#111111] rounded-2xl border border-[#1E1E1E] p-6 space-y-6">
+            <motion.div key="s0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
+
+              {/* Card */}
+              <div className="rounded-2xl p-6 space-y-6"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+
                 <div className="flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-[#ff2d95]" />
-                  <h2 className="text-lg font-bold text-white">Token Info</h2>
+                  <Flame className="w-4 h-4 text-[#ff2d95]" />
+                  <h2 className="text-base font-black text-white">Token Info</h2>
                 </div>
 
-                {/* Image Upload */}
+                {/* Image */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-3">Token Image *</label>
-                  <div className="flex items-start gap-5">
-                    <label className={`relative w-24 h-24 rounded-2xl overflow-hidden cursor-pointer group flex-shrink-0 border-2 transition ${
-                      errors.image ? "border-red-500/50" : imagePreview ? "border-[#ff2d95]/40" : "border-dashed border-[#2A2A2A] hover:border-[#ff2d95]/40"
-                    }`}>
+                  <p className="text-xs text-gray-500 mb-3 font-medium">Token Image *</p>
+                  <div className="flex items-center gap-5">
+                    <label className="relative w-20 h-20 rounded-2xl overflow-hidden cursor-pointer group flex-shrink-0 transition"
+                      style={{
+                        border: errors.image ? "2px solid rgba(239,68,68,0.5)" : imagePreview ? "2px solid rgba(255,45,149,0.4)" : "2px dashed rgba(255,255,255,0.1)",
+                      }}>
                       {imagePreview ? (
                         <>
                           <img src={imagePreview} alt="" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                            <Upload className="w-5 h-5 text-white" />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                            style={{ background: "rgba(0,0,0,0.55)" }}>
+                            <Upload className="w-4 h-4 text-white" />
                           </div>
                         </>
                       ) : (
-                        <div className="w-full h-full bg-[#0D0D0D] flex flex-col items-center justify-center gap-2">
-                          {uploadingImage ? (
-                            <Loader2 className="w-5 h-5 text-[#ff2d95] animate-spin" />
-                          ) : (
-                            <>
-                              <ImageIcon className="w-6 h-6 text-gray-600" />
-                              <span className="text-[10px] text-gray-600">Upload</span>
-                            </>
-                          )}
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-1.5"
+                          style={{ background: "rgba(0,0,0,0.3)" }}>
+                          {uploadingImage
+                            ? <Loader2 className="w-4 h-4 text-[#ff2d95] animate-spin" />
+                            : <><ImageIcon className="w-5 h-5 text-gray-700" /><span className="text-[9px] text-gray-700">Upload</span></>}
                         </div>
                       )}
                       <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                     </label>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-xs text-gray-500">PNG, JPG, GIF, WEBP</p>
-                      <p className="text-xs text-gray-600">Max 5MB. Square images work best.</p>
-                      {uploadedImageUrl && (
-                        <div className="flex items-center gap-1.5 mt-2">
+
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-gray-600">PNG · JPG · GIF · WEBP</p>
+                      <p className="text-[11px] text-gray-700">Max 5MB · Square recommended</p>
+                      {uploadedImageUrl && !uploadingImage && (
+                        <div className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                          <span className="text-xs text-green-500">Uploaded to Arweave</span>
+                          <span className="text-[11px] text-green-500 font-medium">Saved to Arweave</span>
                         </div>
                       )}
                       {uploadingImage && (
-                        <div className="flex items-center gap-1.5 mt-2">
+                        <div className="flex items-center gap-1.5">
                           <Loader2 className="w-3 h-3 text-[#ff2d95] animate-spin" />
-                          <span className="text-xs text-gray-500">Uploading...</span>
+                          <span className="text-[11px] text-gray-600">Uploading...</span>
                         </div>
                       )}
                     </div>
@@ -278,55 +232,57 @@ export default function CreatePage() {
 
                 {/* Name */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Token Name *</label>
+                  <p className="text-xs text-gray-500 mb-2 font-medium">Token Name *</p>
                   <input
-                    type="text"
-                    value={tokenName}
-                    onChange={(e) => setTokenName(e.target.value)}
+                    type="text" value={tokenName}
+                    onChange={e => setTokenName(e.target.value)}
                     placeholder="e.g. Pink Whale"
                     maxLength={32}
-                    className={`w-full px-4 py-3 rounded-xl bg-[#0D0D0D] border text-white placeholder-gray-700 focus:outline-none focus:border-[#ff2d95] transition text-sm ${
-                      errors.name ? "border-red-500/50" : "border-[#1E1E1E]"
-                    }`}
+                    className="w-full h-11 px-4 rounded-xl text-white text-sm placeholder-gray-800 focus:outline-none transition"
+                    style={inputStyle(!!errors.name)}
+                    onFocus={e => e.currentTarget.style.borderColor = "rgba(255,45,149,0.45)"}
+                    onBlur={e => e.currentTarget.style.borderColor = errors.name ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}
                   />
                   <div className="flex justify-between mt-1">
-                    {errors.name ? <p className="text-xs text-red-400">{errors.name}</p> : <span />}
-                    <span className="text-xs text-gray-700">{tokenName.length}/32</span>
+                    {errors.name ? <p className="text-[11px] text-red-400">{errors.name}</p> : <span />}
+                    <span className="text-[10px] text-gray-800">{tokenName.length}/32</span>
                   </div>
                 </div>
 
                 {/* Symbol */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Symbol *</label>
+                  <p className="text-xs text-gray-500 mb-2 font-medium">Symbol *</p>
                   <input
-                    type="text"
-                    value={tokenSymbol}
-                    onChange={(e) => setTokenSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                    placeholder="e.g. PINK"
+                    type="text" value={tokenSymbol}
+                    onChange={e => setTokenSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""))}
+                    placeholder="PINK"
                     maxLength={10}
-                    className={`w-full px-4 py-3 rounded-xl bg-[#0D0D0D] border text-white placeholder-gray-700 focus:outline-none focus:border-[#ff2d95] transition text-sm font-mono tracking-widest ${
-                      errors.symbol ? "border-red-500/50" : "border-[#1E1E1E]"
-                    }`}
+                    className="w-full h-11 px-4 rounded-xl text-white text-sm font-mono tracking-[0.2em] placeholder-gray-800 focus:outline-none transition"
+                    style={inputStyle(!!errors.symbol)}
+                    onFocus={e => e.currentTarget.style.borderColor = "rgba(255,45,149,0.45)"}
+                    onBlur={e => e.currentTarget.style.borderColor = errors.symbol ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}
                   />
                   <div className="flex justify-between mt-1">
-                    {errors.symbol ? <p className="text-xs text-red-400">{errors.symbol}</p> : <span />}
-                    <span className="text-xs text-gray-700">{tokenSymbol.length}/10</span>
+                    {errors.symbol ? <p className="text-[11px] text-red-400">{errors.symbol}</p> : <span />}
+                    <span className="text-[10px] text-gray-800">{tokenSymbol.length}/10</span>
                   </div>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Description <span className="text-gray-700">(optional)</span></label>
+                  <p className="text-xs text-gray-500 mb-2 font-medium">Description <span className="text-gray-700 font-normal">(optional)</span></p>
                   <textarea
                     value={tokenDescription}
-                    onChange={(e) => setTokenDescription(e.target.value)}
+                    onChange={e => setTokenDescription(e.target.value)}
                     placeholder="Tell the community about your token..."
-                    rows={3}
-                    maxLength={500}
-                    className="w-full px-4 py-3 rounded-xl bg-[#0D0D0D] border border-[#1E1E1E] text-white placeholder-gray-700 focus:outline-none focus:border-[#ff2d95] transition text-sm resize-none"
+                    rows={3} maxLength={500}
+                    className="w-full px-4 py-3 rounded-xl text-white text-sm placeholder-gray-800 focus:outline-none transition resize-none"
+                    style={inputStyle()}
+                    onFocus={e => e.currentTarget.style.borderColor = "rgba(255,45,149,0.45)"}
+                    onBlur={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"}
                   />
                   <div className="flex justify-end mt-1">
-                    <span className="text-xs text-gray-700">{tokenDescription.length}/500</span>
+                    <span className="text-[10px] text-gray-800">{tokenDescription.length}/500</span>
                   </div>
                 </div>
               </div>
@@ -334,139 +290,156 @@ export default function CreatePage() {
               <button
                 onClick={() => { if (validate()) setStep(1); }}
                 disabled={uploadingImage}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white font-bold text-sm hover:opacity-90 disabled:opacity-50 transition shadow-lg shadow-[#ff2d95]/20"
-              >
-                Continue →
+                className="w-full h-13 py-4 rounded-2xl text-white font-black text-sm transition disabled:opacity-40 flex items-center justify-center gap-2"
+                style={{
+                  background: "linear-gradient(135deg,#ff2d95,#ff6bcb)",
+                  boxShadow: "0 6px 24px rgba(255,45,149,0.3)",
+                }}>
+                Continue
+                <span className="text-base">→</span>
               </button>
             </motion.div>
           )}
 
-          {/* STEP 1 — Review */}
+          {/* ── STEP 1: REVIEW ── */}
           {step === 1 && (
-            <motion.div
-              key="step1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-5"
-            >
-              <div className="bg-[#111111] rounded-2xl border border-[#1E1E1E] p-6 space-y-5">
+            <motion.div key="s1" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
+
+              <div className="rounded-2xl p-6 space-y-5"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+
                 <div className="flex items-center gap-2">
-                  <PartyPopper className="w-5 h-5 text-[#ff2d95]" />
-                  <h2 className="text-lg font-bold text-white">Review & Confirm</h2>
+                  <PartyPopper className="w-4 h-4 text-[#ff2d95]" />
+                  <h2 className="text-base font-black text-white">Review & Confirm</h2>
                 </div>
 
-                {/* Token Preview */}
-                <div className="flex items-center gap-4 p-4 bg-[#0D0D0D] rounded-xl border border-[#1A1A1A]">
+                {/* Token preview card */}
+                <div className="flex items-center gap-4 p-4 rounded-xl"
+                  style={{ background: "rgba(255,45,149,0.04)", border: "1px solid rgba(255,45,149,0.12)" }}>
                   {imagePreview ? (
-                    <img src={imagePreview} className="w-16 h-16 rounded-xl object-cover border border-[#ff2d95]/20" />
+                    <img src={imagePreview} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" style={{ border: "1px solid rgba(255,45,149,0.2)" }} />
                   ) : (
-                    <div className="w-16 h-16 rounded-xl bg-[#1A1A1A] flex items-center justify-center">
-                      <ImageIcon className="w-6 h-6 text-gray-700" />
+                    <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.05)" }}>
+                      <ImageIcon className="w-5 h-5 text-gray-700" />
                     </div>
                   )}
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl font-bold text-white">{tokenName}</span>
-                      <span className="text-sm text-[#ff2d95] font-mono font-bold">${tokenSymbol}</span>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-lg font-black text-white">{tokenName}</span>
+                      <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full"
+                        style={{ background: "rgba(255,45,149,0.15)", color: "#ff2d95", border: "1px solid rgba(255,45,149,0.2)" }}>
+                        ${tokenSymbol}
+                      </span>
                     </div>
-                    {tokenDescription && (
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{tokenDescription}</p>
-                    )}
+                    {tokenDescription && <p className="text-xs text-gray-600 line-clamp-2">{tokenDescription}</p>}
                   </div>
                 </div>
 
                 {/* Details */}
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between py-2.5 border-b border-[#1A1A1A]">
-                    <span className="text-gray-500">Launch type</span>
-                    <span className="text-white font-medium flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-[#ff2d95]" />
-                      Bonding Curve
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2.5 border-b border-[#1A1A1A]">
-                    <span className="text-gray-500">Platform fee</span>
-                    <span className="text-white font-medium">0.01 SOL</span>
-                  </div>
-                  <div className="flex justify-between py-2.5 border-b border-[#1A1A1A]">
-                    <span className="text-gray-500">Network</span>
-                    <span className="text-white font-medium">Solana Mainnet</span>
-                  </div>
-                  <div className="flex justify-between py-2.5">
-                    <span className="text-gray-500">Image storage</span>
-                    <span className="text-white font-medium flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-green-500" />
-                      Arweave (permanent)
-                    </span>
-                  </div>
+                <div className="space-y-0 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                  {[
+                    { label: "Launch type", value: "Bonding Curve", dot: "#ff2d95" },
+                    { label: "Platform fee", value: "0.01 SOL" },
+                    { label: "Network", value: "Solana Mainnet" },
+                    { label: "Image storage", value: "Arweave · permanent", dot: "#22c55e" },
+                  ].map((row, i) => (
+                    <div key={row.label} className="flex justify-between items-center px-4 py-3 text-sm"
+                      style={{ background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                      <span className="text-gray-600">{row.label}</span>
+                      <span className="text-white font-medium flex items-center gap-1.5">
+                        {row.dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: row.dot }} />}
+                        {row.value}
+                      </span>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Security Badge */}
-                <div className="flex items-center gap-3 p-4 bg-[#ff2d95]/5 rounded-xl border border-[#ff2d95]/15">
-                  <Shield className="w-5 h-5 text-[#ff2d95] flex-shrink-0" />
+                {/* Bonding curve info */}
+                <div className="flex items-start gap-3 p-4 rounded-xl"
+                  style={{ background: "rgba(255,45,149,0.04)", border: "1px solid rgba(255,45,149,0.1)" }}>
+                  <Shield className="w-4 h-4 text-[#ff2d95] flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-white">Bonding curve launch</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Price increases automatically with each purchase. Fair launch, no pre-sale.</p>
+                    <p className="text-sm font-semibold text-white mb-0.5">Fair launch · Bonding curve</p>
+                    <p className="text-xs text-gray-600 leading-relaxed">Price rises automatically with every buy. No pre-sale, no insider allocation. Fully on-chain via Metaplex Genesis.</p>
                   </div>
                 </div>
 
-                {/* Wallet status */}
                 {!connected && (
-                  <div className="flex items-center gap-3 p-4 bg-red-500/5 rounded-xl border border-red-500/20">
-                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                    <p className="text-sm text-red-400">Connect your wallet to continue</p>
+                  <div className="flex items-center gap-3 p-3 rounded-xl"
+                    style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <p className="text-xs text-red-400">Connect your wallet to continue</p>
                   </div>
                 )}
               </div>
 
               <div className="flex gap-3">
-                <button
-                  onClick={() => setStep(0)}
-                  className="flex-1 py-4 rounded-2xl border border-[#1E1E1E] text-gray-400 font-medium text-sm hover:bg-white/5 hover:text-white transition"
-                >
+                <button onClick={() => setStep(0)}
+                  className="flex-1 h-12 rounded-2xl text-sm font-semibold text-gray-500 hover:text-white transition"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
                   ← Back
                 </button>
                 <button
                   onClick={() => { setStep(2); handleCreate(); }}
                   disabled={!connected}
-                  className="flex-[2] py-4 rounded-2xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white font-bold text-sm hover:opacity-90 disabled:opacity-40 transition shadow-lg shadow-[#ff2d95]/20 flex items-center justify-center gap-2"
-                >
+                  className="flex-[2] h-12 rounded-2xl text-white font-black text-sm flex items-center justify-center gap-2 transition disabled:opacity-35"
+                  style={{
+                    background: "linear-gradient(135deg,#ff2d95,#ff6bcb)",
+                    boxShadow: "0 6px 24px rgba(255,45,149,0.3)",
+                  }}>
                   <Rocket className="w-4 h-4" />
-                  Launch Token · 0.01 SOL
+                  Launch · 0.01 SOL
                 </button>
               </div>
             </motion.div>
           )}
 
-          {/* STEP 2 — Launching */}
+          {/* ── STEP 2: LAUNCHING ── */}
           {step === 2 && !success && (
-            <motion.div
-              key="step2"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center py-20 gap-6"
-            >
+            <motion.div key="s2" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center justify-center py-24 gap-6">
+
               <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-[#ff2d95]/10 border border-[#ff2d95]/20 flex items-center justify-center">
+                <div className="w-20 h-20 rounded-full flex items-center justify-center"
+                  style={{ background: "rgba(255,45,149,0.1)", border: "1px solid rgba(255,45,149,0.2)" }}>
                   <Rocket className="w-8 h-8 text-[#ff2d95]" />
                 </div>
-                <div className="absolute inset-0 rounded-full border-2 border-[#ff2d95]/30 animate-ping" />
+                <div className="absolute inset-0 rounded-full border border-[#ff2d95]/25 animate-ping" />
+                <div className="absolute -inset-3 rounded-full border border-[#ff2d95]/10 animate-ping" style={{ animationDelay: "0.3s" }} />
               </div>
+
               <div className="text-center">
-                <h3 className="text-xl font-bold text-white mb-2">Launching...</h3>
-                <p className="text-sm text-gray-500">Confirm transactions in your wallet</p>
+                <h3 className="text-xl font-black text-white mb-2">Launching your token...</h3>
+                <p className="text-sm text-gray-600">Confirm the transactions in your wallet</p>
               </div>
+
+              {/* Steps list */}
+              <div className="space-y-2 w-full max-w-xs">
+                {[
+                  { label: "Pay platform fee (0.01 SOL)", done: !isLoading || !!error },
+                  { label: "Register on bonding curve", done: success },
+                  { label: "Save to database", done: success },
+                ].map((s, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${s.done ? "bg-green-500/20" : "bg-white/5"}`}
+                      style={{ border: `1px solid ${s.done ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)"}` }}>
+                      {s.done
+                        ? <Check className="w-3 h-3 text-green-400" />
+                        : <Loader2 className="w-3 h-3 text-gray-600 animate-spin" />}
+                    </div>
+                    <span className={s.done ? "text-gray-400" : "text-gray-700"}>{s.label}</span>
+                  </div>
+                ))}
+              </div>
+
               {error && (
-                <div className="w-full max-w-md bg-red-500/10 rounded-xl p-4 border border-red-500/20 flex items-start gap-3">
+                <div className="w-full max-w-xs rounded-xl p-4 flex items-start gap-3"
+                  style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.18)" }}>
                   <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm text-red-400">{error}</p>
-                    <button
-                      onClick={() => { setStep(1); setError(""); }}
-                      className="text-xs text-red-400/70 hover:text-red-400 mt-1 underline"
-                    >
-                      Go back and try again
+                    <button onClick={() => { setStep(1); setError(""); }} className="text-xs text-red-400/60 hover:text-red-400 mt-1 underline">
+                      Go back
                     </button>
                   </div>
                 </div>
@@ -474,89 +447,86 @@ export default function CreatePage() {
             </motion.div>
           )}
 
-          {/* SUCCESS */}
+          {/* ── SUCCESS ── */}
           {success && mintAddress && (
-            <motion.div
-              key="success"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center gap-6 py-12"
-            >
-              {/* Confetti effect */}
+            <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center gap-6 py-10">
+
+              {/* Icon */}
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#ff2d95] to-[#ff6bcb] flex items-center justify-center shadow-2xl shadow-[#ff2d95]/30">
+                <div className="w-24 h-24 rounded-full flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg,#ff2d95,#ff6bcb)", boxShadow: "0 0 60px rgba(255,45,149,0.4)" }}>
                   <Check className="w-10 h-10 text-white" strokeWidth={3} />
                 </div>
-                {[...Array(8)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ scale: 0, opacity: 1 }}
-                    animate={{ scale: 2.5, opacity: 0 }}
-                    transition={{ duration: 0.8, delay: i * 0.1 }}
-                    className="absolute inset-0 rounded-full border border-[#ff2d95]/30"
+                {[...Array(5)].map((_,i) => (
+                  <motion.div key={i}
+                    initial={{ scale: 1, opacity: 0.6 }}
+                    animate={{ scale: 2.8, opacity: 0 }}
+                    transition={{ duration: 1, delay: i * 0.15 }}
+                    className="absolute inset-0 rounded-full"
+                    style={{ border: "1px solid rgba(255,45,149,0.3)" }}
                   />
                 ))}
               </div>
 
               <div className="text-center">
-                <h2 className="text-3xl font-black text-white mb-2">Token is Live! 🎉</h2>
-                <p className="text-gray-500 text-sm">
-                  <span className="text-[#ff2d95] font-bold">${tokenSymbol}</span> is now on the bonding curve
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Sparkles className="w-5 h-5 text-[#ff2d95]" />
+                  <h2 className="text-3xl font-black text-white">Token is Live!</h2>
+                  <Sparkles className="w-5 h-5 text-[#ff2d95]" />
+                </div>
+                <p className="text-gray-600 text-sm">
+                  <span className="font-bold" style={{ color: "#ff2d95" }}>${tokenSymbol}</span> is now trading on the bonding curve
                 </p>
               </div>
 
               {/* Mint address */}
-              <div className="w-full max-w-md bg-[#111111] rounded-2xl border border-[#1E1E1E] p-5">
-                <p className="text-xs text-gray-600 mb-2 font-medium uppercase tracking-wider">Mint Address</p>
+              <div className="w-full rounded-2xl p-4"
+                style={{ background: "rgba(255,45,149,0.04)", border: "1px solid rgba(255,45,149,0.12)" }}>
+                <p className="text-[10px] text-gray-700 mb-2 font-semibold uppercase tracking-widest">Mint Address</p>
                 <div className="flex items-center gap-3">
-                  <code className="flex-1 text-xs text-[#ff2d95] font-mono break-all leading-relaxed">
+                  <code className="flex-1 text-xs font-mono break-all leading-relaxed" style={{ color: "#ff2d95" }}>
                     {mintAddress}
                   </code>
-                  <button
-                    onClick={copyMint}
-                    className="p-2 rounded-lg hover:bg-white/5 transition flex-shrink-0"
-                  >
-                    {copied ? (
-                      <Check className="w-4 h-4 text-green-400" />
-                    ) : (
-                      <Copy className="w-4 h-4 text-gray-500" />
-                    )}
+                  <button onClick={copyMint}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 transition hover:bg-white/6"
+                    style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+                    {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-gray-600" />}
                   </button>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="w-full max-w-md space-y-3">
-                <button
-                  onClick={() => window.open(`https://solscan.io/token/${mintAddress}`, "_blank")}
-                  className="w-full py-3.5 rounded-xl border border-[#1E1E1E] text-white text-sm font-medium hover:bg-white/5 transition flex items-center justify-center gap-2"
-                >
-                  <ExternalLink className="w-4 h-4 text-gray-500" />
-                  View on Solscan
-                </button>
-                {launchLink && (
-                  <button
-                    onClick={() => window.open(launchLink, "_blank")}
-                    className="w-full py-3.5 rounded-xl border border-[#ff2d95]/30 text-[#ff2d95] text-sm font-medium hover:bg-[#ff2d95]/5 transition flex items-center justify-center gap-2"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    View on Genesis
-                  </button>
-                )}
-                <button
-                  onClick={() => router.push("/dex")}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white text-sm font-bold hover:opacity-90 transition shadow-lg shadow-[#ff2d95]/20"
-                >
+              {/* Action buttons */}
+              <div className="w-full space-y-2.5">
+                <button onClick={() => router.push("/dex")}
+                  className="w-full h-12 rounded-2xl text-white font-black text-sm flex items-center justify-center gap-2 transition hover:opacity-90"
+                  style={{ background: "linear-gradient(135deg,#ff2d95,#ff6bcb)", boxShadow: "0 6px 24px rgba(255,45,149,0.3)" }}>
                   Trade on DEX →
                 </button>
-                <button
-                  onClick={() => {
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button onClick={() => window.open(`https://solscan.io/token/${mintAddress}`,"_blank")}
+                    className="h-11 rounded-xl text-sm font-semibold text-gray-400 hover:text-white flex items-center justify-center gap-1.5 transition"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Solscan
+                  </button>
+                  {launchLink && (
+                    <button onClick={() => window.open(launchLink,"_blank")}
+                      className="h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition hover:opacity-80"
+                      style={{ background: "rgba(255,45,149,0.08)", border: "1px solid rgba(255,45,149,0.18)", color: "#ff2d95" }}>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Genesis
+                    </button>
+                  )}
+                </div>
+
+                <button onClick={() => {
                     setStep(0); setSuccess(false); setTokenName(""); setTokenSymbol("");
                     setTokenDescription(""); setImagePreview(null); setUploadedImageUrl(null);
                     setMintAddress(null); setLaunchLink(null);
                   }}
-                  className="w-full py-3 text-gray-600 text-sm hover:text-gray-400 transition"
-                >
+                  className="w-full py-2.5 text-xs text-gray-700 hover:text-gray-500 transition">
                   Create another token
                 </button>
               </div>
