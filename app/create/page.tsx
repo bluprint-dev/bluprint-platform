@@ -28,7 +28,7 @@ const BONDING_CURVE_FEE_WALLET = "Hn5UBz1BSDNzJVwbTx3KAK64gFBwtWoAaFbg2jCg6Vq5";
 const STEPS = ["Info", "Review", "Launch"];
 
 export default function CreatePage() {
-  const { connected, publicKey, sendTransaction, wallet } = useWallet();
+  const { connected, publicKey, sendTransaction, wallet, signTransaction } = useWallet();
   const { connection } = useConnection();
   const router = useRouter();
 
@@ -47,8 +47,7 @@ export default function CreatePage() {
   const [launchLink, setLaunchLink] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Simulate total tokens count (will be fetched from API)
-  const totalTokensCreated = 87; // This should come from API
+  const totalTokensCreated = 87;
   const isFirst150 = totalTokensCreated < FREE_TIER_LIMIT;
   const remainingFree = FREE_TIER_LIMIT - totalTokensCreated;
 
@@ -77,20 +76,12 @@ export default function CreatePage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("userPublicKey", publicKey!.toString());
       
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
       
       if (data.success) {
         setUploadedImageUrl(data.imageUrl);
-        
-        if (data.feeTransaction && sendTransaction) {
-          const feeTx = Transaction.from(Buffer.from(data.feeTransaction, 'base64'));
-          const signature = await sendTransaction(feeTx, connection);
-          await connection.confirmTransaction(signature);
-          console.log("✅ Irys fee paid:", signature);
-        }
       } else {
         setErrors((prev) => ({ ...prev, image: data.error || "Upload failed" }));
         setImagePreview(null);
@@ -107,39 +98,81 @@ export default function CreatePage() {
     if (!connected || !publicKey) { setError("Connect your wallet first"); return; }
     if (!wallet?.adapter) { setError("Wallet adapter not ready"); return; }
     if (!uploadedImageUrl) { setError("Image upload not complete"); return; }
+    
     setIsLoading(true); setError("");
+    
     try {
+      // 1. CREATE FEE TRANSACTION
       const tx = new Transaction();
       const totalLamports = Math.floor(CREATE_FEE_SOL * 1_000_000_000);
       for (const dist of FEE_DISTRIBUTION) {
         const amount = Math.floor((totalLamports * dist.percentage) / 100);
-        if (amount > 0) tx.add(SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: new PublicKey(dist.address), lamports: amount }));
+        if (amount > 0) {
+          tx.add(SystemProgram.transfer({ 
+            fromPubkey: publicKey, 
+            toPubkey: new PublicKey(dist.address), 
+            lamports: amount 
+          }));
+        }
       }
+      
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-      tx.recentBlockhash = blockhash; tx.feePayer = publicKey;
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = publicKey;
+      
       const feeSig = await sendTransaction(tx, connection);
       await connection.confirmTransaction({ signature: feeSig, blockhash, lastValidBlockHeight }, "confirmed");
+      console.log("✅ Create fee paid:", feeSig);
+      
+      // 2. TOKEN LAUNCH
       const umi = createUmi(connection.rpcEndpoint).use(genesis());
       umi.use(walletAdapterIdentity(wallet.adapter));
+      
       const result = await createAndRegisterLaunch(umi, {}, {
-        wallet: publicKey.toString(), launchType: "bondingCurve",
-        token: { name: tokenName, symbol: tokenSymbol, image: uploadedImageUrl, description: tokenDescription || "" },
+        wallet: publicKey.toString(),
+        launchType: "bondingCurve",
+        token: { 
+          name: tokenName, 
+          symbol: tokenSymbol, 
+          image: uploadedImageUrl, 
+          description: tokenDescription || "" 
+        },
         launch: { creatorFeeWallet: BONDING_CURVE_FEE_WALLET },
       } as any);
+      
+      console.log("✅ Token created:", result.mintAddress);
+      
+      // 3. TRACK LAUNCH
       await fetch("/api/track-launch", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mintAddress: result.mintAddress, name: tokenName, symbol: tokenSymbol, imageUrl: uploadedImageUrl, userPublicKey: publicKey.toString(), signature: feeSig }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          mintAddress: result.mintAddress, 
+          name: tokenName, 
+          symbol: tokenSymbol, 
+          imageUrl: uploadedImageUrl, 
+          userPublicKey: publicKey.toString(), 
+          signature: feeSig 
+        }),
       });
-      setMintAddress(result.mintAddress); setLaunchLink(result.launch?.link || null); setSuccess(true);
+      
+      setMintAddress(result.mintAddress);
+      setLaunchLink(result.launch?.link || null);
+      setSuccess(true);
+      
     } catch (err: any) {
+      console.error("Create error:", err);
       setError(err.message?.includes("rejected") ? "Transaction cancelled" : err.message || "Something went wrong");
-    } finally { setIsLoading(false); }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const copyMint = () => {
     if (!mintAddress) return;
     navigator.clipboard.writeText(mintAddress);
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const inputStyle = (hasError?: boolean) => ({
@@ -171,7 +204,6 @@ export default function CreatePage() {
             </div>
           </div>
 
-          {/* Steps */}
           <div className="ml-auto flex items-center gap-1.5">
             {STEPS.map((s, i) => (
               <div key={s} className="flex items-center gap-1.5">
@@ -201,7 +233,7 @@ export default function CreatePage() {
           {step === 0 && (
             <motion.div key="s0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
 
-              {/* PROMO BANNER - First 150 tokens */}
+              {/* PROMO BANNER */}
               <div className="relative overflow-hidden rounded-2xl p-4 bg-gradient-to-r from-[#ff2d95]/20 via-[#ff6bcb]/10 to-[#ff2d95]/20 border border-[#ff2d95]/30">
                 <div className="absolute top-0 right-0 w-20 h-20 bg-[#ff2d95]/20 rounded-full blur-2xl" />
                 <div className="relative flex items-center gap-3">
@@ -217,7 +249,7 @@ export default function CreatePage() {
                     ) : (
                       <>
                         <p className="text-sm font-bold text-white">✨ STANDARD LAUNCH FEE</p>
-                        <p className="text-xs text-gray-300">First {FREE_TIER_LIMIT} tokens launched at 0.01 SOL. Regular fee applies after.</p>
+                        <p className="text-xs text-gray-300">Regular fee applies after {FREE_TIER_LIMIT} tokens</p>
                       </>
                     )}
                   </div>
@@ -226,7 +258,6 @@ export default function CreatePage() {
                     <p className="text-[10px] text-gray-500">create fee</p>
                   </div>
                 </div>
-                {/* Progress bar */}
                 <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] rounded-full transition-all duration-500"
@@ -238,7 +269,7 @@ export default function CreatePage() {
                 </p>
               </div>
 
-              {/* Main Card */}
+              {/* MAIN CARD */}
               <div className="rounded-2xl p-6 space-y-6"
                 style={{ background: "rgba(15,15,25,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
@@ -354,13 +385,12 @@ export default function CreatePage() {
               <button
                 onClick={() => { if (validate()) setStep(1); }}
                 disabled={uploadingImage}
-                className="w-full h-13 py-4 rounded-2xl text-white font-black text-sm transition disabled:opacity-40 flex items-center justify-center gap-2"
+                className="w-full py-4 rounded-2xl text-white font-black text-sm transition disabled:opacity-40 flex items-center justify-center gap-2"
                 style={{
                   background: "linear-gradient(135deg,#ff2d95,#ff6bcb)",
                   boxShadow: "0 6px 24px rgba(255,45,149,0.3)",
                 }}>
-                Continue
-                <span className="text-base">→</span>
+                Continue →
               </button>
             </motion.div>
           )}
@@ -369,7 +399,6 @@ export default function CreatePage() {
           {step === 1 && (
             <motion.div key="s1" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
 
-              {/* Review Card */}
               <div className="rounded-2xl p-6 space-y-5"
                 style={{ background: "rgba(15,15,25,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
@@ -403,18 +432,15 @@ export default function CreatePage() {
                 {/* Details Table */}
                 <div className="space-y-0 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
                   {[
-                    { label: "Launch type", value: "Bonding Curve", icon: <TrendingUp className="w-3 h-3" /> },
-                    { label: "Create fee", value: isFirst150 ? "0.01 SOL" : "0.05 SOL", icon: <Zap className="w-3 h-3" /> },
-                    { label: "Platform fee", value: "0%", icon: <Gift className="w-3 h-3" /> },
-                    { label: "Network", value: "Solana Mainnet", icon: <Crown className="w-3 h-3" /> },
-                    { label: "Storage", value: "Arweave (permanent)", icon: <Shield className="w-3 h-3" /> },
+                    { label: "Launch type", value: "Bonding Curve" },
+                    { label: "Create fee", value: isFirst150 ? "0.01 SOL" : "0.05 SOL" },
+                    { label: "Platform fee", value: "0%" },
+                    { label: "Network", value: "Solana Mainnet" },
+                    { label: "Storage", value: "Arweave (permanent)" },
                   ].map((row, i) => (
                     <div key={row.label} className="flex justify-between items-center px-4 py-3 text-sm"
                       style={{ background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent", borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                      <span className="text-gray-500 flex items-center gap-1.5">
-                        {row.icon}
-                        {row.label}
-                      </span>
+                      <span className="text-gray-500">{row.label}</span>
                       <span className="text-white font-medium">{row.value}</span>
                     </div>
                   ))}
@@ -426,7 +452,7 @@ export default function CreatePage() {
                   <Shield className="w-4 h-4 text-[#ff2d95] flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-semibold text-white mb-0.5">Fair launch · Bonding curve</p>
-                    <p className="text-xs text-gray-600 leading-relaxed">Price rises automatically with every buy. No pre-sale, no insider allocation. Fully on-chain via Metaplex Genesis.</p>
+                    <p className="text-xs text-gray-600 leading-relaxed">Price rises automatically with every buy. No pre-sale, no insider allocation.</p>
                   </div>
                 </div>
 
