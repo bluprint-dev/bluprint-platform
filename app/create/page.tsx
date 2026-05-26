@@ -2,25 +2,15 @@
 
 import Footer from "@/app/components/Footer";
 import { useState } from "react";
-import Footer from "@/app/components/Footer";
 import { useWallet } from "@solana/wallet-adapter-react";
-import Footer from "@/app/components/Footer";
 import { useConnection } from "@solana/wallet-adapter-react";
-import Footer from "@/app/components/Footer";
 import { useRouter } from "next/navigation";
-import Footer from "@/app/components/Footer";
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
-import Footer from "@/app/components/Footer";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
-import Footer from "@/app/components/Footer";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
-import Footer from "@/app/components/Footer";
 import { createAndRegisterLaunch } from "@metaplex-foundation/genesis";
-import Footer from "@/app/components/Footer";
 import { genesis } from "@metaplex-foundation/genesis";
-import Footer from "@/app/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
-import Footer from "@/app/components/Footer";
 import {
   ArrowLeft, Rocket, Upload, Shield, Check, AlertCircle,
   Flame, PartyPopper, ExternalLink, Copy, Loader2, ImageIcon, 
@@ -77,21 +67,40 @@ export default function CreatePage() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result as string);
     reader.readAsDataURL(file);
     setUploadingImage(true);
     setErrors((prev) => ({ ...prev, image: "" }));
+    
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("userPublicKey", publicKey!.toString());
+      
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
-      if (data.success) { setUploadedImageUrl(data.imageUrl); }
-      else { setErrors((prev) => ({ ...prev, image: data.error || "Upload failed" })); setImagePreview(null); }
+      
+      if (data.success) {
+        setUploadedImageUrl(data.imageUrl);
+        
+        if (data.feeTransaction && sendTransaction) {
+          const feeTx = Transaction.from(Buffer.from(data.feeTransaction, 'base64'));
+          const signature = await sendTransaction(feeTx, connection);
+          await connection.confirmTransaction(signature);
+          console.log("✅ Irys fee paid:", signature);
+        }
+      } else {
+        setErrors((prev) => ({ ...prev, image: data.error || "Upload failed" }));
+        setImagePreview(null);
+      }
     } catch {
-      setErrors((prev) => ({ ...prev, image: "Upload failed" })); setImagePreview(null);
-    } finally { setUploadingImage(false); }
+      setErrors((prev) => ({ ...prev, image: "Upload failed" }));
+      setImagePreview(null);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleCreate = async () => {
@@ -572,7 +581,7 @@ export default function CreatePage() {
 
         </AnimatePresence>
       </div>
-    
+      
       <Footer />
     </div>
   );
