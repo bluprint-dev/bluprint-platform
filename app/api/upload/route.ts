@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     
     const Irys = require('@irys/sdk');
     const irys = new Irys({
-      network: 'devnet',
+      network: 'mainnet',  // ✅ devnet -> mainnet
       token: 'solana',
       key: secretKeyArray,
     });
