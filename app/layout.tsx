@@ -44,10 +44,8 @@ export default function RootLayout({
       <body className={`${inter.variable} ${space.variable} ${mono.variable} antialiased bg-white dark:bg-[#0A0A0F] text-gray-900 dark:text-white`}>
         <ThemeProvider>
           <Providers>
-            {/* Kripto blockchain arkaplan - sadece dark modda göster */}
-            <div className="dark:block hidden">
-              <Background />
-            </div>
+            {/* Background - tüm sayfalarda ve tema uyumlu */}
+            <Background />
             
             <div className="fixed top-0 left-0 right-0 z-20">
               <MarqueeBanner />

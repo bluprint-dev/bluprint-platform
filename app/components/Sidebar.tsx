@@ -54,19 +54,19 @@ export default function Sidebar() {
   const sidebarContent = (
     <>
       {/* ========== ARKAPLAN LAYER'LARI ========== */}
-      <div className="absolute inset-0 bg-[#050507]/95 backdrop-blur-2xl" />
+      <div className="absolute inset-0 bg-[rgb(var(--bg-sidebar))] backdrop-blur-2xl" />
       
-      {/* Glow orbs */}
-      <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-[#ff2d95]/15 blur-3xl" />
-      <div className="absolute bottom-20 left-0 w-40 h-40 rounded-full bg-[#7c3aed]/10 blur-3xl" />
+      {/* Glow orbs - Light modda daha soluk */}
+      <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-[rgb(var(--primary))]/10 blur-3xl" />
+      <div className="absolute bottom-20 left-0 w-40 h-40 rounded-full bg-[#7c3aed]/5 blur-3xl" />
       
       {/* Grid pattern */}
       <div 
         className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(to right, #ff2d95 1px, transparent 1px),
-            linear-gradient(to bottom, #ff2d95 1px, transparent 1px)
+            linear-gradient(to right, rgb(var(--primary)) 1px, transparent 1px),
+            linear-gradient(to bottom, rgb(var(--primary)) 1px, transparent 1px)
           `,
           backgroundSize: '40px 40px',
         }}
@@ -77,10 +77,10 @@ export default function Sidebar() {
         
         {/* Live Pulse Indicator */}
         <div className="px-3 pt-5 pb-2">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#101014]/50 border border-[#ff2d95]/15 backdrop-blur-sm">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--bg-secondary))]/50 border border-[rgb(var(--primary))]/15 backdrop-blur-sm">
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-xs text-zinc-400">Solana Mainnet Live</span>
-            <Zap className="w-3 h-3 text-[#ff2d95] ml-auto" />
+            <span className="text-xs text-[rgb(var(--text-secondary))]">Solana Mainnet Live</span>
+            <Zap className="w-3 h-3 text-[rgb(var(--primary))] ml-auto" />
           </div>
         </div>
         
@@ -93,8 +93,8 @@ export default function Sidebar() {
               className="w-7 h-7 object-contain group-hover:drop-shadow-[0_0_10px_rgba(255,45,149,0.5)] transition-all duration-300"
             />
             <div className="flex">
-              <span className="text-white font-bold text-lg tracking-tight">Blu</span>
-              <span className="text-[#ff2d95] font-bold text-lg tracking-tight">Print</span>
+              <span className="text-[rgb(var(--text-primary))] font-bold text-lg tracking-tight">Blu</span>
+              <span className="text-[rgb(var(--primary))] font-bold text-lg tracking-tight">Print</span>
             </div>
           </Link>
         </div>
@@ -114,12 +114,12 @@ export default function Sidebar() {
                 onMouseLeave={() => setHoveredItem(null)}
                 className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group ${
                   active
-                    ? "bg-gradient-to-r from-[#ff2d95]/15 to-[#7c3aed]/10 border border-[#ff2d95]/25 shadow-[0_0_25px_rgba(255,45,149,0.12)]"
-                    : "text-[#8E8E93] hover:bg-[#1A1A22]/50 hover:translate-x-1 hover:scale-[1.02]"
+                    ? "bg-gradient-to-r from-[rgb(var(--primary))]/15 to-[#7c3aed]/10 border border-[rgb(var(--primary))]/25 shadow-[0_0_25px_rgba(255,45,149,0.12)]"
+                    : "text-[rgb(var(--text-secondary))] hover:bg-[rgb(var(--bg-secondary))]/50 hover:translate-x-1 hover:scale-[1.02]"
                 }`}
               >
                 {active && (
-                  <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-[#ff2d95] to-[#7c3aed]" />
+                  <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-[rgb(var(--primary))] to-[#7c3aed]" />
                 )}
                 
                 <motion.div
@@ -129,18 +129,18 @@ export default function Sidebar() {
                   <Icon 
                     className={`w-5 h-5 transition-all duration-300 ${
                       active 
-                        ? "text-[#ff2d95] drop-shadow-[0_0_8px_rgba(255,45,149,0.5)]" 
-                        : "text-[#8E8E93] group-hover:text-[#ff2d95] group-hover:rotate-6"
+                        ? "text-[rgb(var(--primary))] drop-shadow-[0_0_8px_rgba(255,45,149,0.5)]" 
+                        : "text-[rgb(var(--text-secondary))] group-hover:text-[rgb(var(--primary))] group-hover:rotate-6"
                     }`} 
                   />
                 </motion.div>
                 
-                <span className="text-sm font-medium tracking-wide">{item.label}</span>
+                <span className="text-sm font-medium tracking-wide text-[rgb(var(--text-primary))]">{item.label}</span>
                 
                 {active && (
                   <motion.div
                     layoutId="activeIndicator"
-                    className="ml-auto w-1.5 h-1.5 rounded-full bg-[#ff2d95] shadow-[0_0_10px_rgba(255,45,149,0.8)]"
+                    className="ml-auto w-1.5 h-1.5 rounded-full bg-[rgb(var(--primary))] shadow-[0_0_10px_rgba(255,45,149,0.8)]"
                     transition={{ type: "spring", duration: 0.3 }}
                   />
                 )}
@@ -148,7 +148,7 @@ export default function Sidebar() {
                 {isHovered && !active && (
                   <motion.div
                     layoutId="hoverGlow"
-                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#ff2d95]/5 to-transparent"
+                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-[rgb(var(--primary))]/5 to-transparent"
                     transition={{ type: "spring", duration: 0.2 }}
                   />
                 )}
@@ -165,19 +165,19 @@ export default function Sidebar() {
         {/* Wallet Section */}
         <div className="px-3 pt-2 pb-5 space-y-3">
           <div className="relative">
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#1A1A22] to-[#101014] border border-[#ff2d95]/15 shadow-[0_0_20px_rgba(255,45,149,0.08)]" />
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[rgb(var(--bg-secondary))] to-[rgb(var(--bg-sidebar))] border border-[rgb(var(--primary))]/15 shadow-[0_0_20px_rgba(255,45,149,0.08)]" />
             
             <button
               onClick={handleWalletClick}
               className="relative w-full flex items-center gap-2 px-3 py-3 rounded-xl transition-all duration-300 group"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff2d95] to-[#7c3aed] flex items-center justify-center shadow-[0_0_15px_rgba(255,45,149,0.4)]">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[rgb(var(--primary))] to-[#7c3aed] flex items-center justify-center shadow-[0_0_15px_rgba(255,45,149,0.4)]">
                 <Wallet className="w-4 h-4 text-white" />
               </div>
               
               <div className="flex-1 text-left">
-                <p className="text-xs text-zinc-400">Wallet</p>
-                <p className="text-white text-sm font-medium truncate">
+                <p className="text-xs text-[rgb(var(--text-secondary))]">Wallet</p>
+                <p className="text-[rgb(var(--text-primary))] text-sm font-medium truncate">
                   {connected && publicKey ? shortenAddress(publicKey.toString()) : "Connect Wallet"}
                 </p>
               </div>
@@ -207,7 +207,7 @@ export default function Sidebar() {
       </aside>
 
       {/* Mobile Header */}
-      <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-[#050507]/95 backdrop-blur-2xl border-b border-[#ff2d95]/15">
+      <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-[rgb(var(--bg-sidebar))]/95 backdrop-blur-2xl border-b border-[rgb(var(--primary))]/15">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2">
             <img 
@@ -216,19 +216,19 @@ export default function Sidebar() {
               className="w-7 h-7 object-contain"
             />
             <div className="flex">
-              <span className="text-white font-bold text-lg">Blu</span>
-              <span className="text-[#ff2d95] font-bold text-lg">Print</span>
+              <span className="text-[rgb(var(--text-primary))] font-bold text-lg">Blu</span>
+              <span className="text-[rgb(var(--primary))] font-bold text-lg">Print</span>
             </div>
           </Link>
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="w-10 h-10 rounded-xl bg-[#1A1A22]/50 border border-[#ff2d95]/20 flex items-center justify-center transition-all hover:border-[#ff2d95]/40"
+            className="w-10 h-10 rounded-xl bg-[rgb(var(--bg-secondary))]/50 border border-[rgb(var(--primary))]/20 flex items-center justify-center transition-all hover:border-[rgb(var(--primary))]/40"
           >
             {isMobileMenuOpen ? (
-              <X className="w-5 h-5 text-white" />
+              <X className="w-5 h-5 text-[rgb(var(--text-primary))]" />
             ) : (
-              <Menu className="w-5 h-5 text-white" />
+              <Menu className="w-5 h-5 text-[rgb(var(--text-primary))]" />
             )}
           </button>
         </div>

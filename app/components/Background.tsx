@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTheme } from "next-themes";
 
 export default function Background() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
+  const { theme } = useTheme();
+  
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -13,6 +15,7 @@ export default function Background() {
 
     let animId: number;
     let t = 0;
+    const isDark = theme === "dark";
 
     const resize = () => {
       canvas.width = window.innerWidth;
@@ -51,7 +54,7 @@ export default function Background() {
         bright: Math.random() < 0.08,
       }));
 
-      // Candles — sağ tarafta gizli fiyat grafiği
+      // Candles
       candles = [];
       let price = 0.5;
       for (let i = 0; i < 40; i++) {
@@ -74,7 +77,7 @@ export default function Background() {
         opacity: 0.05 + Math.random() * 0.12,
       }));
 
-      // Rising numbers (portfolio değerleri)
+      // Rising numbers
       risingNums = Array.from({ length: 18 }, () => {
         const vals = ["$1,240", "$8.5K", "+340%", "$42K", "1.5 SOL", "+128%", "$200K", "×10", "$3,800", "+500%", "2.4 SOL", "$15K", "+89%", "×25", "$680", "+212%", "8 SOL", "$1.1M"];
         return {
@@ -96,12 +99,20 @@ export default function Background() {
       const W = canvas.width;
       const H = canvas.height;
 
-      // Clear
-      ctx.fillStyle = "rgba(10,10,15,0.18)";
+      // Light mode'da farklı arkaplan
+      if (isDark) {
+        ctx.fillStyle = "rgba(10,10,15,0.18)";
+      } else {
+        ctx.fillStyle = "rgba(245,245,250,0.25)";
+      }
       ctx.fillRect(0, 0, W, H);
 
-      // ── 1. GRID ──
-      ctx.strokeStyle = "rgba(255,255,255,0.025)";
+      // ── 1. GRID ── (Light modda daha açık)
+      if (isDark) {
+        ctx.strokeStyle = "rgba(255,255,255,0.025)";
+      } else {
+        ctx.strokeStyle = "rgba(0,0,0,0.04)";
+      }
       ctx.lineWidth = 0.5;
       const gs = 50;
       for (let x = 0; x <= W; x += gs) {
@@ -111,17 +122,20 @@ export default function Background() {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
       }
 
-      // ── 2. MATRIX RAIN ──
+      // ── 2. MATRIX RAIN ── (Light modda daha soluk)
       ctx.font = `${FONT_SIZE}px 'Courier New', monospace`;
       for (let i = 0; i < drops.length; i++) {
         const drop = drops[i];
         const char = CHARS[Math.floor(Math.random() * CHARS.length)];
 
         if (drop.bright) {
-          // Parlak harf — altın/sarı, wealth hissi
-          ctx.fillStyle = `rgba(255,45,149,${drop.opacity * 3.5})`;
+          ctx.fillStyle = `rgba(255,45,149,${drop.opacity * (isDark ? 3.5 : 2)})`;
         } else {
-          ctx.fillStyle = `rgba(180,180,200,${drop.opacity})`;
+          if (isDark) {
+            ctx.fillStyle = `rgba(180,180,200,${drop.opacity})`;
+          } else {
+            ctx.fillStyle = `rgba(100,100,120,${drop.opacity * 0.8})`;
+          }
         }
 
         ctx.fillText(char, i * FONT_SIZE, drop.y);
@@ -134,14 +148,13 @@ export default function Background() {
         }
       }
 
-      // ── 3. CANDLE CHART (sağ taraf, yarı saydam) ──
+      // ── 3. CANDLE CHART ── (Light modda da göster)
       const chartX = W * 0.72;
       const chartW = W * 0.26;
       const chartY = H * 0.15;
       const chartH = H * 0.4;
       const cw = chartW / candles.length;
 
-      // Fiyat aralığı
       const allPrices = candles.flatMap((c) => [c.high, c.low]);
       const minP = Math.min(...allPrices);
       const maxP = Math.max(...allPrices);
@@ -155,10 +168,9 @@ export default function Background() {
         const closeY = toY(c.close);
         const highY = toY(c.high);
         const lowY = toY(c.low);
-        const alpha = 0.06 + (i / candles.length) * 0.1;
+        const alpha = (0.06 + (i / candles.length) * 0.1) * (isDark ? 1 : 0.7);
         const color = c.bull ? `rgba(0,220,130,${alpha})` : `rgba(255,80,80,${alpha * 0.7})`;
 
-        // Wick
         ctx.strokeStyle = color;
         ctx.lineWidth = 0.8;
         ctx.beginPath();
@@ -166,13 +178,12 @@ export default function Background() {
         ctx.lineTo(cx, lowY);
         ctx.stroke();
 
-        // Body
         ctx.fillStyle = color;
         const bodyH = Math.abs(openY - closeY) || 1;
         ctx.fillRect(cx - cw * 0.3, Math.min(openY, closeY), cw * 0.6, bodyH);
       });
 
-      // Trend çizgisi (yükselen)
+      // Trend çizgisi
       const lastClose = candles[candles.length - 1].close;
       const firstClose = candles[0].close;
       if (lastClose > firstClose) {
@@ -189,7 +200,7 @@ export default function Background() {
         ctx.setLineDash([]);
       }
 
-      // ── 4. NETWORK NODES & CONNECTIONS ──
+      // ── 4. NETWORK NODES ──
       nodes.forEach((n) => {
         n.x += n.vx;
         n.y += n.vy;
@@ -197,14 +208,13 @@ export default function Background() {
         if (n.y < 0 || n.y > H) n.vy *= -1;
       });
 
-      // Bağlantılar
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const dx = nodes[i].x - nodes[j].x;
           const dy = nodes[i].y - nodes[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 160) {
-            const alpha = (1 - dist / 160) * 0.06;
+            const alpha = (1 - dist / 160) * (isDark ? 0.06 : 0.04);
             ctx.strokeStyle = `rgba(140,140,180,${alpha})`;
             ctx.lineWidth = 0.5;
             ctx.beginPath();
@@ -215,21 +225,19 @@ export default function Background() {
         }
       }
 
-      // Node noktaları
       nodes.forEach((n) => {
-        ctx.fillStyle = `rgba(160,160,200,${n.opacity})`;
+        ctx.fillStyle = `rgba(160,160,200,${n.opacity * (isDark ? 1 : 0.6)})`;
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.size, 0, Math.PI * 2);
         ctx.fill();
       });
 
-      // ── 5. RISING WEALTH NUMBERS ──
+      // ── 5. RISING NUMBERS ──
       ctx.font = "bold 11px 'Courier New', monospace";
       risingNums.forEach((r) => {
         r.y += r.vy;
         r.opacity += 0.003;
-        if (r.y < -20 || r.opacity > 0.22) {
-          // Reset
+        if (r.y < -20 || r.opacity > (isDark ? 0.22 : 0.15)) {
           const vals = ["$1,240", "$8.5K", "+340%", "$42K", "1.5 SOL", "+128%", "$200K", "×10", "$3,800", "+500%", "2.4 SOL", "$15K", "+89%", "×25", "$680", "+212%", "8 SOL", "$1.1M"];
           r.x = Math.random() * W;
           r.y = H + 10;
@@ -239,12 +247,12 @@ export default function Background() {
         }
         const isGain = r.value.includes("+") || r.value.includes("×") || r.value.includes("M") || r.value.includes("K");
         ctx.fillStyle = isGain
-          ? `rgba(0,210,120,${r.opacity})`
-          : `rgba(200,200,220,${r.opacity})`;
+          ? `rgba(0,210,120,${r.opacity * (isDark ? 1 : 0.8)})`
+          : `rgba(200,200,220,${r.opacity * (isDark ? 1 : 0.6)})`;
         ctx.fillText(r.value, r.x, r.y);
       });
 
-      // ── 6. SUBTLE SOLANA ARCS (üstte) ──
+      // ── 6. SOLANA ARCS ──
       const arcCenters = [
         { x: W * 0.15, y: H * 0.08, r: 60 },
         { x: W * 0.85, y: H * 0.12, r: 45 },
@@ -263,10 +271,15 @@ export default function Background() {
         ctx.stroke();
       });
 
-      // ── 7. VIGNETTE ──
+      // ── 7. VIGNETTE (Light modda daha hafif) ──
       const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.9);
-      vg.addColorStop(0, "transparent");
-      vg.addColorStop(1, "rgba(10,10,15,0.75)");
+      if (isDark) {
+        vg.addColorStop(0, "transparent");
+        vg.addColorStop(1, "rgba(10,10,15,0.75)");
+      } else {
+        vg.addColorStop(0, "transparent");
+        vg.addColorStop(1, "rgba(245,245,250,0.5)");
+      }
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
 
@@ -278,12 +291,12 @@ export default function Background() {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [theme]);
 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 z-0"
+      className="fixed inset-0 z-0 pointer-events-none"
       style={{ display: "block" }}
     />
   );
