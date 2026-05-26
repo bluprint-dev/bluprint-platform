@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { Rocket, ArrowRight, Zap, Shield, Crown, Infinity, Coins, Activity, Users, TrendingUp, Sparkles, Check } from "lucide-react";
+import { 
+  Rocket, ArrowRight, Zap, Shield, Crown, Infinity, Coins, 
+  Activity, Users, TrendingUp, Sparkles, Check, ArrowDown, ArrowUp
+} from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -332,7 +335,10 @@ const SwapAnimation = () => {
           transition={{ duration: 0.4, type: "spring" }}
           className="w-10 h-10 rounded-full bg-[#1A1A22] border border-[#ff2d95]/30 flex items-center justify-center"
         >
-          <ArrowDownUp className="w-4 h-4 text-[#ff2d95]" />
+          {swapDirection === "buy" ? 
+            <ArrowDown className="w-4 h-4 text-[#ff2d95]" /> : 
+            <ArrowUp className="w-4 h-4 text-[#ff2d95]" />
+          }
         </motion.div>
       </div>
       
