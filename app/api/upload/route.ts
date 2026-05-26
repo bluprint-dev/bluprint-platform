@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     
     const feeLamports = Math.floor(IRYS_FEE_SOL * 1_000_000_000);
     
+    // 1. Irys ücreti transaction (kullanıcıdan platforma)
     const feeTransaction = new Transaction();
     feeTransaction.add(
       SystemProgram.transfer({
@@ -37,16 +38,27 @@ export async function POST(req: NextRequest) {
       verifySignatures: false,
     }).toString('base64');
     
-    // ⚠️ Irys yükleme KALDIRILDI - frontend'de yapılacak
-    // Backend sadece fee transaction'ı hazırlıyor
+    // 2. Irys'a YÜKLE (platform cüzdanı ile - artık SOL var)
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const secretKeyArray = JSON.parse(process.env.PLATFORM_SECRET_KEY!);
     
-    // Varsayılan resim döndür (geçici)
-    const imageUrl = "https://gateway.irys.xyz/default-token-logo.png";
+    const Irys = require('@irys/sdk');
+    const irys = new Irys({
+      network: 'mainnet',  // mainnet kullanıyoruz
+      token: 'solana',
+      key: secretKeyArray,
+    });
+    
+    const receipt = await irys.upload(buffer, {
+      tags: [{ name: 'Content-Type', value: file.type }],
+    });
+    
+    const imageUrl = `https://gateway.irys.xyz/${receipt.id}`;
     
     return NextResponse.json({
       success: true,
       imageUrl,
-      id: "default",
+      id: receipt.id,
       feeTransaction: serializedFeeTx,
       feeAmount: IRYS_FEE_SOL,
     });
