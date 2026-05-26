@@ -11,8 +11,6 @@ import {
   Sparkles,
   LineChart,
   Users,
-  Radio,
-  Trophy,
   Wallet,
   X,
   Menu,
@@ -32,8 +30,7 @@ export default function Sidebar() {
     { href: "/create", label: "Create", icon: Sparkles, comingSoon: false },
     { href: "/dex", label: "DEX", icon: LineChart, comingSoon: false },
     { href: "/referral", label: "Refer", icon: Users, comingSoon: false },
-    { href: "/live", label: "Live", icon: Radio, comingSoon: false },
-    { href: "/top-users", label: "Top Users", icon: Trophy, comingSoon: false },
+    // Live ve Top Users KALDIRILDI
   ];
 
   useEffect(() => {
@@ -79,7 +76,7 @@ export default function Sidebar() {
       <div className="relative z-10 flex flex-col h-full">
         
         {/* Live Pulse Indicator */}
-        <div className="px-4 pt-5 pb-2">
+        <div className="px-3 pt-5 pb-2">
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#101014]/50 border border-[#ff2d95]/15 backdrop-blur-sm">
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             <span className="text-xs text-zinc-400">Solana Mainnet Live</span>
@@ -87,17 +84,17 @@ export default function Sidebar() {
           </div>
         </div>
         
-        {/* Logo - Sadece favicon + yazı, taban yok */}
-        <div className="px-5 py-4">
-          <Link href="/" className="flex items-center gap-3 group">
+        {/* Logo */}
+        <div className="px-4 py-4">
+          <Link href="/" className="flex items-center gap-2 group">
             <img 
               src="/favicon.ico" 
               alt="BluPrint" 
-              className="w-8 h-8 object-contain group-hover:drop-shadow-[0_0_10px_rgba(255,45,149,0.5)] transition-all duration-300"
+              className="w-7 h-7 object-contain group-hover:drop-shadow-[0_0_10px_rgba(255,45,149,0.5)] transition-all duration-300"
             />
             <div className="flex">
-              <span className="text-white font-bold text-xl tracking-tight">Blu</span>
-              <span className="text-[#ff2d95] font-bold text-xl tracking-tight">Print</span>
+              <span className="text-white font-bold text-lg tracking-tight">Blu</span>
+              <span className="text-[#ff2d95] font-bold text-lg tracking-tight">Print</span>
             </div>
           </Link>
         </div>
@@ -121,7 +118,7 @@ export default function Sidebar() {
                     : "text-[#8E8E93] hover:bg-[#1A1A22]/50 hover:translate-x-1 hover:scale-[1.02]"
                 }`}
               >
-                {/* Active indicator - Neon çizgi */}
+                {/* Active indicator */}
                 {active && (
                   <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-[#ff2d95] to-[#7c3aed]" />
                 )}
@@ -163,7 +160,7 @@ export default function Sidebar() {
           })}
         </nav>
         
-        {/* Wallet Section - Futuristic */}
+        {/* Wallet Section */}
         <div className="px-3 pt-2 pb-5 space-y-3 mt-auto">
           <div className="relative">
             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#1A1A22] to-[#101014] border border-[#ff2d95]/15 shadow-[0_0_20px_rgba(255,45,149,0.08)]" />
@@ -200,8 +197,8 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 z-40 hidden md:flex flex-col overflow-hidden">
+      {/* Desktop Sidebar - DAHA DAR (w-56) */}
+      <aside className="fixed left-0 top-0 bottom-0 w-56 z-40 hidden md:flex flex-col overflow-hidden">
         <div className="relative flex flex-col h-full">
           {sidebarContent}
         </div>
@@ -251,7 +248,7 @@ export default function Sidebar() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -280, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 bottom-0 w-64 z-50 shadow-2xl flex flex-col overflow-hidden"
+              className="fixed left-0 top-0 bottom-0 w-56 z-50 shadow-2xl flex flex-col overflow-hidden"
             >
               <div className="relative flex flex-col h-full">
                 {sidebarContent}
