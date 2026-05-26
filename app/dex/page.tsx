@@ -209,7 +209,7 @@ export default function DexPage() {
             </div>
 
             {/* Column headers */}
-            <div className="grid items-center px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-700"
+            <div className="grid items-center px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-300"
               style={{ gridTemplateColumns: "2fr 1fr 1fr 80px" }}>
               <span>Token</span>
               <span className="text-right">Progress</span>
@@ -221,12 +221,12 @@ export default function DexPage() {
             {loading ? (
               <div className="flex flex-col items-center justify-center py-24 gap-3">
                 <Loader2 className="w-6 h-6 text-[#ff2d95] animate-spin" />
-                <span className="text-xs text-gray-700">Loading tokens...</span>
+                <span className="text-xs text-gray-300">Loading tokens...</span>
               </div>
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 gap-3">
                 <Activity className="w-8 h-8 text-gray-800" />
-                <p className="text-sm text-gray-700">No tokens yet</p>
+                <p className="text-sm text-gray-300">No tokens yet</p>
                 <a href="/create" className="text-xs text-[#ff2d95] hover:underline">Create the first one →</a>
               </div>
             ) : (
@@ -274,7 +274,7 @@ export default function DexPage() {
                           <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
                             <div className="h-full rounded-full" style={{ width: "50%", background: "linear-gradient(90deg,#ff2d95,#ff6bcb)" }} />
                           </div>
-                          <div className="text-[10px] text-gray-700 mt-0.5 text-right">50%</div>
+                          <div className="text-[10px] text-gray-300 mt-0.5 text-right">50%</div>
                         </div>
                       </div>
 
@@ -287,7 +287,7 @@ export default function DexPage() {
 
                       {/* CTA */}
                       <div className="flex justify-end">
-                        <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                        <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                           isSelected ? "text-white" : "text-[#ff2d95] group-hover:text-white"
                         }`}
                           style={{
@@ -315,7 +315,7 @@ export default function DexPage() {
                   <Zap className="w-5 h-5 text-[#ff2d95]" />
                 </div>
                 <div>
-                  <p className="text-white font-semibold text-sm mb-1">Select a token</p>
+                  <p className="text-white font-bold text-sm mb-1">Select a token</p>
                   <p className="text-xs text-gray-600 leading-relaxed">Pick any token from the list to start trading on the bonding curve</p>
                 </div>
               </div>
@@ -388,7 +388,7 @@ export default function DexPage() {
                           ].map(s => (
                             <div key={s.label} className="rounded-xl p-2.5"
                               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                              <p className="text-[10px] text-gray-700 mb-0.5">{s.label}</p>
+                              <p className="text-[10px] text-gray-300 mb-0.5">{s.label}</p>
                               <p className="text-xs font-bold text-white">{s.value}</p>
                             </div>
                           ))}
@@ -397,19 +397,19 @@ export default function DexPage() {
                         {/* Status */}
                         <div className="flex gap-1.5 flex-wrap">
                           {bucketInfo.lifecycle.isGraduated && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
                               style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.2)", color: "#60a5fa" }}>
                               🎓 Graduated
                             </span>
                           )}
                           {bucketInfo.lifecycle.isSoldOut && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
                               style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
                               Sold Out
                             </span>
                           )}
                           {bucketInfo.lifecycle.isSwappable && !bucketInfo.lifecycle.isGraduated && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
                               style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80" }}>
                               ● Live
                             </span>
@@ -451,7 +451,7 @@ export default function DexPage() {
                       <div>
                         <div className="flex justify-between text-[11px] mb-1.5">
                           <span className="text-gray-600">{isBuy ? "You pay" : "You sell"}</span>
-                          <span className="text-gray-700">{isBuy ? "SOL" : selectedToken.symbol}</span>
+                          <span className="text-gray-300">{isBuy ? "SOL" : selectedToken.symbol}</span>
                         </div>
                         <div className="relative">
                           <input
@@ -476,7 +476,7 @@ export default function DexPage() {
                           <div className="flex gap-1.5 mt-2">
                             {["0.1","0.5","1","5"].map(v => (
                               <button key={v} onClick={() => setAmount(v)}
-                                className="flex-1 h-7 text-[11px] font-semibold rounded-lg transition"
+                                className="flex-1 h-7 text-[11px] font-bold rounded-lg transition"
                                 style={{
                                   background: amount === v ? "rgba(255,45,149,0.15)" : "rgba(255,255,255,0.04)",
                                   border: `1px solid ${amount === v ? "rgba(255,45,149,0.3)" : "rgba(255,255,255,0.06)"}`,
@@ -518,16 +518,16 @@ export default function DexPage() {
                               </span>
                             </div>
                             <div className="flex justify-between text-[10px]">
-                              <span className="text-gray-700">Fee</span>
+                              <span className="text-gray-300">Fee</span>
                               <span className="text-gray-600">{(Number(quote.fee)/1e9).toFixed(6)} SOL</span>
                             </div>
                             <div className="flex justify-between text-[10px]">
-                              <span className="text-gray-700">Creator fee</span>
+                              <span className="text-gray-300">Creator fee</span>
                               <span className="text-gray-600">{(Number(quote.creatorFee)/1e9).toFixed(6)} SOL</span>
                             </div>
                           </div>
                         ) : (
-                          <p className="text-[11px] text-gray-700 flex items-center gap-1.5">
+                          <p className="text-[11px] text-gray-300 flex items-center gap-1.5">
                             <Zap className="w-3 h-3" />
                             Enter amount for instant quote
                           </p>
