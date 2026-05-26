@@ -220,7 +220,7 @@ export default function CreatePage() {
 
               {/* Main Card */}
               <div className="rounded-2xl p-6 space-y-6"
-                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                style={{ background: "rgba(15,15,25,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
                 <div className="flex items-center gap-2">
                   <Flame className="w-4 h-4 text-[#ff2d95]" />
@@ -351,7 +351,7 @@ export default function CreatePage() {
 
               {/* Review Card */}
               <div className="rounded-2xl p-6 space-y-5"
-                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                style={{ background: "rgba(15,15,25,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
                 <div className="flex items-center gap-2">
                   <PartyPopper className="w-4 h-4 text-[#ff2d95]" />
