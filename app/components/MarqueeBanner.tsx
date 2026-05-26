@@ -48,15 +48,15 @@ export default function MarqueeBanner() {
   const allMessages = [...MARQUEE_MESSAGES, ...MARQUEE_MESSAGES];
 
   return (
-    <div className="relative overflow-hidden bg-gradient-to-r from-[rgb(var(--primary))]/5 via-[rgb(var(--primary))]/10 to-[rgb(var(--primary))]/5 border-y border-[rgb(var(--primary))]/20 py-3">
+    <div className="relative overflow-hidden bg-gradient-to-r from-[#ff2d95]/5 via-[#ff2d95]/10 to-[#ff2d95]/5 border-y border-[#ff2d95]/20 py-3">
       
       {/* Live badge */}
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[rgb(var(--primary))]/20 border border-[rgb(var(--primary))]/30 backdrop-blur-sm">
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff2d95]/20 border border-[#ff2d95]/30 backdrop-blur-sm">
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[rgb(var(--primary))] opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-[rgb(var(--primary))]"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff2d95] opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff2d95]"></span>
         </span>
-        <span className="text-[10px] font-mono text-[rgb(var(--primary))] font-bold tracking-wider">LIVE</span>
+        <span className="text-[10px] font-mono text-[#ff2d95] font-bold tracking-wider">LIVE</span>
       </div>
 
       {/* Kayan içerik */}
@@ -69,17 +69,17 @@ export default function MarqueeBanner() {
           {allMessages.map((message, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 text-[rgb(var(--text-secondary))] text-sm font-medium"
+              className="flex items-center gap-2 text-gray-300 text-sm font-medium"
             >
-              <span className="text-[rgb(var(--primary))]">◆</span>
+              <span className="text-[#ff2d95]">◆</span>
               <span>{message}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Gradient overlay - sağ taraf (tema uyumlu) */}
-      <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[rgb(var(--bg-primary))] to-transparent pointer-events-none" />
+      {/* Gradient overlay - sağ taraf */}
+      <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#0A0A0F] to-transparent pointer-events-none" />
 
       <style jsx>{`
         .scrollbar-none::-webkit-scrollbar {
