@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 
-// Irys ücreti (yaklaşık 0.0001 SOL)
 const IRYS_FEE_SOL = 0.0001;
 
 export async function POST(req: NextRequest) {
@@ -14,7 +13,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing file or userPublicKey' }, { status: 400 });
     }
 
-    // 1. Irys ücreti için transaction hazırla (kullanıcı imzalayacak)
     const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!);
     const userWallet = new PublicKey(userPublicKey);
     const platformWallet = new PublicKey(process.env.PLATFORM_PUBLIC_KEY!);
@@ -39,27 +37,16 @@ export async function POST(req: NextRequest) {
       verifySignatures: false,
     }).toString('base64');
     
-    // 2. Logoyu Irys'a yükle (platform cüzdanından değil, direkt)
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const secretKeyArray = JSON.parse(process.env.PLATFORM_SECRET_KEY!);
+    // ⚠️ Irys yükleme KALDIRILDI - frontend'de yapılacak
+    // Backend sadece fee transaction'ı hazırlıyor
     
-    const Irys = require('@irys/sdk');
-    const irys = new Irys({
-      network: 'mainnet',
-      token: 'solana',
-      key: secretKeyArray,
-    });
-    
-    const receipt = await irys.upload(buffer, {
-      tags: [{ name: 'Content-Type', value: file.type }],
-    });
-    
-    const imageUrl = `https://gateway.irys.xyz/${receipt.id}`;
+    // Varsayılan resim döndür (geçici)
+    const imageUrl = "https://gateway.irys.xyz/default-token-logo.png";
     
     return NextResponse.json({
       success: true,
       imageUrl,
-      id: receipt.id,
+      id: "default",
       feeTransaction: serializedFeeTx,
       feeAmount: IRYS_FEE_SOL,
     });
