@@ -1,11 +1,18 @@
 "use client";
 
+import Footer from "@/app/components/Footer";
 import { useState, useEffect, useCallback } from "react";
+import Footer from "@/app/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
+import Footer from "@/app/components/Footer";
 import { useWallet } from "@solana/wallet-adapter-react";
+import Footer from "@/app/components/Footer";
 import { useConnection } from "@solana/wallet-adapter-react";
+import Footer from "@/app/components/Footer";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import Footer from "@/app/components/Footer";
 import { VersionedTransaction, Transaction } from "@solana/web3.js";
+import Footer from "@/app/components/Footer";
 import {
   Search, RefreshCw, TrendingUp, TrendingDown, ArrowUpDown,
   ExternalLink, Copy, Check, AlertCircle, Loader2, Activity,
@@ -611,6 +618,8 @@ export default function DexPage() {
           </div>
         </div>
       </div>
+    
+      <Footer />
     </div>
   );
 }

@@ -1,15 +1,26 @@
 "use client";
 
+import Footer from "@/app/components/Footer";
 import { useState } from "react";
+import Footer from "@/app/components/Footer";
 import { useWallet } from "@solana/wallet-adapter-react";
+import Footer from "@/app/components/Footer";
 import { useConnection } from "@solana/wallet-adapter-react";
+import Footer from "@/app/components/Footer";
 import { useRouter } from "next/navigation";
+import Footer from "@/app/components/Footer";
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import Footer from "@/app/components/Footer";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+import Footer from "@/app/components/Footer";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
+import Footer from "@/app/components/Footer";
 import { createAndRegisterLaunch } from "@metaplex-foundation/genesis";
+import Footer from "@/app/components/Footer";
 import { genesis } from "@metaplex-foundation/genesis";
+import Footer from "@/app/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
+import Footer from "@/app/components/Footer";
 import {
   ArrowLeft, Rocket, Upload, Shield, Check, AlertCircle,
   Flame, PartyPopper, ExternalLink, Copy, Loader2, ImageIcon, 
@@ -561,6 +572,8 @@ export default function CreatePage() {
 
         </AnimatePresence>
       </div>
+    
+      <Footer />
     </div>
   );
 }
