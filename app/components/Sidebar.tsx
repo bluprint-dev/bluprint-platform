@@ -16,7 +16,6 @@ import {
   Menu,
   Zap,
 } from "lucide-react";
-import ThemeToggle from "./ThemeToggle";
 
 export default function Sidebar() {
   const { connected, disconnect, publicKey } = useWallet();
@@ -27,22 +26,17 @@ export default function Sidebar() {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const menuItems = [
-    { href: "/", label: "Home", icon: Home, comingSoon: false },
-    { href: "/create", label: "Create", icon: Sparkles, comingSoon: false },
-    { href: "/dex", label: "DEX", icon: LineChart, comingSoon: false },
-    { href: "/referral", label: "Refer", icon: Users, comingSoon: false },
+    { href: "/", label: "Home", icon: Home },
+    { href: "/create", label: "Create", icon: Sparkles },
+    { href: "/dex", label: "DEX", icon: LineChart },
+    { href: "/referral", label: "Refer", icon: Users },
   ];
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
   const handleWalletClick = () => {
-    if (connected) {
-      disconnect();
-    } else {
-      setVisible(true);
-    }
+    if (connected) disconnect();
+    else setVisible(true);
   };
 
   const shortenAddress = (address: string) => {
@@ -53,48 +47,44 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <>
-      {/* ========== ARKAPLAN LAYER'LARI ========== */}
-      <div className="absolute inset-0 bg-[rgb(var(--bg-sidebar))] backdrop-blur-2xl" />
+      {/* Arkaplan */}
+      <div className="absolute inset-0 bg-[#050507] backdrop-blur-2xl" />
       
-      {/* Glow orbs - Light modda daha soluk */}
-      <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-[rgb(var(--primary))]/10 blur-3xl" />
+      {/* Glow orbs */}
+      <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-[#ff2d95]/10 blur-3xl" />
       <div className="absolute bottom-20 left-0 w-40 h-40 rounded-full bg-[#7c3aed]/5 blur-3xl" />
       
-      {/* Grid pattern */}
+      {/* Grid */}
       <div 
         className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(to right, rgb(var(--primary)) 1px, transparent 1px),
-            linear-gradient(to bottom, rgb(var(--primary)) 1px, transparent 1px)
+            linear-gradient(to right, #ff2d95 1px, transparent 1px),
+            linear-gradient(to bottom, #ff2d95 1px, transparent 1px)
           `,
           backgroundSize: '40px 40px',
         }}
       />
       
-      {/* ========== CONTENT ========== */}
+      {/* İçerik */}
       <div className="relative z-10 flex flex-col h-full">
         
-        {/* Live Pulse Indicator */}
+        {/* Live Pulse */}
         <div className="px-3 pt-5 pb-2">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--bg-secondary))]/50 border border-[rgb(var(--primary))]/15 backdrop-blur-sm">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#101014]/50 border border-[#ff2d95]/15">
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-xs text-[rgb(var(--text-secondary))]">Solana Mainnet Live</span>
-            <Zap className="w-3 h-3 text-[rgb(var(--primary))] ml-auto" />
+            <span className="text-xs text-zinc-400">Solana Mainnet Live</span>
+            <Zap className="w-3 h-3 text-[#ff2d95] ml-auto" />
           </div>
         </div>
         
         {/* Logo */}
         <div className="px-4 py-4">
-          <Link href="/" className="flex items-center gap-2 group">
-            <img 
-              src="/favicon.ico" 
-              alt="BluPrint" 
-              className="w-7 h-7 object-contain group-hover:drop-shadow-[0_0_10px_rgba(255,45,149,0.5)] transition-all duration-300"
-            />
+          <Link href="/" className="flex items-center gap-2">
+            <img src="/favicon.ico" alt="BluPrint" className="w-7 h-7" />
             <div className="flex">
-              <span className="text-[rgb(var(--text-primary))] font-bold text-lg tracking-tight">Blu</span>
-              <span className="text-[rgb(var(--primary))] font-bold text-lg tracking-tight">Print</span>
+              <span className="text-white font-bold text-lg">Blu</span>
+              <span className="text-[#ff2d95] font-bold text-lg">Print</span>
             </div>
           </Link>
         </div>
@@ -112,72 +102,46 @@ export default function Sidebar() {
                 href={item.href}
                 onMouseEnter={() => setHoveredItem(item.href)}
                 onMouseLeave={() => setHoveredItem(null)}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group ${
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${
                   active
-                    ? "bg-gradient-to-r from-[rgb(var(--primary))]/15 to-[#7c3aed]/10 border border-[rgb(var(--primary))]/25 shadow-[0_0_25px_rgba(255,45,149,0.12)]"
-                    : "text-[rgb(var(--text-secondary))] hover:bg-[rgb(var(--bg-secondary))]/50 hover:translate-x-1 hover:scale-[1.02]"
+                    ? "bg-gradient-to-r from-[#ff2d95]/15 to-[#7c3aed]/10 border border-[#ff2d95]/25"
+                    : "text-[#8E8E93] hover:bg-[#1A1A22]/50 hover:translate-x-1"
                 }`}
               >
                 {active && (
-                  <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-[rgb(var(--primary))] to-[#7c3aed]" />
+                  <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-[#ff2d95] to-[#7c3aed]" />
                 )}
                 
-                <motion.div
-                  animate={isHovered || active ? { rotate: [0, -10, 10, -5, 0] } : {}}
-                  transition={{ duration: 0.5 }}
-                >
-                  <Icon 
-                    className={`w-5 h-5 transition-all duration-300 ${
-                      active 
-                        ? "text-[rgb(var(--primary))] drop-shadow-[0_0_8px_rgba(255,45,149,0.5)]" 
-                        : "text-[rgb(var(--text-secondary))] group-hover:text-[rgb(var(--primary))] group-hover:rotate-6"
-                    }`} 
-                  />
-                </motion.div>
+                <Icon className={`w-5 h-5 ${active ? "text-[#ff2d95]" : "text-[#8E8E93] group-hover:text-[#ff2d95]"}`} />
                 
-                <span className="text-sm font-medium tracking-wide text-[rgb(var(--text-primary))]">{item.label}</span>
+                <span className={`text-sm font-medium ${active ? "text-white" : "text-[#8E8E93]"}`}>
+                  {item.label}
+                </span>
                 
                 {active && (
-                  <motion.div
-                    layoutId="activeIndicator"
-                    className="ml-auto w-1.5 h-1.5 rounded-full bg-[rgb(var(--primary))] shadow-[0_0_10px_rgba(255,45,149,0.8)]"
-                    transition={{ type: "spring", duration: 0.3 }}
-                  />
-                )}
-                
-                {isHovered && !active && (
-                  <motion.div
-                    layoutId="hoverGlow"
-                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-[rgb(var(--primary))]/5 to-transparent"
-                    transition={{ type: "spring", duration: 0.2 }}
-                  />
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#ff2d95]" />
                 )}
               </Link>
             );
           })}
         </nav>
         
-        {/* Theme Toggle - Wallet Section'dan Önce */}
-        <div className="px-3 py-2">
-          <ThemeToggle />
-        </div>
-        
-        {/* Wallet Section */}
-        <div className="px-3 pt-2 pb-5 space-y-3">
+        {/* Wallet */}
+        <div className="px-3 pt-2 pb-5">
           <div className="relative">
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[rgb(var(--bg-secondary))] to-[rgb(var(--bg-sidebar))] border border-[rgb(var(--primary))]/15 shadow-[0_0_20px_rgba(255,45,149,0.08)]" />
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#1A1A22] to-[#101014] border border-[#ff2d95]/15" />
             
             <button
               onClick={handleWalletClick}
-              className="relative w-full flex items-center gap-2 px-3 py-3 rounded-xl transition-all duration-300 group"
+              className="relative w-full flex items-center gap-2 px-3 py-3 rounded-xl"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[rgb(var(--primary))] to-[#7c3aed] flex items-center justify-center shadow-[0_0_15px_rgba(255,45,149,0.4)]">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff2d95] to-[#7c3aed] flex items-center justify-center">
                 <Wallet className="w-4 h-4 text-white" />
               </div>
               
               <div className="flex-1 text-left">
-                <p className="text-xs text-[rgb(var(--text-secondary))]">Wallet</p>
-                <p className="text-[rgb(var(--text-primary))] text-sm font-medium truncate">
+                <p className="text-xs text-zinc-400">Wallet</p>
+                <p className="text-white text-sm font-medium truncate">
                   {connected && publicKey ? shortenAddress(publicKey.toString()) : "Connect Wallet"}
                 </p>
               </div>
@@ -199,37 +163,27 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Desktop */}
       <aside className="fixed left-0 top-0 bottom-0 w-56 z-40 hidden md:flex flex-col overflow-hidden">
-        <div className="relative flex flex-col h-full">
-          {sidebarContent}
-        </div>
+        <div className="relative flex flex-col h-full">{sidebarContent}</div>
       </aside>
 
       {/* Mobile Header */}
-      <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-[rgb(var(--bg-sidebar))]/95 backdrop-blur-2xl border-b border-[rgb(var(--primary))]/15">
+      <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-[#050507]/95 backdrop-blur-2xl border-b border-[#ff2d95]/15">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2">
-            <img 
-              src="/favicon.ico" 
-              alt="BluPrint" 
-              className="w-7 h-7 object-contain"
-            />
+            <img src="/favicon.ico" alt="BluPrint" className="w-7 h-7" />
             <div className="flex">
-              <span className="text-[rgb(var(--text-primary))] font-bold text-lg">Blu</span>
-              <span className="text-[rgb(var(--primary))] font-bold text-lg">Print</span>
+              <span className="text-white font-bold text-lg">Blu</span>
+              <span className="text-[#ff2d95] font-bold text-lg">Print</span>
             </div>
           </Link>
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="w-10 h-10 rounded-xl bg-[rgb(var(--bg-secondary))]/50 border border-[rgb(var(--primary))]/20 flex items-center justify-center transition-all hover:border-[rgb(var(--primary))]/40"
+            className="w-10 h-10 rounded-xl bg-[#1A1A22]/50 border border-[#ff2d95]/20 flex items-center justify-center"
           >
-            {isMobileMenuOpen ? (
-              <X className="w-5 h-5 text-[rgb(var(--text-primary))]" />
-            ) : (
-              <Menu className="w-5 h-5 text-[rgb(var(--text-primary))]" />
-            )}
+            {isMobileMenuOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
           </button>
         </div>
       </div>
@@ -249,12 +203,9 @@ export default function Sidebar() {
               initial={{ x: -280, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -280, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 bottom-0 w-56 z-50 shadow-2xl flex flex-col overflow-hidden"
+              className="fixed left-0 top-0 bottom-0 w-56 z-50 shadow-2xl"
             >
-              <div className="relative flex flex-col h-full">
-                {sidebarContent}
-              </div>
+              <div className="relative flex flex-col h-full">{sidebarContent}</div>
             </motion.div>
           </>
         )}
