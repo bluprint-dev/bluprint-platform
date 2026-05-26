@@ -16,6 +16,7 @@ import {
   Menu,
   Zap,
 } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Sidebar() {
   const { connected, disconnect, publicKey } = useWallet();
@@ -30,7 +31,6 @@ export default function Sidebar() {
     { href: "/create", label: "Create", icon: Sparkles, comingSoon: false },
     { href: "/dex", label: "DEX", icon: LineChart, comingSoon: false },
     { href: "/referral", label: "Refer", icon: Users, comingSoon: false },
-    // Live ve Top Users KALDIRILDI
   ];
 
   useEffect(() => {
@@ -118,12 +118,10 @@ export default function Sidebar() {
                     : "text-[#8E8E93] hover:bg-[#1A1A22]/50 hover:translate-x-1 hover:scale-[1.02]"
                 }`}
               >
-                {/* Active indicator */}
                 {active && (
                   <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-[#ff2d95] to-[#7c3aed]" />
                 )}
                 
-                {/* Icon with animation */}
                 <motion.div
                   animate={isHovered || active ? { rotate: [0, -10, 10, -5, 0] } : {}}
                   transition={{ duration: 0.5 }}
@@ -147,7 +145,6 @@ export default function Sidebar() {
                   />
                 )}
                 
-                {/* Hover glow */}
                 {isHovered && !active && (
                   <motion.div
                     layoutId="hoverGlow"
@@ -160,8 +157,13 @@ export default function Sidebar() {
           })}
         </nav>
         
+        {/* Theme Toggle - Wallet Section'dan Önce */}
+        <div className="px-3 py-2">
+          <ThemeToggle />
+        </div>
+        
         {/* Wallet Section */}
-        <div className="px-3 pt-2 pb-5 space-y-3 mt-auto">
+        <div className="px-3 pt-2 pb-5 space-y-3">
           <div className="relative">
             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#1A1A22] to-[#101014] border border-[#ff2d95]/15 shadow-[0_0_20px_rgba(255,45,149,0.08)]" />
             
@@ -197,7 +199,7 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop Sidebar - DAHA DAR (w-56) */}
+      {/* Desktop Sidebar */}
       <aside className="fixed left-0 top-0 bottom-0 w-56 z-40 hidden md:flex flex-col overflow-hidden">
         <div className="relative flex flex-col h-full">
           {sidebarContent}

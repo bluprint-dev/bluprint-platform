@@ -1,6 +1,37 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Tailwind v4 için class-based dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==================== LIGHT MODE (Varsayılan) ==================== */
+:root {
+  --background: 255 255 255;
+  --foreground: 10 10 15;
+  --primary: 255 45 149;
+  --primary-light: 255 107 203;
+  --border-light: 229 231 235;
+  --card-bg: 255 255 255;
+}
+
+/* ==================== DARK MODE ==================== */
+.dark {
+  --background: 10 10 15;
+  --foreground: 255 255 255;
+  --primary: 255 45 149;
+  --primary-light: 255 107 203;
+  --border-light: 31 41 55;
+  --card-bg: 17 17 21;
+}
+
+/* ==================== BASE STYLES ==================== */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+body {
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
+}
 
 /* ==================== ANİMASYONLAR ==================== */
 
@@ -77,28 +108,34 @@
   animation: floatParticle ease-in-out infinite;
 }
 
-/* ==================== SCROLLBAR - PINK THEME ==================== */
+/* ==================== SCROLLBAR ==================== */
 ::-webkit-scrollbar {
   width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0A0A0F;
+  background: rgb(var(--background));
   border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(51.8% 0.253 323.949);
+  background: rgb(var(--primary));
   border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(61.8% 0.253 323.949);
+  background: rgb(var(--primary-light));
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--primary)) rgb(var(--background));
 }
 
 /* ==================== SELECTION ==================== */
 ::selection {
-  background: oklch(51.8% 0.253 323.949);
+  background: rgb(var(--primary));
   color: white;
 }
 
@@ -107,4 +144,26 @@
   button, a {
     min-height: 44px;
   }
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.bg-card {
+  background-color: rgb(var(--card-bg));
+}
+
+.border-theme {
+  border-color: rgb(var(--border-light));
+}
+
+.text-primary {
+  color: rgb(var(--primary));
+}
+
+.bg-primary\/10 {
+  background-color: rgba(var(--primary), 0.1);
+}
+
+/* ==================== TRANSITIONS ==================== */
+.theme-transition {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
