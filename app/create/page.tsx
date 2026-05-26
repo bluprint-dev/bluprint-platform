@@ -12,10 +12,12 @@ import { genesis } from "@metaplex-foundation/genesis";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Rocket, Upload, Shield, Check, AlertCircle,
-  Flame, PartyPopper, ExternalLink, Copy, Loader2, ImageIcon, Sparkles,
+  Flame, PartyPopper, ExternalLink, Copy, Loader2, ImageIcon, 
+  Sparkles, Star, Crown, Zap, Gift, TrendingUp
 } from "lucide-react";
 
 const CREATE_FEE_SOL = 0.01;
+const FREE_TIER_LIMIT = 150;
 const FEE_DISTRIBUTION = [
   { address: "aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x", percentage: 58 },
   { address: "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc", percentage: 32 },
@@ -43,6 +45,11 @@ export default function CreatePage() {
   const [mintAddress, setMintAddress] = useState<string | null>(null);
   const [launchLink, setLaunchLink] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Simulate total tokens count (will be fetched from API)
+  const totalTokensCreated = 87; // This should come from API
+  const isFirst150 = totalTokensCreated < FREE_TIER_LIMIT;
+  const remainingFree = FREE_TIER_LIMIT - totalTokensCreated;
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -123,7 +130,7 @@ export default function CreatePage() {
   return (
     <div className="relative z-10 min-h-screen">
 
-      {/* ── TOPBAR ── */}
+      {/* TOPBAR */}
       <div className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0A0A0F]/90 backdrop-blur-2xl">
         <div className="max-w-2xl mx-auto px-5 h-14 flex items-center gap-4">
           <button
@@ -170,20 +177,57 @@ export default function CreatePage() {
       <div className="max-w-2xl mx-auto px-5 py-8">
         <AnimatePresence mode="wait">
 
-          {/* ── STEP 0: INFO ── */}
+          {/* STEP 0: INFO */}
           {step === 0 && (
             <motion.div key="s0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
 
-              {/* Card */}
+              {/* PROMO BANNER - First 150 tokens */}
+              <div className="relative overflow-hidden rounded-2xl p-4 bg-gradient-to-r from-[#ff2d95]/20 via-[#ff6bcb]/10 to-[#ff2d95]/20 border border-[#ff2d95]/30">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-[#ff2d95]/20 rounded-full blur-2xl" />
+                <div className="relative flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#ff2d95]/20 flex items-center justify-center">
+                    {isFirst150 ? <Gift className="w-5 h-5 text-[#ff2d95]" /> : <Star className="w-5 h-5 text-[#ff2d95]" />}
+                  </div>
+                  <div className="flex-1">
+                    {isFirst150 ? (
+                      <>
+                        <p className="text-sm font-bold text-white">🎁 FIRST {FREE_TIER_LIMIT} TOKENS PROMO</p>
+                        <p className="text-xs text-gray-300">You are early! Only {remainingFree} spots left for 0.01 SOL fee</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-bold text-white">✨ STANDARD LAUNCH FEE</p>
+                        <p className="text-xs text-gray-300">First {FREE_TIER_LIMIT} tokens launched at 0.01 SOL. Regular fee applies after.</p>
+                      </>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-black text-white">{isFirst150 ? "0.01" : "0.05"} SOL</p>
+                    <p className="text-[10px] text-gray-500">create fee</p>
+                  </div>
+                </div>
+                {/* Progress bar */}
+                <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] rounded-full transition-all duration-500"
+                    style={{ width: `${(totalTokensCreated / FREE_TIER_LIMIT) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-gray-500 mt-2 text-center">
+                  {totalTokensCreated} / {FREE_TIER_LIMIT} tokens created
+                </p>
+              </div>
+
+              {/* Main Card */}
               <div className="rounded-2xl p-6 space-y-6"
                 style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
                 <div className="flex items-center gap-2">
                   <Flame className="w-4 h-4 text-[#ff2d95]" />
-                  <h2 className="text-base font-black text-white">Token Info</h2>
+                  <h2 className="text-base font-black text-white">Token Information</h2>
                 </div>
 
-                {/* Image */}
+                {/* Image Upload */}
                 <div>
                   <p className="text-xs text-gray-500 mb-3 font-medium">Token Image *</p>
                   <div className="flex items-center gap-5">
@@ -230,7 +274,7 @@ export default function CreatePage() {
                   {errors.image && <p className="text-xs text-red-400 mt-2">{errors.image}</p>}
                 </div>
 
-                {/* Name */}
+                {/* Token Name */}
                 <div>
                   <p className="text-xs text-gray-500 mb-2 font-medium">Token Name *</p>
                   <input
@@ -249,7 +293,7 @@ export default function CreatePage() {
                   </div>
                 </div>
 
-                {/* Symbol */}
+                {/* Token Symbol */}
                 <div>
                   <p className="text-xs text-gray-500 mb-2 font-medium">Symbol *</p>
                   <input
@@ -301,10 +345,11 @@ export default function CreatePage() {
             </motion.div>
           )}
 
-          {/* ── STEP 1: REVIEW ── */}
+          {/* STEP 1: REVIEW */}
           {step === 1 && (
             <motion.div key="s1" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
 
+              {/* Review Card */}
               <div className="rounded-2xl p-6 space-y-5"
                 style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
@@ -313,7 +358,7 @@ export default function CreatePage() {
                   <h2 className="text-base font-black text-white">Review & Confirm</h2>
                 </div>
 
-                {/* Token preview card */}
+                {/* Token Preview */}
                 <div className="flex items-center gap-4 p-4 rounded-xl"
                   style={{ background: "rgba(255,45,149,0.04)", border: "1px solid rgba(255,45,149,0.12)" }}>
                   {imagePreview ? (
@@ -335,21 +380,22 @@ export default function CreatePage() {
                   </div>
                 </div>
 
-                {/* Details */}
+                {/* Details Table */}
                 <div className="space-y-0 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
                   {[
-                    { label: "Launch type", value: "Bonding Curve", dot: "#ff2d95" },
-                    { label: "Platform fee", value: "0.01 SOL" },
-                    { label: "Network", value: "Solana Mainnet" },
-                    { label: "Image storage", value: "Arweave · permanent", dot: "#22c55e" },
+                    { label: "Launch type", value: "Bonding Curve", icon: <TrendingUp className="w-3 h-3" /> },
+                    { label: "Create fee", value: isFirst150 ? "0.01 SOL" : "0.05 SOL", icon: <Zap className="w-3 h-3" /> },
+                    { label: "Platform fee", value: "0%", icon: <Gift className="w-3 h-3" /> },
+                    { label: "Network", value: "Solana Mainnet", icon: <Crown className="w-3 h-3" /> },
+                    { label: "Storage", value: "Arweave (permanent)", icon: <Shield className="w-3 h-3" /> },
                   ].map((row, i) => (
                     <div key={row.label} className="flex justify-between items-center px-4 py-3 text-sm"
-                      style={{ background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                      <span className="text-gray-600">{row.label}</span>
-                      <span className="text-white font-medium flex items-center gap-1.5">
-                        {row.dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: row.dot }} />}
-                        {row.value}
+                      style={{ background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent", borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                      <span className="text-gray-500 flex items-center gap-1.5">
+                        {row.icon}
+                        {row.label}
                       </span>
+                      <span className="text-white font-medium">{row.value}</span>
                     </div>
                   ))}
                 </div>
@@ -388,13 +434,13 @@ export default function CreatePage() {
                     boxShadow: "0 6px 24px rgba(255,45,149,0.3)",
                   }}>
                   <Rocket className="w-4 h-4" />
-                  Launch · 0.01 SOL
+                  Launch Token
                 </button>
               </div>
             </motion.div>
           )}
 
-          {/* ── STEP 2: LAUNCHING ── */}
+          {/* STEP 2: LAUNCHING */}
           {step === 2 && !success && (
             <motion.div key="s2" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center justify-center py-24 gap-6">
@@ -413,25 +459,6 @@ export default function CreatePage() {
                 <p className="text-sm text-gray-600">Confirm the transactions in your wallet</p>
               </div>
 
-              {/* Steps list */}
-              <div className="space-y-2 w-full max-w-xs">
-                {[
-                  { label: "Pay platform fee (0.01 SOL)", done: !isLoading || !!error },
-                  { label: "Register on bonding curve", done: success },
-                  { label: "Save to database", done: success },
-                ].map((s, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm">
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${s.done ? "bg-green-500/20" : "bg-white/5"}`}
-                      style={{ border: `1px solid ${s.done ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)"}` }}>
-                      {s.done
-                        ? <Check className="w-3 h-3 text-green-400" />
-                        : <Loader2 className="w-3 h-3 text-gray-600 animate-spin" />}
-                    </div>
-                    <span className={s.done ? "text-gray-400" : "text-gray-700"}>{s.label}</span>
-                  </div>
-                ))}
-              </div>
-
               {error && (
                 <div className="w-full max-w-xs rounded-xl p-4 flex items-start gap-3"
                   style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.18)" }}>
@@ -447,12 +474,11 @@ export default function CreatePage() {
             </motion.div>
           )}
 
-          {/* ── SUCCESS ── */}
+          {/* SUCCESS */}
           {success && mintAddress && (
             <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center gap-6 py-10">
 
-              {/* Icon */}
               <div className="relative">
                 <div className="w-24 h-24 rounded-full flex items-center justify-center"
                   style={{ background: "linear-gradient(135deg,#ff2d95,#ff6bcb)", boxShadow: "0 0 60px rgba(255,45,149,0.4)" }}>
