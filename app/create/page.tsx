@@ -63,6 +63,7 @@ export default function CreatePage() {
     return Object.keys(e).length === 0;
   };
 
+  // KULLANICI CÜZDANINDAN DIRECT IRYS UPLOAD
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -74,20 +75,22 @@ export default function CreatePage() {
     setErrors((prev) => ({ ...prev, image: "" }));
     
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const Irys = (await import('@irys/sdk')).default;
+      const irys = new Irys({
+        network: 'devnet',
+        token: 'solana',
+        wallet: { publicKey: publicKey!.toString() }
+      });
       
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
+      const receipt = await irys.upload(file);
+      const imageUrl = `https://gateway.irys.xyz/${receipt.id}`;
       
-      if (data.success) {
-        setUploadedImageUrl(data.imageUrl);
-      } else {
-        setErrors((prev) => ({ ...prev, image: data.error || "Upload failed" }));
-        setImagePreview(null);
-      }
-    } catch {
-      setErrors((prev) => ({ ...prev, image: "Upload failed" }));
+      setUploadedImageUrl(imageUrl);
+      console.log("✅ Image uploaded by user:", imageUrl);
+      
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      setErrors((prev) => ({ ...prev, image: err.message || "Upload failed" }));
       setImagePreview(null);
     } finally {
       setUploadingImage(false);
@@ -102,7 +105,7 @@ export default function CreatePage() {
     setIsLoading(true); setError("");
     
     try {
-      // 1. CREATE FEE TRANSACTION
+      // 1. CREATE FEE TRANSACTION (58/32/10 dağıtım)
       const tx = new Transaction();
       const totalLamports = Math.floor(CREATE_FEE_SOL * 1_000_000_000);
       for (const dist of FEE_DISTRIBUTION) {
