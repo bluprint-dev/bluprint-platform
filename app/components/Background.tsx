@@ -17,36 +17,93 @@ export default function Background() {
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      init();
     };
-    resize();
-    window.addEventListener("resize", resize);
 
-    // Particles
-    const particles = Array.from({ length: 60 }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      size: Math.random() * 1.5 + 0.5,
-      opacity: Math.random() * 0.5 + 0.2,
-      pulse: Math.random() * Math.PI * 2,
-    }));
+    // ── MATRIX RAIN (hex addresses + crypto symbols) ──
+    const CHARS = "0123456789ABCDEF◎₿ΞSOL◈$∞△▲◆■●";
+    const FONT_SIZE = 13;
+    let cols: number;
+    let drops: { y: number; speed: number; opacity: number; bright: boolean }[];
 
-    const draw = () => {
-      t += 0.008;
+    // ── PRICE CANDLES ──
+    type Candle = { x: number; open: number; close: number; high: number; low: number; bull: boolean };
+    let candles: Candle[] = [];
+
+    // ── NETWORK NODES ──
+    type Node = { x: number; y: number; vx: number; vy: number; size: number; opacity: number };
+    let nodes: Node[] = [];
+
+    // ── RISING NUMBERS ──
+    type RisingNum = { x: number; y: number; vy: number; value: string; opacity: number; size: number };
+    let risingNums: RisingNum[] = [];
+
+    const init = () => {
       const W = canvas.width;
       const H = canvas.height;
 
-      ctx.clearRect(0, 0, W, H);
+      // Matrix columns
+      cols = Math.floor(W / FONT_SIZE);
+      drops = Array.from({ length: cols }, () => ({
+        y: Math.random() * H,
+        speed: 0.4 + Math.random() * 0.8,
+        opacity: 0.03 + Math.random() * 0.07,
+        bright: Math.random() < 0.08,
+      }));
 
-      // Base
-      ctx.fillStyle = "#0A0A0F";
+      // Candles — sağ tarafta gizli fiyat grafiği
+      candles = [];
+      let price = 0.5;
+      for (let i = 0; i < 40; i++) {
+        const change = (Math.random() - 0.42) * 0.06;
+        const open = price;
+        const close = Math.max(0.1, price + change);
+        const high = Math.max(open, close) + Math.random() * 0.02;
+        const low = Math.min(open, close) - Math.random() * 0.02;
+        candles.push({ x: 0, open, close, high, low, bull: close >= open });
+        price = close;
+      }
+
+      // Network nodes
+      nodes = Array.from({ length: 28 }, () => ({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: (Math.random() - 0.5) * 0.25,
+        size: 1 + Math.random() * 2,
+        opacity: 0.05 + Math.random() * 0.12,
+      }));
+
+      // Rising numbers (portfolio değerleri)
+      risingNums = Array.from({ length: 18 }, () => {
+        const vals = ["$1,240", "$8.5K", "+340%", "$42K", "1.5 SOL", "+128%", "$200K", "×10", "$3,800", "+500%", "2.4 SOL", "$15K", "+89%", "×25", "$680", "+212%", "8 SOL", "$1.1M"];
+        return {
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vy: -(0.15 + Math.random() * 0.25),
+          value: vals[Math.floor(Math.random() * vals.length)],
+          opacity: 0,
+          size: 10 + Math.random() * 3,
+        };
+      });
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    const draw = () => {
+      t += 0.006;
+      const W = canvas.width;
+      const H = canvas.height;
+
+      // Clear
+      ctx.fillStyle = "rgba(10,10,15,0.18)";
       ctx.fillRect(0, 0, W, H);
 
-      // Grid
-      ctx.strokeStyle = "rgba(255,45,149,0.055)";
-      ctx.lineWidth = 1;
-      const gs = 55;
+      // ── 1. GRID ──
+      ctx.strokeStyle = "rgba(255,255,255,0.025)";
+      ctx.lineWidth = 0.5;
+      const gs = 50;
       for (let x = 0; x <= W; x += gs) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
       }
@@ -54,153 +111,162 @@ export default function Background() {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
       }
 
-      // ── HERO LED GLOW ──
-      // Hero yazısı ekranın ~%32'sinde (pt-24 + h-text ≈ 280px / 900px ekran)
-      const heroY = H * 0.32;
-      const heroX = W * 0.5;
+      // ── 2. MATRIX RAIN ──
+      ctx.font = `${FONT_SIZE}px 'Courier New', monospace`;
+      for (let i = 0; i < drops.length; i++) {
+        const drop = drops[i];
+        const char = CHARS[Math.floor(Math.random() * CHARS.length)];
 
-      // Büyük derin glow
-      const g1 = ctx.createRadialGradient(heroX, heroY, 0, heroX, heroY, W * 0.55);
-      const pulse1 = 0.18 + Math.sin(t * 0.7) * 0.06;
-      g1.addColorStop(0, `rgba(255,45,149,${pulse1})`);
-      g1.addColorStop(0.35, `rgba(255,45,149,${pulse1 * 0.35})`);
-      g1.addColorStop(0.7, `rgba(255,45,149,${pulse1 * 0.08})`);
-      g1.addColorStop(1, "transparent");
-      ctx.fillStyle = g1;
-      ctx.fillRect(0, 0, W, H);
+        if (drop.bright) {
+          // Parlak harf — altın/sarı, wealth hissi
+          ctx.fillStyle = `rgba(255,45,149,${drop.opacity * 3.5})`;
+        } else {
+          ctx.fillStyle = `rgba(180,180,200,${drop.opacity})`;
+        }
 
-      // Orta yoğun glow
-      const g2 = ctx.createRadialGradient(heroX, heroY, 0, heroX, heroY, W * 0.28);
-      const pulse2 = 0.35 + Math.sin(t * 0.9) * 0.1;
-      g2.addColorStop(0, `rgba(255,107,203,${pulse2})`);
-      g2.addColorStop(0.4, `rgba(255,45,149,${pulse2 * 0.3})`);
-      g2.addColorStop(1, "transparent");
-      ctx.fillStyle = g2;
-      ctx.fillRect(0, 0, W, H);
+        ctx.fillText(char, i * FONT_SIZE, drop.y);
 
-      // LED çizgi
-      const ledW = Math.min(W * 0.55, 580);
-      const ledX = heroX - ledW / 2;
-      const ledOpacity = 0.75 + Math.sin(t * 1.1) * 0.25;
-      const lg = ctx.createLinearGradient(ledX, 0, ledX + ledW, 0);
-      lg.addColorStop(0, "transparent");
-      lg.addColorStop(0.15, `rgba(255,45,149,${ledOpacity * 0.6})`);
-      lg.addColorStop(0.5, `rgba(255,255,255,${ledOpacity})`);
-      lg.addColorStop(0.85, `rgba(255,45,149,${ledOpacity * 0.6})`);
-      lg.addColorStop(1, "transparent");
+        drop.y += drop.speed;
+        if (drop.y > H) {
+          drop.y = 0;
+          drop.bright = Math.random() < 0.08;
+          drop.opacity = 0.025 + Math.random() * 0.06;
+        }
+      }
 
-      // Glow halo
-      ctx.save();
-      ctx.shadowColor = "#ff2d95";
-      ctx.shadowBlur = 18 + Math.sin(t) * 6;
-      ctx.strokeStyle = lg;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(ledX, heroY + H * 0.045);
-      ctx.lineTo(ledX + ledW, heroY + H * 0.045);
-      ctx.stroke();
-      ctx.shadowBlur = 35;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.restore();
+      // ── 3. CANDLE CHART (sağ taraf, yarı saydam) ──
+      const chartX = W * 0.72;
+      const chartW = W * 0.26;
+      const chartY = H * 0.15;
+      const chartH = H * 0.4;
+      const cw = chartW / candles.length;
 
-      // Yukarı ışık huzmesi
-      const beam1 = ctx.createLinearGradient(0, heroY, 0, 0);
-      beam1.addColorStop(0, `rgba(255,45,149,${0.12 + Math.sin(t) * 0.04})`);
-      beam1.addColorStop(1, "transparent");
-      ctx.fillStyle = beam1;
-      const bw = Math.min(W * 0.45, 500);
-      ctx.fillRect(heroX - bw / 2, 0, bw, heroY);
+      // Fiyat aralığı
+      const allPrices = candles.flatMap((c) => [c.high, c.low]);
+      const minP = Math.min(...allPrices);
+      const maxP = Math.max(...allPrices);
+      const pRange = maxP - minP || 0.01;
 
-      // Aşağı ışık huzmesi
-      const beam2 = ctx.createLinearGradient(0, heroY, 0, H * 0.75);
-      beam2.addColorStop(0, `rgba(255,45,149,${0.1 + Math.sin(t * 0.8) * 0.03})`);
-      beam2.addColorStop(1, "transparent");
-      ctx.fillStyle = beam2;
-      ctx.fillRect(heroX - bw / 2, heroY, bw, H * 0.75 - heroY);
+      const toY = (p: number) => chartY + chartH - ((p - minP) / pRange) * chartH;
 
-      // ── KÖŞE AMBIENT ──
-      // Sol üst
-      const ga1 = ctx.createRadialGradient(-W * 0.1, -H * 0.1, 0, -W * 0.1, -H * 0.1, W * 0.6);
-      ga1.addColorStop(0, `rgba(255,45,149,${0.08 + Math.sin(t * 0.5) * 0.02})`);
-      ga1.addColorStop(1, "transparent");
-      ctx.fillStyle = ga1;
-      ctx.fillRect(0, 0, W, H);
+      candles.forEach((c, i) => {
+        const cx = chartX + i * cw + cw * 0.5;
+        const openY = toY(c.open);
+        const closeY = toY(c.close);
+        const highY = toY(c.high);
+        const lowY = toY(c.low);
+        const alpha = 0.06 + (i / candles.length) * 0.1;
+        const color = c.bull ? `rgba(0,220,130,${alpha})` : `rgba(255,80,80,${alpha * 0.7})`;
 
-      // Sağ alt
-      const ga2 = ctx.createRadialGradient(W * 1.1, H * 1.1, 0, W * 1.1, H * 1.1, W * 0.65);
-      ga2.addColorStop(0, `rgba(255,45,149,${0.07 + Math.sin(t * 0.6 + 1) * 0.02})`);
-      ga2.addColorStop(1, "transparent");
-      ctx.fillStyle = ga2;
-      ctx.fillRect(0, 0, W, H);
-
-      // Sol orta
-      const ga3 = ctx.createRadialGradient(0, H * 0.6, 0, 0, H * 0.6, W * 0.4);
-      ga3.addColorStop(0, `rgba(255,45,149,${0.06 + Math.sin(t * 0.4 + 2) * 0.02})`);
-      ga3.addColorStop(1, "transparent");
-      ctx.fillStyle = ga3;
-      ctx.fillRect(0, 0, W, H);
-
-      // ── DATA LINES ──
-      const linePositions = [0.22, 0.48, 0.68, 0.85];
-      linePositions.forEach((yp, i) => {
-        const speed = [0.4, 0.25, 0.35, 0.28][i];
-        const offset = ((t * speed) % 2) - 1;
-        const lineY = H * yp;
-        const lw = W * 1.2;
-        const lx = offset * lw;
-        const ll = ctx.createLinearGradient(lx, 0, lx + lw, 0);
-        ll.addColorStop(0, "transparent");
-        ll.addColorStop(0.3, `rgba(255,45,149,${[0.25, 0.18, 0.22, 0.15][i]})`);
-        ll.addColorStop(0.5, `rgba(255,107,203,${[0.4, 0.28, 0.35, 0.22][i]})`);
-        ll.addColorStop(0.7, `rgba(255,45,149,${[0.25, 0.18, 0.22, 0.15][i]})`);
-        ll.addColorStop(1, "transparent");
-        ctx.strokeStyle = ll;
+        // Wick
+        ctx.strokeStyle = color;
         ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.moveTo(lx, lineY);
-        ctx.lineTo(lx + lw, lineY);
+        ctx.moveTo(cx, highY);
+        ctx.lineTo(cx, lowY);
         ctx.stroke();
-        // Reverse lines
-        if (i % 2 === 1) {
-          const lx2 = -offset * lw;
-          const ll2 = ctx.createLinearGradient(lx2, 0, lx2 + lw, 0);
-          ll2.addColorStop(0, "transparent");
-          ll2.addColorStop(0.4, `rgba(255,45,149,${[0.15, 0.12][Math.floor(i / 2)]})`);
-          ll2.addColorStop(0.6, `rgba(255,45,149,${[0.15, 0.12][Math.floor(i / 2)]})`);
-          ll2.addColorStop(1, "transparent");
-          ctx.strokeStyle = ll2;
-          ctx.beginPath();
-          ctx.moveTo(lx2, lineY + H * 0.12);
-          ctx.lineTo(lx2 + lw, lineY + H * 0.12);
-          ctx.stroke();
-        }
+
+        // Body
+        ctx.fillStyle = color;
+        const bodyH = Math.abs(openY - closeY) || 1;
+        ctx.fillRect(cx - cw * 0.3, Math.min(openY, closeY), cw * 0.6, bodyH);
       });
 
-      // ── PARTİKÜLLER ──
-      particles.forEach((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.pulse += 0.03;
-        if (p.x < -10) p.x = W + 10;
-        if (p.x > W + 10) p.x = -10;
-        if (p.y < -10) p.y = H + 10;
-        if (p.y > H + 10) p.y = -10;
-        const op = p.opacity * (0.6 + Math.sin(p.pulse) * 0.4);
-        ctx.save();
-        ctx.shadowColor = "#ff2d95";
-        ctx.shadowBlur = p.size * 4;
-        ctx.fillStyle = `rgba(255,45,149,${op})`;
+      // Trend çizgisi (yükselen)
+      const lastClose = candles[candles.length - 1].close;
+      const firstClose = candles[0].close;
+      if (lastClose > firstClose) {
+        ctx.strokeStyle = `rgba(0,220,130,${0.08 + Math.sin(t) * 0.02})`;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 6]);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        candles.forEach((c, i) => {
+          const cx = chartX + i * cw + cw * 0.5;
+          const cy = toY(c.close);
+          i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // ── 4. NETWORK NODES & CONNECTIONS ──
+      nodes.forEach((n) => {
+        n.x += n.vx;
+        n.y += n.vy;
+        if (n.x < 0 || n.x > W) n.vx *= -1;
+        if (n.y < 0 || n.y > H) n.vy *= -1;
       });
 
-      // Vignette
-      const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.85);
+      // Bağlantılar
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x;
+          const dy = nodes[i].y - nodes[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 160) {
+            const alpha = (1 - dist / 160) * 0.06;
+            ctx.strokeStyle = `rgba(140,140,180,${alpha})`;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(nodes[i].x, nodes[i].y);
+            ctx.lineTo(nodes[j].x, nodes[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Node noktaları
+      nodes.forEach((n) => {
+        ctx.fillStyle = `rgba(160,160,200,${n.opacity})`;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // ── 5. RISING WEALTH NUMBERS ──
+      ctx.font = "bold 11px 'Courier New', monospace";
+      risingNums.forEach((r) => {
+        r.y += r.vy;
+        r.opacity += 0.003;
+        if (r.y < -20 || r.opacity > 0.22) {
+          // Reset
+          const vals = ["$1,240", "$8.5K", "+340%", "$42K", "1.5 SOL", "+128%", "$200K", "×10", "$3,800", "+500%", "2.4 SOL", "$15K", "+89%", "×25", "$680", "+212%", "8 SOL", "$1.1M"];
+          r.x = Math.random() * W;
+          r.y = H + 10;
+          r.opacity = 0;
+          r.value = vals[Math.floor(Math.random() * vals.length)];
+          r.vy = -(0.12 + Math.random() * 0.2);
+        }
+        const isGain = r.value.includes("+") || r.value.includes("×") || r.value.includes("M") || r.value.includes("K");
+        ctx.fillStyle = isGain
+          ? `rgba(0,210,120,${r.opacity})`
+          : `rgba(200,200,220,${r.opacity})`;
+        ctx.fillText(r.value, r.x, r.y);
+      });
+
+      // ── 6. SUBTLE SOLANA ARCS (üstte) ──
+      const arcCenters = [
+        { x: W * 0.15, y: H * 0.08, r: 60 },
+        { x: W * 0.85, y: H * 0.12, r: 45 },
+        { x: W * 0.5, y: H * 0.95, r: 80 },
+      ];
+      arcCenters.forEach((a, i) => {
+        const phase = t * 0.5 + i * 2.1;
+        ctx.strokeStyle = `rgba(153,69,255,${0.04 + Math.sin(phase) * 0.02})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, a.r, 0, Math.PI * 1.5);
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(20,241,149,${0.03 + Math.sin(phase + 1) * 0.015})`;
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, a.r * 0.6, 0, Math.PI * 1.2);
+        ctx.stroke();
+      });
+
+      // ── 7. VIGNETTE ──
+      const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.9);
       vg.addColorStop(0, "transparent");
-      vg.addColorStop(1, "rgba(10,10,15,0.65)");
+      vg.addColorStop(1, "rgba(10,10,15,0.75)");
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
 
