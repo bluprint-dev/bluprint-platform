@@ -2,17 +2,11 @@
 
 import Footer from "@/app/components/Footer";
 import { useState, useEffect, useCallback } from "react";
-import Footer from "@/app/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
-import Footer from "@/app/components/Footer";
 import { useWallet } from "@solana/wallet-adapter-react";
-import Footer from "@/app/components/Footer";
 import { useConnection } from "@solana/wallet-adapter-react";
-import Footer from "@/app/components/Footer";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import Footer from "@/app/components/Footer";
 import { VersionedTransaction, Transaction } from "@solana/web3.js";
-import Footer from "@/app/components/Footer";
 import {
   Search, RefreshCw, TrendingUp, TrendingDown, ArrowUpDown,
   ExternalLink, Copy, Check, AlertCircle, Loader2, Activity,
@@ -155,7 +149,7 @@ export default function DexPage() {
   return (
     <div className="relative z-10 min-h-screen" style={{ background: "transparent" }}>
 
-      {/* ── TOPBAR ── */}
+      {/* TOPBAR */}
       <div className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0A0A0F]/90 backdrop-blur-2xl">
         <div className="max-w-[1400px] mx-auto px-5 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -189,7 +183,7 @@ export default function DexPage() {
       <div className="max-w-[1400px] mx-auto px-5 py-5">
         <div className="flex gap-5" style={{ alignItems: "flex-start" }}>
 
-          {/* ── LEFT: TOKEN LIST ── */}
+          {/* LEFT: TOKEN LIST */}
           <div className="flex-1 min-w-0 space-y-3">
 
             {/* Search bar */}
@@ -312,7 +306,7 @@ export default function DexPage() {
             )}
           </div>
 
-          {/* ── RIGHT: SWAP PANEL ── */}
+          {/* RIGHT: SWAP PANEL */}
           <div className="w-[360px] flex-shrink-0 space-y-3" style={{ position: "sticky", top: "80px" }}>
             {!selectedToken ? (
               <div className="rounded-2xl p-10 flex flex-col items-center gap-4 text-center"
