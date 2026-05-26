@@ -1,338 +1,34 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Rocket, ArrowRight, Upload, Check, RefreshCw, ArrowDownUp } from "lucide-react";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { Rocket, ArrowRight, Zap, Shield, Crown, Infinity, Coins, Activity, Users, TrendingUp, Sparkles, Check } from "lucide-react";
 
-// ========== BONDING CURVE SIMULATION ==========
-const BondingCurveSimulation = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 });
-  const [progress, setProgress] = useState(0);
-  const particlesRef = useRef<{ x: number; y: number; progress: number; active: boolean }[]>([]);
-  
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animationId: number;
-    let time = 0;
-
-    const resize = () => {
-      canvas.width = canvas.clientWidth;
-      canvas.height = canvas.clientHeight;
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    // Initialize particles
-    for (let i = 0; i < 15; i++) {
-      particlesRef.current.push({
-        x: 0,
-        y: 0,
-        progress: Math.random(),
-        active: Math.random() > 0.7,
-      });
-    }
-
-    const getY = (x: number, mouseInfluence: number) => {
-      // Bonding curve formula: y = x^2 / (x + 1) style
-      const t = x;
-      let y = Math.pow(t, 1.2) / (t + 0.5);
-      // Mouse influence
-      y += mouseInfluence * 0.08 * Math.sin(t * Math.PI);
-      return y;
-    };
-
-    const draw = () => {
-      if (!canvas || !ctx) return;
-      const w = canvas.width;
-      const h = canvas.height;
-      const padding = 60;
-      const curveWidth = w - padding * 2;
-      
-      // Clear with fade effect
-      ctx.fillStyle = "rgba(10, 10, 15, 0.15)";
-      ctx.fillRect(0, 0, w, h);
-      
-      // Update progress (slowly increases then resets)
-      setProgress(prev => {
-        let newVal = prev + 0.002;
-        if (newVal > 1) newVal = 0;
-        return newVal;
-      });
-
-      // Draw grid
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i <= 4; i++) {
-        const x = padding + (curveWidth * i) / 4;
-        ctx.beginPath();
-        ctx.moveTo(x, padding);
-        ctx.lineTo(x, h - padding);
-        ctx.stroke();
-        
-        const y = padding + ((h - padding * 2) * i) / 4;
-        ctx.beginPath();
-        ctx.moveTo(padding, y);
-        ctx.lineTo(w - padding, y);
-        ctx.stroke();
-      }
-      
-      // Draw curve with gradient
-      const gradient = ctx.createLinearGradient(padding, 0, w - padding, 0);
-      gradient.addColorStop(0, "#ff2d95");
-      gradient.addColorStop(0.5, "#ff6bcb");
-      gradient.addColorStop(1, "#7c3aed");
-      
-      ctx.beginPath();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = gradient;
-      
-      let first = true;
-      for (let x = 0; x <= 1; x += 0.01) {
-        const y = getY(x, mousePosition.x - 0.5);
-        const px = padding + x * curveWidth;
-        const py = h - padding - y * (h - padding * 2);
-        
-        if (first) {
-          ctx.moveTo(px, py);
-          first = false;
-        } else {
-          ctx.lineTo(px, py);
-        }
-      }
-      ctx.stroke();
-      
-      // Draw glow behind curve
-      ctx.beginPath();
-      first = true;
-      for (let x = 0; x <= 1; x += 0.01) {
-        const y = getY(x, mousePosition.x - 0.5);
-        const px = padding + x * curveWidth;
-        const py = h - padding - y * (h - padding * 2);
-        
-        if (first) {
-          ctx.moveTo(px, py);
-          first = false;
-        } else {
-          ctx.lineTo(px, py);
-        }
-      }
-      ctx.lineWidth = 15;
-      ctx.strokeStyle = "rgba(255,45,149,0.1)";
-      ctx.stroke();
-      
-      // Draw progress point
-      const currentX = padding + progress * curveWidth;
-      const currentY = h - padding - getY(progress, mousePosition.x - 0.5) * (h - padding * 2);
-      
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = "#ff2d95";
-      ctx.fillStyle = "#ff2d95";
-      ctx.beginPath();
-      ctx.arc(currentX, currentY, 8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "white";
-      ctx.beginPath();
-      ctx.arc(currentX, currentY, 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      
-      // Draw price points
-      for (let i = 0; i <= 5; i++) {
-        const t = i / 5;
-        const x = padding + t * curveWidth;
-        const y = h - padding - getY(t, mousePosition.x - 0.5) * (h - padding * 2);
-        
-        ctx.fillStyle = "rgba(255,255,255,0.15)";
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      
-      // Animate particles along curve
-      for (let p of particlesRef.current) {
-        if (p.active) {
-          p.progress += 0.003;
-          if (p.progress > 1) {
-            p.progress = 0;
-            p.active = Math.random() > 0.3;
-          }
-          
-          const x = padding + p.progress * curveWidth;
-          const y = h - padding - getY(p.progress, mousePosition.x - 0.5) * (h - padding * 2);
-          
-          ctx.fillStyle = `rgba(255, 100, 200, ${0.6 + Math.sin(time + p.progress * 10) * 0.3})`;
-          ctx.beginPath();
-          ctx.arc(x, y, 2 + Math.sin(time * 5 + p.progress * 20) * 0.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      
-      time += 0.02;
-      animationId = requestAnimationFrame(draw);
-    };
-    
-    draw();
-    return () => {
-      cancelAnimationFrame(animationId);
-      window.removeEventListener("resize", resize);
-    };
-  }, [mousePosition]);
-  
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setMousePosition({
-      x: (e.clientX - rect.left) / rect.width,
-      y: (e.clientY - rect.top) / rect.height,
-    });
-  };
-  
-  return (
-    <div 
-      ref={containerRef}
-      className="relative w-full h-[400px] md:h-[500px]"
-      onMouseMove={handleMouseMove}
-    >
-      <canvas ref={canvasRef} className="w-full h-full" style={{ display: "block" }} />
-    </div>
-  );
-};
-
-// ========== FLOATING UI CARDS ==========
-const FloatingCards = () => {
-  const cards = [
-    {
-      icon: Upload,
-      title: "Token Creation",
-      steps: ["Name", "Symbol", "Logo"],
-      color: "#ff2d95",
-      x: "5%",
-      y: "15%",
-      delay: 0,
-    },
-    {
-      icon: ArrowDownUp,
-      title: "Swap Simulation",
-      steps: ["SOL → Token", "Token → SOL"],
-      color: "#ff6bcb",
-      x: "80%",
-      y: "25%",
-      delay: 0.5,
-    },
-    {
-      icon: RefreshCw,
-      title: "Launch Animation",
-      steps: ["Deploying", "Confirming", "Live"],
-      color: "#7c3aed",
-      x: "90%",
-      y: "70%",
-      delay: 1,
-    },
-  ];
-  
-  return (
-    <>
-      {cards.map((card, i) => (
-        <motion.div
-          key={i}
-          className="absolute hidden lg:block z-20"
-          style={{ left: card.x, top: card.y }}
-          initial={{ opacity: 0, y: 30 }}
-          animate={{
-            opacity: [0.7, 1, 0.7],
-            y: [0, -15, 0],
-          }}
-          transition={{
-            duration: 6 + i,
-            repeat: Infinity,
-            delay: card.delay,
-            ease: "easeInOut",
-          }}
-          whileHover={{ scale: 1.05, zIndex: 30 }}
-        >
-          <div className="relative">
-            <div className="absolute inset-0 bg-[#ff2d95]/10 blur-xl rounded-2xl" />
-            <div className="relative bg-[#1A1A22]/80 backdrop-blur-sm rounded-2xl p-4 border border-white/10 w-48">
-              <card.icon className="w-5 h-5 mb-3" style={{ color: card.color }} />
-              <p className="text-white text-sm font-medium mb-2">{card.title}</p>
-              <div className="space-y-1">
-                {card.steps.map((step, j) => (
-                  <div key={j} className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                    <span className="text-xs text-gray-500">{step}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      ))}
-    </>
-  );
-};
-
-// ========== CINEMATIC BUTTONS ==========
-const PrimaryButton = ({ onClick, children }: { onClick: () => void; children: React.ReactNode }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  
-  return (
-    <motion.button
-      className="relative px-8 py-4 rounded-full bg-white text-black font-semibold text-base overflow-hidden cursor-pointer"
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      onClick={onClick}
-    >
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb]"
-        animate={{ opacity: isHovered ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
-      />
-      <span className="relative flex items-center gap-2 z-10">
-        {children}
-        <motion.div animate={{ x: isHovered ? 4 : 0 }}>
-          <ArrowRight className="w-4 h-4" />
-        </motion.div>
-      </span>
-    </motion.button>
-  );
-};
-
-const SecondaryButton = ({ onClick, children }: { onClick: () => void; children: React.ReactNode }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  
-  return (
-    <motion.button
-      className="relative px-8 py-4 rounded-full border border-white/10 text-white font-medium text-base overflow-hidden cursor-pointer"
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      onClick={onClick}
-    >
-      <motion.div
-        className="absolute inset-0 bg-white/5"
-        animate={{ opacity: isHovered ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
-      />
-      <span className="relative">{children}</span>
-    </motion.button>
-  );
-};
-
-// ========== MAIN HOMEPAGE ==========
 export default function HomePage() {
   const router = useRouter();
   const { connected } = useWallet();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  });
+  
+  const [scrollPhase, setScrollPhase] = useState(0);
+  
+  useEffect(() => {
+    const unsubscribe = scrollYProgress.on("change", (value) => {
+      if (value < 0.2) setScrollPhase(0);
+      else if (value < 0.5) setScrollPhase(1);
+      else if (value < 0.8) setScrollPhase(2);
+      else setScrollPhase(3);
+    });
+    return () => unsubscribe();
+  }, [scrollYProgress]);
+  
+  const opacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.3], [1, 0.9]);
   
   const handleCreate = () => {
     if (!connected) {
@@ -343,29 +39,21 @@ export default function HomePage() {
     router.push("/create");
   };
   
-  const handleExplore = () => {
-    router.push("/dex");
-  };
-  
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0A0A0F]">
+    <div ref={containerRef} className="relative min-h-screen bg-[#0A0A0F]">
       
-      {/* Floating UI Cards */}
-      <FloatingCards />
-      
-      {/* Main Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-16 md:py-24">
-        
-        {/* Hero Grid */}
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          
-          {/* Left Side - Text */}
+      {/* ========== HERO SECTION - Sabit ========== */}
+      <motion.div 
+        className="fixed inset-0 flex flex-col items-center justify-center z-10 pointer-events-none"
+        style={{ opacity, scale }}
+      >
+        <div className="text-center px-6 max-w-4xl mx-auto pointer-events-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1]">
               <span className="text-white">
                 Launch Your
               </span>
@@ -379,40 +67,336 @@ export default function HomePage() {
               </span>
             </h1>
             
-            <p className="text-gray-500 text-lg mt-6 max-w-md">
+            <p className="text-gray-500 text-lg md:text-xl mt-6 max-w-2xl mx-auto">
               No code. No friction. Just launch on Solana.
             </p>
             
-            <div className="flex flex-wrap gap-4 mt-8">
-              <PrimaryButton onClick={handleCreate}>
-                <Rocket className="w-4 h-4" />
-                Create Token
-              </PrimaryButton>
-              <SecondaryButton onClick={handleExplore}>
-                Explore
-              </SecondaryButton>
-            </div>
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              onClick={handleCreate}
+              className="mt-10 px-8 py-4 rounded-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white font-bold text-lg cursor-pointer hover:shadow-lg hover:shadow-[#ff2d95]/30 transition-all duration-300 hover:scale-105"
+            >
+              <Rocket className="w-5 h-5 inline mr-2" />
+              Create Token
+            </motion.button>
           </motion.div>
-          
-          {/* Right Side - Bonding Curve Simulation */}
+        </div>
+      </motion.div>
+      
+      {/* ========== SCROLL CONTENT ========== */}
+      <div className="relative z-20 pt-[100vh]">
+        
+        {/* Section 1 - About BluPrint */}
+        <div className="min-h-screen flex items-center justify-center px-6 py-20">
+          <div className="max-w-4xl mx-auto text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true, margin: "-100px" }}
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ff2d95]/10 border border-[#ff2d95]/20 mb-8">
+                <Sparkles className="w-4 h-4 text-[#ff2d95]" />
+                <span className="text-sm text-[#ff2d95] font-medium">What is BluPrint?</span>
+              </div>
+              
+              <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+                The Next Generation
+                <br />
+                <span className="bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] bg-clip-text text-transparent">
+                  Meme Coin Launchpad
+                </span>
+              </h2>
+              
+              <p className="text-gray-400 text-lg leading-relaxed max-w-2xl mx-auto">
+                BluPrint is a fair-launch platform built on Solana that allows anyone to create and launch 
+                their own meme coin in seconds using bonding curve technology. No coding required. No pre-sale. 
+                No hidden fees. Just pure, decentralized token creation.
+              </p>
+            </motion.div>
+          </div>
+        </div>
+        
+        {/* Section 2 - Buy/Sell Animation */}
+        <div className="min-h-screen flex items-center justify-center px-6 py-20">
+          <div className="max-w-6xl mx-auto w-full">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              
+              {/* Sol taraf - Açıklama */}
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true, margin: "-100px" }}
+              >
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ff6bcb]/10 border border-[#ff6bcb]/20 mb-6">
+                  <Activity className="w-4 h-4 text-[#ff6bcb]" />
+                  <span className="text-sm text-[#ff6bcb] font-medium">Instant Trading</span>
+                </div>
+                
+                <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  Buy & Sell
+                  <br />
+                  <span className="text-[#ff6bcb]">Instantly</span>
+                </h3>
+                
+                <p className="text-gray-400 text-lg mb-6">
+                  Thanks to bonding curve technology, your token becomes tradable immediately after launch.
+                  No need to wait for liquidity pools or external market makers.
+                </p>
+                
+                <div className="space-y-3">
+                  {[
+                    "Instant liquidity after creation",
+                    "Fair price discovery algorithm",
+                    "No order books needed",
+                    "Automatic Raydium migration at 100% fill"
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <Check className="w-5 h-5 text-green-500" />
+                      <span className="text-gray-300">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+              
+              {/* Sağ taraf - Buy/Sell Animation */}
+              <motion.div
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true, margin: "-100px" }}
+                className="relative"
+              >
+                <SwapAnimation />
+              </motion.div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Section 3 - Features Grid */}
+        <div className="min-h-screen flex items-center justify-center px-6 py-20">
+          <div className="max-w-6xl mx-auto w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true, margin: "-100px" }}
+              className="text-center mb-12"
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7c3aed]/10 border border-[#7c3aed]/20 mb-6">
+                <Crown className="w-4 h-4 text-[#7c3aed]" />
+                <span className="text-sm text-[#7c3aed] font-medium">Why BluPrint?</span>
+              </div>
+              <h2 className="text-3xl md:text-5xl font-bold text-white">
+                Built for the <span className="text-[#7c3aed]">Community</span>
+              </h2>
+            </motion.div>
+            
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                {
+                  icon: Zap,
+                  title: "Launch in Seconds",
+                  description: "Create and deploy your token in under 10 seconds. No coding required.",
+                  color: "#ff2d95"
+                },
+                {
+                  icon: Shield,
+                  title: "Fair Launch",
+                  description: "No pre-sale, no team allocation, no rug pulls. Pure decentralized launch.",
+                  color: "#ff6bcb"
+                },
+                {
+                  icon: Coins,
+                  title: "Zero Platform Fees",
+                  description: "Only Solana network gas fee. No hidden platform charges.",
+                  color: "#7c3aed"
+                },
+                {
+                  icon: Infinity,
+                  title: "Bonding Curve",
+                  description: "Automatic price discovery. Price increases with every buy.",
+                  color: "#ff2d95"
+                },
+                {
+                  icon: Users,
+                  title: "Community Driven",
+                  description: "Built by creators, for creators. Fair for everyone.",
+                  color: "#ff6bcb"
+                },
+                {
+                  icon: TrendingUp,
+                  title: "Auto Raydium",
+                  description: "Automatically migrates to Raydium when curve fills 100%.",
+                  color: "#7c3aed"
+                }
+              ].map((feature, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  whileHover={{ y: -5 }}
+                  className="bg-white/[0.02] backdrop-blur-sm rounded-2xl p-6 border border-white/5 hover:border-[#ff2d95]/30 transition-all duration-300"
+                >
+                  <feature.icon className="w-10 h-10 mb-4" style={{ color: feature.color }} />
+                  <h3 className="text-white font-bold text-xl mb-2">{feature.title}</h3>
+                  <p className="text-gray-500 text-sm">{feature.description}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        {/* Section 4 - Final CTA */}
+        <div className="min-h-[60vh] flex items-center justify-center px-6 py-20">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative"
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true, margin: "-100px" }}
+            className="text-center max-w-3xl mx-auto"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-[#ff2d95]/5 via-[#ff6bcb]/5 to-[#7c3aed]/5 rounded-3xl blur-2xl" />
-            <div className="relative bg-[#1A1A22]/20 backdrop-blur-sm rounded-3xl p-4 border border-white/5">
-              <BondingCurveSimulation />
+            <div className="bg-gradient-to-r from-[#ff2d95]/10 to-[#ff6bcb]/10 rounded-3xl p-12 border border-[#ff2d95]/20">
+              <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+                Ready to Launch?
+              </h2>
+              <p className="text-gray-400 text-lg mb-8">
+                Join thousands of creators who have already launched their meme coins on BluPrint.
+              </p>
+              <button
+                onClick={handleCreate}
+                className="px-8 py-4 rounded-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white font-bold text-lg cursor-pointer hover:shadow-lg hover:shadow-[#ff2d95]/30 transition-all duration-300 hover:scale-105"
+              >
+                <Rocket className="w-5 h-5 inline mr-2" />
+                Create Token Now
+              </button>
             </div>
           </motion.div>
         </div>
         
         {/* Footer */}
-        <div className="mt-32 pt-8 border-t border-white/5 text-center text-gray-600 text-sm">
+        <div className="py-8 text-center text-gray-600 text-sm border-t border-white/5">
           <p>© 2024 BluPrint — Built on Solana</p>
         </div>
       </div>
     </div>
   );
 }
+
+// ========== BUY/SELL ANIMATION COMPONENT ==========
+const SwapAnimation = () => {
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [swapDirection, setSwapDirection] = useState<"buy" | "sell">("buy");
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      setSwapDirection(prev => prev === "buy" ? "sell" : "buy");
+      setTimeout(() => setIsAnimating(false), 1000);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  return (
+    <div className="relative bg-[#1A1A22]/40 backdrop-blur-sm rounded-3xl p-8 border border-white/10">
+      
+      {/* From Box */}
+      <div className="bg-[#0A0A0F] rounded-xl p-4 mb-4 border border-white/5">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-gray-500 text-sm">From</span>
+          <span className="text-white font-mono text-sm">Balance: 1.234 SOL</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] flex items-center justify-center">
+            <span className="text-white text-sm">◎</span>
+          </div>
+          <input 
+            type="text" 
+            value={swapDirection === "buy" ? "0.5" : "1000"}
+            className="bg-transparent text-2xl font-bold text-white outline-none flex-1"
+            readOnly
+          />
+          <span className="text-white font-medium">SOL</span>
+        </div>
+      </div>
+      
+      {/* Swap Arrow */}
+      <div className="flex justify-center -my-2 relative z-10">
+        <motion.div
+          animate={{ rotate: isAnimating ? (swapDirection === "buy" ? 180 : -180) : 0 }}
+          transition={{ duration: 0.4, type: "spring" }}
+          className="w-10 h-10 rounded-full bg-[#1A1A22] border border-[#ff2d95]/30 flex items-center justify-center"
+        >
+          <ArrowDownUp className="w-4 h-4 text-[#ff2d95]" />
+        </motion.div>
+      </div>
+      
+      {/* To Box */}
+      <div className="bg-[#0A0A0F] rounded-xl p-4 mt-4 border border-white/5">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-gray-500 text-sm">To</span>
+          <span className="text-white font-mono text-sm">Balance: 0 PINK</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] flex items-center justify-center">
+            <span className="text-white text-sm">🐋</span>
+          </div>
+          <input 
+            type="text" 
+            value={swapDirection === "buy" ? "2,340" : "0"}
+            className="bg-transparent text-2xl font-bold text-white outline-none flex-1"
+            readOnly
+          />
+          <span className="text-white font-medium">PINK</span>
+        </div>
+      </div>
+      
+      {/* Animated particles */}
+      <AnimatePresence>
+        {isAnimating && (
+          <>
+            {[...Array(8)].map((_, i) => (
+              <motion.div
+                key={i}
+                initial={{ 
+                  x: swapDirection === "buy" ? "30%" : "70%",
+                  y: "45%",
+                  scale: 1,
+                  opacity: 1
+                }}
+                animate={{ 
+                  x: swapDirection === "buy" ? "70%" : "30%",
+                  y: ["45%", "40%", "50%", "45%"],
+                  scale: [1, 1.5, 0.5, 0],
+                  opacity: [1, 0.8, 0.4, 0]
+                }}
+                transition={{ duration: 0.6, delay: i * 0.05 }}
+                className="absolute w-2 h-2 rounded-full bg-[#ff2d95]"
+                style={{ left: "50%", top: "50%" }}
+              />
+            ))}
+          </>
+        )}
+      </AnimatePresence>
+      
+      {/* Price info */}
+      <div className="mt-4 pt-4 border-t border-white/5 text-center">
+        <div className="flex justify-center items-center gap-4 text-sm">
+          <span className="text-gray-500">Price</span>
+          <span className="text-white font-mono">1 SOL = 4,680 PINK</span>
+          <motion.div
+            animate={{ scale: isAnimating ? 1.2 : 1 }}
+            className="text-green-400 text-xs"
+          >
+            +2.3%
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+};
