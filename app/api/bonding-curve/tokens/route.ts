@@ -6,15 +6,16 @@ export async function GET(req: NextRequest) {
     // Token listesini al
     const tokenMints = await redis.smembers('bonding-curve:tokens');
     
-    // Log için
     console.log('Token mints from Redis:', tokenMints);
     
     const tokens = [];
+    const tokenMintsArray = Array.isArray(tokenMints) ? tokenMints : [];
     
-    for (const mint of tokenMints) {
+    for (const mint of tokenMintsArray) {
       if (typeof mint !== 'string') continue;
       
       try {
+        // Önce Redis'ten metadata'yı dene
         const metadataRaw = await redis.get(`token:metadata:${mint}`);
         console.log(`Metadata for ${mint}:`, metadataRaw);
         
@@ -22,24 +23,61 @@ export async function GET(req: NextRequest) {
           const metadata = JSON.parse(metadataRaw);
           tokens.push({
             mint,
-            ...metadata,
+            name: metadata.name || 'Unknown',
+            symbol: metadata.symbol || '???',
+            imageUrl: metadata.imageUrl || '',
+            creator: metadata.creator || '',
+            createdAt: metadata.createdAt || Date.now(),
           });
         } else {
-          // Metadata yoksa sadece mint'i ekle
-          tokens.push({
-            mint,
-            name: 'Unknown',
-            symbol: '???',
-            imageUrl: '',
-            creator: '',
-            createdAt: Date.now(),
-          });
+          // Redis'te metadata yoksa Solscan API'den çek
+          console.log(`Fetching metadata from Solscan for ${mint}...`);
+          
+          try {
+            const solscanRes = await fetch(`https://public-api.solscan.io/token/meta?token=${mint}`, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0',
+                'Accept': 'application/json',
+              },
+            });
+            
+            if (solscanRes.ok) {
+              const solscanData = await solscanRes.json();
+              console.log(`Solscan data for ${mint}:`, solscanData);
+              
+              const tokenData = {
+                mint,
+                name: solscanData.name || 'Unknown',
+                symbol: solscanData.symbol || '???',
+                imageUrl: solscanData.icon || '',
+                creator: solscanData.creator || '',
+                createdAt: solscanData.createdAt || Date.now(),
+              };
+              
+              tokens.push(tokenData);
+              
+              // Solscan'dan alınan veriyi Redis'e cache'le
+              await redis.set(`token:metadata:${mint}`, JSON.stringify(tokenData), { ex: 3600 });
+            } else {
+              throw new Error('Solscan API returned error');
+            }
+          } catch (solscanError) {
+            console.error(`Solscan fetch error for ${mint}:`, solscanError);
+            // Fallback: sadece mint bilgisiyle ekle
+            tokens.push({
+              mint,
+              name: 'Unknown',
+              symbol: '???',
+              imageUrl: '',
+              creator: '',
+              createdAt: Date.now(),
+            });
+          }
         }
       } catch (parseError) {
-        console.error(`Error parsing metadata for ${mint}:`, parseError);
+        console.error(`Error processing ${mint}:`, parseError);
         // Hatalı metadata'yı sil
         await redis.del(`token:metadata:${mint}`);
-        // Sadece mint'i ekle
         tokens.push({
           mint,
           name: 'Unknown',
@@ -54,7 +92,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       tokens,
-      total: tokenMints.length,
+      total: tokenMintsArray.length,
     });
     
   } catch (error: any) {
