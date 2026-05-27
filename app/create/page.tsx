@@ -10,7 +10,7 @@ import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-ad
 import { createAndRegisterLaunch } from "@metaplex-foundation/genesis";
 import { genesis } from "@metaplex-foundation/genesis";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Rocket, Upload, Check, AlertCircle, Loader2, ImageIcon, Copy, ExternalLink } from "lucide-react";
+import { ArrowLeft, Rocket, Upload, Check, AlertCircle, Loader2, ImageIcon, Copy, ExternalLink, Sparkles, Zap, Activity } from "lucide-react";
 import Footer from "@/app/components/Footer";
 
 const CREATE_FEE_SOL = 0.01;
@@ -21,13 +21,12 @@ const FEE_DISTRIBUTION = [
 ];
 const BONDING_CURVE_FEE_WALLET = "AimBpCdpPmTB5QeJ6WwgrBzNmMsjR3MvNe9zgNhzomZ6";
 
-// Loading states
-const LOADING_STEPS = [
-  "Initializing token",
-  "Uploading metadata",
-  "Creating bonding curve",
-  "Deploying",
-  "Confirmed"
+// Terminal messages
+const TERMINAL_MESSAGES = [
+  "> Uploading metadata...",
+  "> Initializing bonding curve...",
+  "> Seeding liquidity...",
+  "> Awaiting confirmation...",
 ];
 
 export default function CreatePage() {
@@ -36,7 +35,8 @@ export default function CreatePage() {
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState(0);
+  const [terminalStep, setTerminalStep] = useState(-1);
+  const [terminalText, setTerminalText] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -49,16 +49,25 @@ export default function CreatePage() {
   const [mintAddress, setMintAddress] = useState<string | null>(null);
   const [launchLink, setLaunchLink] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
-  // Simulated market cap
-  const [simulatedMcap, setSimulatedMcap] = useState(4200);
-  
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Typing animation for terminal
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSimulatedMcap(prev => prev + Math.floor(Math.random() * 50) - 20);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    if (terminalStep >= 0 && terminalStep < TERMINAL_MESSAGES.length) {
+      const fullText = TERMINAL_MESSAGES[terminalStep];
+      let i = 0;
+      setTerminalText("");
+      const interval = setInterval(() => {
+        if (i <= fullText.length) {
+          setTerminalText(fullText.slice(0, i));
+          i++;
+        } else {
+          clearInterval(interval);
+        }
+      }, 30);
+      return () => clearInterval(interval);
+    }
+  }, [terminalStep]);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -104,17 +113,16 @@ export default function CreatePage() {
   };
 
   const handleCreate = async () => {
-    if (!connected || !publicKey) { setError("Connect your wallet first"); return; }
+    if (!connected || !publicKey) { setError("Connect wallet"); return; }
     if (!wallet?.adapter) { setError("Wallet adapter not ready"); return; }
     if (!uploadedImageUrl) { setError("Image upload not complete"); return; }
     
     setIsLoading(true);
     setError("");
-    setLoadingStep(0);
+    setTerminalStep(0);
     
     try {
       // Step 1: Fee transaction
-      setLoadingStep(1);
       const tx = new Transaction();
       const totalLamports = Math.floor(CREATE_FEE_SOL * 1_000_000_000);
       for (const dist of FEE_DISTRIBUTION) {
@@ -147,8 +155,10 @@ export default function CreatePage() {
         'confirmed'
       );
       
+      setTerminalStep(1);
+      await new Promise(r => setTimeout(r, 800));
+      
       // Step 2: Token launch
-      setLoadingStep(2);
       const umi = createUmi(connection.rpcEndpoint).use(genesis());
       umi.use(walletAdapterIdentity(wallet.adapter));
       
@@ -164,8 +174,10 @@ export default function CreatePage() {
         launch: { creatorFeeWallet: BONDING_CURVE_FEE_WALLET },
       } as any);
       
+      setTerminalStep(2);
+      await new Promise(r => setTimeout(r, 800));
+      
       // Step 3: Track launch
-      setLoadingStep(3);
       await fetch("/api/track-launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -179,8 +191,8 @@ export default function CreatePage() {
         }),
       });
       
-      setLoadingStep(4);
-      setTimeout(() => setLoadingStep(5), 500);
+      setTerminalStep(3);
+      await new Promise(r => setTimeout(r, 1200));
       
       setMintAddress(result.mintAddress);
       setLaunchLink(result.launch?.link || null);
@@ -188,13 +200,9 @@ export default function CreatePage() {
       
     } catch (err: any) {
       console.error("Create error:", err);
-      if (err.message?.includes("block height exceeded") || err.message?.includes("expired")) {
-        setError("Network busy. Please try again.");
-      } else {
-        setError(err.message?.includes("rejected") ? "Transaction cancelled" : err.message || "Something went wrong");
-      }
-    } finally {
+      setError(err.message?.includes("block height exceeded") ? "Network busy. Try again." : err.message || "Something went wrong");
       setIsLoading(false);
+      setTerminalStep(-1);
     }
   };
 
@@ -205,110 +213,131 @@ export default function CreatePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Live token preview
+  // Preview
   const previewSymbol = tokenSymbol || "TOKEN";
   const previewName = tokenName || "Token Name";
 
   return (
-    <div className="relative min-h-screen bg-[#050816]">
+    <div className="relative min-h-screen bg-[#050816] overflow-hidden">
+      
+      {/* Animated background nodes */}
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(12)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-blue-500/30"
+            animate={{
+              x: [Math.random() * window.innerWidth, Math.random() * window.innerWidth],
+              y: [Math.random() * window.innerHeight, Math.random() * window.innerHeight],
+              opacity: [0, 0.5, 0],
+            }}
+            transition={{
+              duration: 10 + Math.random() * 10,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+            style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
+          />
+        ))}
+      </div>
       
       {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-white/5 bg-[#050816]/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <button onClick={() => router.back()} className="text-gray-500 hover:text-white transition">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="text-xs text-gray-600">Create Token</div>
+          <div className="text-xs text-gray-600 font-mono">Blueprint Ecosystem / Create</div>
           <div className="w-4" />
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="grid lg:grid-cols-2 gap-12">
+      <div className="max-w-7xl mx-auto px-6 py-16">
+        <div className="grid lg:grid-cols-2 gap-16 items-start">
           
-          {/* LEFT SIDE - Live Preview & Simulation */}
+          {/* LEFT SIDE - Interactive Ecosystem Preview */}
           <div className="space-y-8">
             
-            {/* Token Preview Card */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-              <div className="flex items-center gap-4 mb-6">
-                {imagePreview ? (
-                  <img src={imagePreview} className="w-16 h-16 rounded-xl object-cover" />
-                ) : (
-                  <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center">
-                    <ImageIcon className="w-6 h-6 text-gray-600" />
-                  </div>
-                )}
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-white">{previewSymbol}</span>
-                    <span className="text-xs text-gray-600">{previewName}</span>
-                  </div>
-                  <div className="flex items-center gap-4 mt-2">
-                    <div>
-                      <p className="text-[10px] text-gray-600 uppercase">Market Cap</p>
-                      <p className="text-sm font-mono text-blue-400">${simulatedMcap.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-600 uppercase">Price</p>
-                      <p className="text-sm font-mono text-green-400">${(simulatedMcap / 1000000).toFixed(6)}</p>
-                    </div>
-                  </div>
-                </div>
+            {/* Hero text */}
+            <div>
+              <h1 className="text-4xl font-bold text-white tracking-tight">
+                Create <span className="text-blue-400">·</span> Launch <span className="text-blue-400">·</span> Scale
+              </h1>
+              <p className="text-gray-500 text-sm mt-3">Enter the Blueprint ecosystem</p>
+            </div>
+            
+            {/* Animated bonding curve visualization */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 overflow-hidden">
+              <div className="flex items-center gap-2 mb-6">
+                <Activity className="w-3 h-3 text-blue-400" />
+                <span className="text-[10px] text-gray-500 uppercase tracking-wider">Bonding Curve</span>
               </div>
-              
-              {/* Mini bonding curve visualization */}
-              <div className="mt-4 pt-4 border-t border-white/5">
-                <div className="h-16 flex items-end gap-[2px]">
-                  {[...Array(30)].map((_, i) => (
-                    <div 
-                      key={i}
-                      className="flex-1 bg-blue-500/30 rounded-t-sm"
-                      style={{ height: `${20 + Math.sin(i * 0.5 + Date.now() * 0.002) * 10 + (i / 30) * 30}%` }}
-                    />
-                  ))}
-                </div>
-                <div className="flex justify-between mt-2 text-[10px] text-gray-600">
-                  <span>Launch</span>
-                  <span>Graduation</span>
-                </div>
+              <svg width="100%" height="120" viewBox="0 0 400 120" className="w-full">
+                <motion.path
+                  d="M0 100 Q 100 20 200 80 T 400 30"
+                  fill="none"
+                  stroke="url(#gradient)"
+                  strokeWidth="2"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+                />
+                <defs>
+                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#06b6d4" />
+                  </linearGradient>
+                </defs>
+                <motion.circle
+                  cx="0"
+                  cy="100"
+                  r="4"
+                  fill="#3b82f6"
+                  animate={{ cx: ["0%", "100%"], cy: [100, 30] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </svg>
+              <div className="flex justify-between mt-2 text-[10px] text-gray-700">
+                <span>Launch</span>
+                <span>Graduation</span>
               </div>
             </div>
             
-            {/* Swap Feed */}
+            {/* Terminal simulation */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-              <p className="text-[10px] text-gray-600 uppercase mb-4">Live Activity</p>
-              <div className="space-y-2">
-                {[
-                  "0.4 SOL → DOGX",
-                  "1.2 SOL → DOGX",
-                  "0.8 SOL → DOGX"
-                ].map((trade, i) => (
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 rounded-full bg-red-500" />
+                <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-[10px] text-gray-600 ml-2">deployment.log</span>
+              </div>
+              <div className="font-mono text-sm space-y-2">
+                {terminalStep >= 0 && terminalStep < 4 && (
                   <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.5 }}
-                    className="text-xs text-gray-500 font-mono"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-blue-400"
                   >
-                    {trade}
+                    {terminalText}
+                    <span className="animate-pulse">_</span>
                   </motion.div>
-                ))}
+                )}
+                {terminalStep >= 4 && (
+                  <div className="text-green-500"> ✓ Token deployed successfully</div>
+                )}
               </div>
             </div>
           </div>
           
-          {/* RIGHT SIDE - Create Form */}
-          <div className="space-y-6">
-            
-            {/* Form */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 space-y-5">
+          {/* RIGHT SIDE - OS Panel Form */}
+          <div className="relative">
+            <div className={`rounded-2xl border transition-all duration-300 ${isFocused ? 'border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.15)]' : 'border-white/10'} bg-white/[0.02] backdrop-blur-sm p-8`}>
               
               {/* Image upload */}
-              <div>
-                <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Token Image</label>
+              <div className="mb-6">
+                <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-3 block">Token Image</label>
                 <div className="flex items-center gap-4">
-                  <label className="relative w-16 h-16 rounded-xl overflow-hidden cursor-pointer group border border-white/10 bg-white/5 flex items-center justify-center">
+                  <label className="relative w-20 h-20 rounded-xl overflow-hidden cursor-pointer group border border-white/10 bg-white/5 flex items-center justify-center transition-all hover:border-blue-500/30">
                     {imagePreview ? (
                       <img src={imagePreview} className="w-full h-full object-cover" />
                     ) : (
@@ -321,43 +350,49 @@ export default function CreatePage() {
               </div>
               
               {/* Token name */}
-              <div>
+              <div className="mb-6">
                 <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Token Name</label>
                 <input
                   type="text"
                   value={tokenName}
                   onChange={e => setTokenName(e.target.value)}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
                   placeholder="DOGX"
                   maxLength={32}
-                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition"
+                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-all"
                 />
                 {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
               </div>
               
               {/* Symbol */}
-              <div>
+              <div className="mb-6">
                 <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Symbol</label>
                 <input
                   type="text"
                   value={tokenSymbol}
                   onChange={e => setTokenSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
                   placeholder="DOGX"
                   maxLength={10}
-                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition font-mono"
+                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-all font-mono"
                 />
                 {errors.symbol && <p className="text-xs text-red-400 mt-1">{errors.symbol}</p>}
               </div>
               
               {/* Description */}
-              <div>
+              <div className="mb-8">
                 <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Description (optional)</label>
                 <textarea
                   value={tokenDescription}
                   onChange={e => setTokenDescription(e.target.value)}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
                   placeholder="Dog Empire on Solana"
                   rows={3}
                   maxLength={500}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition resize-none"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-all resize-none"
                 />
               </div>
               
@@ -368,77 +403,52 @@ export default function CreatePage() {
                 className="relative w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium text-sm overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
                 <span className="relative flex items-center justify-center gap-2">
-                  <Rocket className="w-4 h-4" />
-                  Launch on Solana
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+                  {isLoading ? "Deploying..." : "Launch on Solana"}
                 </span>
               </button>
               
               {!connected && (
-                <p className="text-xs text-center text-gray-600">Connect wallet to launch</p>
+                <p className="text-xs text-center text-gray-600 mt-4">Connect wallet to enter ecosystem</p>
               )}
             </div>
           </div>
         </div>
       </div>
       
-      {/* Loading Overlay */}
-      <AnimatePresence>
-        {isLoading && !success && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-[#050816]/95 backdrop-blur-md flex items-center justify-center"
-          >
-            <div className="text-center space-y-6">
-              <div className="relative w-12 h-12 mx-auto">
-                <div className="absolute inset-0 rounded-full border-2 border-blue-500/20 animate-ping" />
-                <div className="absolute inset-0 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-              </div>
-              <div className="space-y-2 font-mono text-sm">
-                {LOADING_STEPS.map((step, i) => (
-                  <motion.div
-                    key={step}
-                    initial={{ opacity: 0.3 }}
-                    animate={{ opacity: loadingStep > i ? 1 : 0.3 }}
-                    className="text-gray-400"
-                  >
-                    {loadingStep > i ? <Check className="w-4 h-4 inline mr-2 text-green-500" /> : <span className="inline-block w-4 mr-2" />}
-                    {step}
-                  </motion.div>
-                ))}
-              </div>
-              {error && (
-                <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-                  {error}
-                  <button onClick={() => setIsLoading(false)} className="block mx-auto mt-3 text-xs text-gray-500 hover:text-white">
-                    Go back
-                  </button>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-      {/* Success Screen */}
+      {/* Success Screen - Cinematic */}
       <AnimatePresence>
         {success && mintAddress && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="fixed inset-0 z-50 bg-[#050816]/95 backdrop-blur-md flex items-center justify-center p-6"
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-50 bg-[#050816] flex items-center justify-center p-6"
           >
-            <div className="max-w-md w-full space-y-6 text-center">
-              <div className="w-12 h-12 mx-auto rounded-full bg-green-500/20 flex items-center justify-center">
-                <Check className="w-6 h-6 text-green-500" />
+            <div className="relative text-center space-y-8">
+              {/* Expanding rings */}
+              <div className="relative w-32 h-32 mx-auto">
+                <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
+                <div className="absolute inset-0 rounded-full bg-blue-500/40 animate-ping" style={{ animationDelay: "0.3s" }} />
+                <div className="absolute inset-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 flex items-center justify-center">
+                  {imagePreview ? (
+                    <img src={imagePreview} className="w-16 h-16 rounded-full object-cover" />
+                  ) : (
+                    <Sparkles className="w-8 h-8 text-white" />
+                  )}
+                </div>
               </div>
+              
+              {/* Huge typography */}
               <div>
-                <h2 className="text-xl font-bold text-white">Token Deployed</h2>
-                <p className="text-gray-500 text-sm mt-1">{tokenSymbol} is now live on Blueprint</p>
+                <h2 className="text-5xl font-black text-white tracking-tight">Token Deployed</h2>
+                <p className="text-gray-500 text-base mt-2">{tokenSymbol} is now live</p>
               </div>
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              
+              {/* Mint address */}
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10 max-w-md mx-auto">
                 <p className="text-[10px] text-gray-500 uppercase mb-2">Mint Address</p>
                 <div className="flex items-center gap-2 justify-center">
                   <code className="text-xs text-blue-400 font-mono break-all">{mintAddress.slice(0, 8)}...{mintAddress.slice(-8)}</code>
@@ -447,14 +457,17 @@ export default function CreatePage() {
                   </button>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <button onClick={() => router.push("/dex")} className="flex-1 h-10 rounded-xl bg-blue-600 text-white text-sm font-medium">
+              
+              {/* Action buttons */}
+              <div className="flex gap-4 justify-center">
+                <button onClick={() => router.push("/dex")} className="px-6 h-10 rounded-xl bg-blue-600 text-white text-sm font-medium">
                   Trade on DEX
                 </button>
-                <button onClick={() => window.open(`https://solscan.io/token/${mintAddress}`, "_blank")} className="flex-1 h-10 rounded-xl border border-white/10 text-gray-400 text-sm hover:text-white transition">
+                <button onClick={() => window.open(`https://solscan.io/token/${mintAddress}`, "_blank")} className="px-6 h-10 rounded-xl border border-white/10 text-gray-400 text-sm hover:text-white transition">
                   Solscan
                 </button>
               </div>
+              
               <button onClick={() => {
                 setSuccess(false);
                 setTokenName("");
