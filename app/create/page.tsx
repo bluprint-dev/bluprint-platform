@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
@@ -10,7 +10,7 @@ import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-ad
 import { createAndRegisterLaunch } from "@metaplex-foundation/genesis";
 import { genesis } from "@metaplex-foundation/genesis";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Rocket, Upload, Check, AlertCircle, Loader2, ImageIcon, Copy, ExternalLink, Sparkles, Zap, Activity } from "lucide-react";
+import { ArrowLeft, Rocket, Upload, Check, AlertCircle, Loader2, ImageIcon, Copy, ExternalLink, Sparkles, Activity } from "lucide-react";
 import Footer from "@/app/components/Footer";
 
 const CREATE_FEE_SOL = 0.01;
@@ -21,13 +21,21 @@ const FEE_DISTRIBUTION = [
 ];
 const BONDING_CURVE_FEE_WALLET = "AimBpCdpPmTB5QeJ6WwgrBzNmMsjR3MvNe9zgNhzomZ6";
 
-// Terminal messages
 const TERMINAL_MESSAGES = [
   "> Uploading metadata...",
   "> Initializing bonding curve...",
   "> Seeding liquidity...",
   "> Awaiting confirmation...",
 ];
+
+// Static nodes for background (no window)
+const STATIC_NODES = Array.from({ length: 12 }, (_, i) => ({
+  id: i,
+  left: `${Math.random() * 100}%`,
+  top: `${Math.random() * 100}%`,
+  duration: 8 + Math.random() * 10,
+  delay: Math.random() * 5,
+}));
 
 export default function CreatePage() {
   const { connected, publicKey, sendTransaction, wallet } = useWallet();
@@ -51,7 +59,9 @@ export default function CreatePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isFocused, setIsFocused] = useState(false);
 
-  // Typing animation for terminal
+  // Particles for success screen
+  const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
+
   useEffect(() => {
     if (terminalStep >= 0 && terminalStep < TERMINAL_MESSAGES.length) {
       const fullText = TERMINAL_MESSAGES[terminalStep];
@@ -68,6 +78,19 @@ export default function CreatePage() {
       return () => clearInterval(interval);
     }
   }, [terminalStep]);
+
+  // Particle explosion on success
+  useEffect(() => {
+    if (success) {
+      const newParticles = Array.from({ length: 30 }, (_, i) => ({
+        id: i,
+        x: (Math.random() - 0.5) * 300,
+        y: (Math.random() - 0.5) * 300,
+      }));
+      setParticles(newParticles);
+      setTimeout(() => setParticles([]), 2000);
+    }
+  }, [success]);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -122,7 +145,6 @@ export default function CreatePage() {
     setTerminalStep(0);
     
     try {
-      // Step 1: Fee transaction
       const tx = new Transaction();
       const totalLamports = Math.floor(CREATE_FEE_SOL * 1_000_000_000);
       for (const dist of FEE_DISTRIBUTION) {
@@ -158,7 +180,6 @@ export default function CreatePage() {
       setTerminalStep(1);
       await new Promise(r => setTimeout(r, 800));
       
-      // Step 2: Token launch
       const umi = createUmi(connection.rpcEndpoint).use(genesis());
       umi.use(walletAdapterIdentity(wallet.adapter));
       
@@ -177,7 +198,6 @@ export default function CreatePage() {
       setTerminalStep(2);
       await new Promise(r => setTimeout(r, 800));
       
-      // Step 3: Track launch
       await fetch("/api/track-launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -197,6 +217,8 @@ export default function CreatePage() {
       setMintAddress(result.mintAddress);
       setLaunchLink(result.launch?.link || null);
       setSuccess(true);
+      setIsLoading(false);
+      setTerminalStep(-1);
       
     } catch (err: any) {
       console.error("Create error:", err);
@@ -213,33 +235,39 @@ export default function CreatePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Preview
   const previewSymbol = tokenSymbol || "TOKEN";
-  const previewName = tokenName || "Token Name";
 
   return (
     <div className="relative min-h-screen bg-[#050816] overflow-hidden">
       
-      {/* Animated background nodes */}
+      {/* Animated background nodes - SSR safe */}
       <div className="absolute inset-0 pointer-events-none">
-        {[...Array(12)].map((_, i) => (
+        {STATIC_NODES.map((node) => (
           <motion.div
-            key={i}
+            key={node.id}
             className="absolute w-1 h-1 rounded-full bg-blue-500/30"
             animate={{
-              x: [Math.random() * window.innerWidth, Math.random() * window.innerWidth],
-              y: [Math.random() * window.innerHeight, Math.random() * window.innerHeight],
+              y: ["0%", "-20%", "0%", "20%", "0%"],
               opacity: [0, 0.5, 0],
             }}
             transition={{
-              duration: 10 + Math.random() * 10,
+              duration: node.duration,
               repeat: Infinity,
-              ease: "linear",
+              delay: node.delay,
+              ease: "easeInOut",
             }}
-            style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
+            style={{ left: node.left, top: node.top }}
           />
         ))}
       </div>
+      
+      {/* Giant blur orbs */}
+      <div className="absolute top-[-20%] left-[10%] w-[500px] h-[500px] bg-blue-500/10 blur-[140px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[10%] w-[400px] h-[400px] bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-[30%] right-[20%] w-[300px] h-[300px] bg-purple-500/5 blur-[100px] rounded-full pointer-events-none" />
+      
+      {/* Background grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px] pointer-events-none" />
       
       {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-white/5 bg-[#050816]/80 backdrop-blur-xl">
@@ -255,24 +283,35 @@ export default function CreatePage() {
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="grid lg:grid-cols-2 gap-16 items-start">
           
-          {/* LEFT SIDE - Interactive Ecosystem Preview */}
-          <div className="space-y-8">
-            
-            {/* Hero text */}
+          {/* LEFT SIDE */}
+          <motion.div 
+            className="space-y-8"
+            style={{ transform: "perspective(1200px) rotateY(-4deg)" }}
+          >
             <div>
-              <h1 className="text-4xl font-bold text-white tracking-tight">
+              <h1 className="text-4xl font-bold text-white tracking-[-0.04em]">
                 Create <span className="text-blue-400">·</span> Launch <span className="text-blue-400">·</span> Scale
               </h1>
               <p className="text-gray-500 text-sm mt-3">Enter the Blueprint ecosystem</p>
             </div>
             
-            {/* Animated bonding curve visualization */}
+            {/* Bonding curve */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 overflow-hidden">
               <div className="flex items-center gap-2 mb-6">
                 <Activity className="w-3 h-3 text-blue-400" />
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider">Bonding Curve</span>
               </div>
               <svg width="100%" height="120" viewBox="0 0 400 120" className="w-full">
+                <motion.path
+                  d="M0 100 Q 100 20 200 80 T 400 30"
+                  fill="none"
+                  stroke="url(#gradient)"
+                  strokeWidth="10"
+                  strokeOpacity="0.15"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+                />
                 <motion.path
                   d="M0 100 Q 100 20 200 80 T 400 30"
                   fill="none"
@@ -288,22 +327,10 @@ export default function CreatePage() {
                     <stop offset="100%" stopColor="#06b6d4" />
                   </linearGradient>
                 </defs>
-                <motion.circle
-                  cx="0"
-                  cy="100"
-                  r="4"
-                  fill="#3b82f6"
-                  animate={{ cx: ["0%", "100%"], cy: [100, 30] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                />
               </svg>
-              <div className="flex justify-between mt-2 text-[10px] text-gray-700">
-                <span>Launch</span>
-                <span>Graduation</span>
-              </div>
             </div>
             
-            {/* Terminal simulation */}
+            {/* Terminal */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-2 h-2 rounded-full bg-red-500" />
@@ -311,26 +338,26 @@ export default function CreatePage() {
                 <div className="w-2 h-2 rounded-full bg-green-500" />
                 <span className="text-[10px] text-gray-600 ml-2">deployment.log</span>
               </div>
-              <div className="font-mono text-sm space-y-2">
+              <div className="space-y-2">
                 {terminalStep >= 0 && terminalStep < 4 && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-blue-400"
+                    className="text-blue-400 font-mono text-sm"
                   >
                     {terminalText}
-                    <span className="animate-pulse">_</span>
+                    <span className="animate-pulse">{'>'}</span>
                   </motion.div>
-                )}
-                {terminalStep >= 4 && (
-                  <div className="text-green-500"> ✓ Token deployed successfully</div>
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
           
-          {/* RIGHT SIDE - OS Panel Form */}
-          <div className="relative">
+          {/* RIGHT SIDE */}
+          <motion.div 
+            className="relative"
+            style={{ transform: "perspective(1200px) rotateY(4deg)" }}
+          >
             <div className={`rounded-2xl border transition-all duration-300 ${isFocused ? 'border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.15)]' : 'border-white/10'} bg-white/[0.02] backdrop-blur-sm p-8`}>
               
               {/* Image upload */}
@@ -396,14 +423,17 @@ export default function CreatePage() {
                 />
               </div>
               
-              {/* Create button */}
+              {/* Button */}
               <button
                 onClick={handleCreate}
                 disabled={!validate() || uploadingImage || !connected}
-                className="relative w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium text-sm overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed"
+                className="relative w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium text-sm overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full"
+                  animate={{ x: ["0%", "200%"] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                />
                 <span className="relative flex items-center justify-center gap-2">
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
                   {isLoading ? "Deploying..." : "Launch on Solana"}
@@ -414,11 +444,54 @@ export default function CreatePage() {
                 <p className="text-xs text-center text-gray-600 mt-4">Connect wallet to enter ecosystem</p>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
       
-      {/* Success Screen - Cinematic */}
+      {/* Cinematic Loading Overlay */}
+      <AnimatePresence>
+        {isLoading && !success && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-[#050816] flex items-center justify-center"
+          >
+            <div className="relative text-center">
+              <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping w-32 h-32 mx-auto" />
+              <div className="relative w-32 h-32 mx-auto mb-8">
+                <div className="absolute inset-0 rounded-full border-2 border-blue-500/30 animate-spin" />
+                <div className="absolute inset-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 flex items-center justify-center">
+                  <Rocket className="w-8 h-8 text-white" />
+                </div>
+              </div>
+              <div className="space-y-3 font-mono text-sm">
+                {TERMINAL_MESSAGES.map((msg, i) => (
+                  <motion.div
+                    key={msg}
+                    initial={{ opacity: 0.3 }}
+                    animate={{ opacity: terminalStep >= i ? 1 : 0.3 }}
+                    className={terminalStep >= i ? "text-blue-400" : "text-gray-700"}
+                  >
+                    {terminalStep > i && <Check className="w-4 h-4 inline mr-2 text-green-500" />}
+                    {msg}
+                  </motion.div>
+                ))}
+              </div>
+              {error && (
+                <div className="mt-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <p className="text-red-400 text-sm">{error}</p>
+                  <button onClick={() => setIsLoading(false)} className="mt-3 text-xs text-gray-500 hover:text-white">
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Success Screen with Particle Explosion */}
       <AnimatePresence>
         {success && mintAddress && (
           <motion.div
@@ -427,8 +500,18 @@ export default function CreatePage() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed inset-0 z-50 bg-[#050816] flex items-center justify-center p-6"
           >
+            {/* Particle explosion */}
+            {particles.map((p) => (
+              <motion.div
+                key={p.id}
+                initial={{ x: 0, y: 0, opacity: 0.8, scale: 1 }}
+                animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
+                transition={{ duration: 1.5, ease: "easeOut" }}
+                className="absolute w-2 h-2 rounded-full bg-blue-500"
+              />
+            ))}
+            
             <div className="relative text-center space-y-8">
-              {/* Expanding rings */}
               <div className="relative w-32 h-32 mx-auto">
                 <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
                 <div className="absolute inset-0 rounded-full bg-blue-500/40 animate-ping" style={{ animationDelay: "0.3s" }} />
@@ -441,13 +524,11 @@ export default function CreatePage() {
                 </div>
               </div>
               
-              {/* Huge typography */}
               <div>
-                <h2 className="text-5xl font-black text-white tracking-tight">Token Deployed</h2>
-                <p className="text-gray-500 text-base mt-2">{tokenSymbol} is now live</p>
+                <h2 className="text-5xl font-black text-white tracking-[-0.04em]">Token Deployed</h2>
+                <p className="text-gray-500 text-base mt-2">{previewSymbol} is now live</p>
               </div>
               
-              {/* Mint address */}
               <div className="bg-white/5 rounded-xl p-4 border border-white/10 max-w-md mx-auto">
                 <p className="text-[10px] text-gray-500 uppercase mb-2">Mint Address</p>
                 <div className="flex items-center gap-2 justify-center">
@@ -458,7 +539,6 @@ export default function CreatePage() {
                 </div>
               </div>
               
-              {/* Action buttons */}
               <div className="flex gap-4 justify-center">
                 <button onClick={() => router.push("/dex")} className="px-6 h-10 rounded-xl bg-blue-600 text-white text-sm font-medium">
                   Trade on DEX
