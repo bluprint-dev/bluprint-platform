@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
@@ -28,24 +28,27 @@ const TERMINAL_MESSAGES = [
   "Awaiting confirmation...",
 ];
 
-// SSR-safe background nodes
-const STATIC_NODES = Array.from({ length: 12 }, (_, i) => ({
-  id: i,
-  left: `${Math.random() * 100}%`,
-  top: `${Math.random() * 100}%`,
-  duration: 8 + Math.random() * 10,
-  delay: Math.random() * 5,
-}));
+// Token symbol blacklist
+const BLACKLIST = ["SOL", "USDC", "USDT", "BONK", "WIF", "JUP", "PYTH", "JTO"];
+
+// Validation limits
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"];
 
 export default function CreatePage() {
   const { connected, publicKey, sendTransaction, wallet } = useWallet();
   const { connection } = useConnection();
   const router = useRouter();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Mounted state for SSR
+  const [mounted, setMounted] = useState(false);
+  
   // Responsive state
   const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const check = () => setIsDesktop(window.innerWidth >= 1024);
     check();
     window.addEventListener("resize", check);
@@ -59,6 +62,7 @@ export default function CreatePage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
@@ -67,8 +71,18 @@ export default function CreatePage() {
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [mintAddress, setMintAddress] = useState<string | null>(null);
   const [launchLink, setLaunchLink] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isFocused, setIsFocused] = useState(false);
+
+  // SSR-safe nodes with useMemo
+  const nodes = useMemo(() => {
+    if (typeof window === "undefined") return [];
+    return Array.from({ length: 12 }, (_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      duration: 8 + Math.random() * 10,
+      delay: Math.random() * 5,
+    }));
+  }, []);
 
   // Terminal tip animation
   useEffect(() => {
@@ -88,71 +102,101 @@ export default function CreatePage() {
     }
   }, [terminalStep]);
 
-  // ESC ile loading'den çıkma
+  // ESC ile loading'den çıkma (warning göster)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isLoading) setIsLoading(false);
+      if (e.key === "Escape" && isLoading) {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        setIsLoading(false);
+        setError("Cancelled - Transaction may still process on blockchain");
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isLoading]);
 
-  // Başarı partikülleri
+  // Başarı partikülleri - cleanup ile
   const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
   useEffect(() => {
-    if (success) {
-      const newParticles = Array.from({ length: 30 }, (_, i) => ({
-        id: i,
-        x: (Math.random() - 0.5) * 300,
-        y: (Math.random() - 0.5) * 300,
-      }));
-      setParticles(newParticles);
-      setTimeout(() => setParticles([]), 2000);
-    }
+    if (!success) return;
+    const newParticles = Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      x: (Math.random() - 0.5) * 300,
+      y: (Math.random() - 0.5) * 300,
+    }));
+    setParticles(newParticles);
+    const timeout = setTimeout(() => setParticles([]), 2000);
+    return () => clearTimeout(timeout);
   }, [success]);
 
-  // Validation
-  const isFormValid = useMemo(() => {
-    const e: Record<string, string> = {};
-    if (!tokenName.trim() || tokenName.length < 2) e.name = "Min 2 characters";
-    if (tokenName.length > 32) e.name = "Max 32 characters";
-    if (!tokenSymbol.trim() || tokenSymbol.length < 2) e.symbol = "Min 2 characters";
-    if (tokenSymbol.length > 10) e.symbol = "Max 10 characters";
-    if (!/^[A-Za-z0-9]+$/.test(tokenSymbol)) e.symbol = "Letters and numbers only";
-    if (!uploadedImageUrl) e.image = "Image required";
-    return { valid: Object.keys(e).length === 0, errors: e };
+  // Double submit protection ref
+  const isSubmitting = useRef(false);
+
+  // Basit validation (submit'te çalışacak)
+  const validateForm = useCallback(() => {
+    const errors: Record<string, string> = {};
+    if (!tokenName.trim() || tokenName.length < 2) errors.name = "Min 2 characters";
+    if (tokenName.length > 32) errors.name = "Max 32 characters";
+    if (!tokenSymbol.trim() || tokenSymbol.length < 2) errors.symbol = "Min 2 characters";
+    if (tokenSymbol.length > 10) errors.symbol = "Max 10 characters";
+    if (!/^[A-Za-z0-9]+$/.test(tokenSymbol)) errors.symbol = "Letters and numbers only";
+    if (BLACKLIST.includes(tokenSymbol.toUpperCase())) errors.symbol = "Reserved ticker";
+    if (!uploadedImageUrl) errors.image = "Image required";
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   }, [tokenName, tokenSymbol, uploadedImageUrl]);
 
-  const handleSubmit = () => {
-    setErrors(isFormValid.errors);
-    if (!isFormValid.valid) return;
-    handleCreate();
-  };
+  // Disabled kontrolü
+  const isDisabled = isLoading || uploadingImage || !connected || !tokenName || !tokenSymbol || !uploadedImageUrl;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    // Client-side validation
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      setValidationErrors((prev) => ({ ...prev, image: "Invalid file type. Use PNG, JPG, GIF or WEBP" }));
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setValidationErrors((prev) => ({ ...prev, image: "File too large. Max 5MB" }));
+      return;
+    }
+    
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result as string);
     reader.readAsDataURL(file);
     setUploadingImage(true);
+    setValidationErrors((prev) => ({ ...prev, image: "" }));
+    
     try {
       const formData = new FormData();
       formData.append("file", file);
+      
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
+      
       if (data.success) {
         setUploadedImageUrl(data.imageUrl);
       } else {
-        setErrors((prev) => ({ ...prev, image: data.error || "Upload failed" }));
+        setValidationErrors((prev) => ({ ...prev, image: data.error || "Upload failed" }));
         setImagePreview(null);
       }
     } catch {
-      setErrors((prev) => ({ ...prev, image: "Upload failed" }));
+      setValidationErrors((prev) => ({ ...prev, image: "Upload failed" }));
       setImagePreview(null);
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const handleSubmit = async () => {
+    // Double submit protection
+    if (isSubmitting.current || isLoading) return;
+    if (!validateForm()) return;
+    await handleCreate();
   };
 
   const handleCreate = async () => {
@@ -160,22 +204,44 @@ export default function CreatePage() {
     if (!wallet?.adapter) { setError("Wallet adapter not ready"); return; }
     if (!uploadedImageUrl) { setError("Image upload not complete"); return; }
     
+    // Balance check before anything
+    try {
+      const balance = await connection.getBalance(publicKey);
+      const requiredBalance = CREATE_FEE_SOL * 1_000_000_000 + 5000000; // + network fee
+      if (balance < requiredBalance) {
+        setError(`Insufficient SOL. Need ${(requiredBalance / 1_000_000_000).toFixed(3)} SOL`);
+        return;
+      }
+    } catch (balanceErr) {
+      setError("Failed to check balance. Try again.");
+      return;
+    }
+    
+    isSubmitting.current = true;
     setIsLoading(true);
     setError("");
     setTerminalStep(0);
     
     try {
-      // Fee Transaction
+      // 1. Fee Transaction with remainder handling
       const tx = new Transaction();
       const totalLamports = Math.floor(CREATE_FEE_SOL * 1_000_000_000);
-      for (const dist of FEE_DISTRIBUTION) {
-        const amount = Math.floor((totalLamports * dist.percentage) / 100);
+      
+      let distributed = 0;
+      for (let i = 0; i < FEE_DISTRIBUTION.length; i++) {
+        const dist = FEE_DISTRIBUTION[i];
+        const isLast = i === FEE_DISTRIBUTION.length - 1;
+        let amount = Math.floor((totalLamports * dist.percentage) / 100);
+        if (isLast) {
+          amount = totalLamports - distributed;
+        }
         if (amount > 0) {
           tx.add(SystemProgram.transfer({ 
             fromPubkey: publicKey, 
             toPubkey: new PublicKey(dist.address), 
             lamports: amount 
           }));
+          distributed += amount;
         }
       }
       
@@ -183,8 +249,8 @@ export default function CreatePage() {
       tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }));
       tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee }));
       
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
-      tx.recentBlockhash = blockhash;
+      const latestBlockhash = await connection.getLatestBlockhash('finalized');
+      tx.recentBlockhash = latestBlockhash.blockhash;
       tx.feePayer = publicKey;
       
       const feeSig = await sendTransaction(tx, connection, {
@@ -193,61 +259,67 @@ export default function CreatePage() {
         maxRetries: 3,
       });
       
-      await connection.confirmTransaction(
-        { signature: feeSig, blockhash, lastValidBlockHeight },
-        'confirmed'
-      );
+      await connection.confirmTransaction({
+        signature: feeSig,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      }, 'finalized');
+      
+      // Check if cancelled
+      if (abortControllerRef.current?.signal.aborted) {
+        throw new Error("Cancelled");
+      }
       
       setTerminalStep(1);
       await new Promise(r => setTimeout(r, 800));
       
-      // Token Launch
-      const umi = createUmi(connection.rpcEndpoint).use(genesis());
-      umi.use(walletAdapterIdentity(wallet.adapter));
+      // 2. Call secure backend API
+      const createRes = await fetch("/api/create-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signature: feeSig,
+          userPublicKey: publicKey.toString(),
+          tokenData: {
+            name: tokenName,
+            symbol: tokenSymbol,
+            imageUrl: uploadedImageUrl,
+            description: tokenDescription || "",
+          },
+        }),
+      });
       
-      const result = await createAndRegisterLaunch(umi, {}, {
-        wallet: publicKey.toString(),
-        launchType: "bondingCurve",
-        token: { 
-          name: tokenName, 
-          symbol: tokenSymbol, 
-          image: uploadedImageUrl, 
-          description: tokenDescription || "" 
-        },
-        launch: { creatorFeeWallet: BONDING_CURVE_FEE_WALLET },
-      } as any);
+      const createData = await createRes.json();
+      if (!createData.success) {
+        throw new Error(createData.error || "Launch failed");
+      }
+      
+      if (!createData.mintAddress) {
+        throw new Error("Invalid launch response");
+      }
       
       setTerminalStep(2);
       await new Promise(r => setTimeout(r, 800));
       
-      // Track Launch
-      await fetch("/api/track-launch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          mintAddress: result.mintAddress, 
-          name: tokenName, 
-          symbol: tokenSymbol, 
-          imageUrl: uploadedImageUrl, 
-          userPublicKey: publicKey.toString(), 
-          signature: feeSig 
-        }),
-      });
-      
-      setTerminalStep(3);
-      await new Promise(r => setTimeout(r, 1200));
-      
-      setMintAddress(result.mintAddress);
-      setLaunchLink(result.launch?.link || null);
+      setMintAddress(createData.mintAddress);
+      setLaunchLink(createData.launchLink);
       setSuccess(true);
       setIsLoading(false);
       setTerminalStep(-1);
       
     } catch (err: any) {
       console.error("Create error:", err);
-      setError(err.message?.includes("block height exceeded") ? "Network busy. Try again." : err.message || "Something went wrong");
+      if (err.message?.includes("block height exceeded") || err.message?.includes("expired")) {
+        setError("Network busy. Try again.");
+      } else if (err.message?.includes("Cancelled")) {
+        setError("Cancelled - Transaction may still process on blockchain");
+      } else {
+        setError(err.message || "Something went wrong");
+      }
       setIsLoading(false);
       setTerminalStep(-1);
+    } finally {
+      isSubmitting.current = false;
     }
   };
 
@@ -260,12 +332,15 @@ export default function CreatePage() {
 
   const previewSymbol = tokenSymbol || "TOKEN";
 
+  // SSR guard
+  if (!mounted) return null;
+
   return (
     <div className="relative min-h-screen bg-[#050816] overflow-hidden">
       
       {/* Animated background nodes */}
       <div className="absolute inset-0 pointer-events-none">
-        {STATIC_NODES.map((node) => (
+        {nodes.map((node) => (
           <motion.div
             key={node.id}
             className="absolute w-1 h-1 rounded-full bg-blue-500/30"
@@ -385,7 +460,7 @@ export default function CreatePage() {
             className="relative"
             style={isDesktop ? { transform: "perspective(1200px) rotateY(4deg)" } : {}}
           >
-            <div className={`rounded-2xl border transition-all duration-300 ${isFocused ? 'border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.15)]' : 'border-white/10'} bg-white/[0.02] backdrop-blur-sm p-8`}>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm p-8">
               
               {/* Persistent error */}
               {error && (
@@ -409,7 +484,7 @@ export default function CreatePage() {
                     )}
                     <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                   </label>
-                  {errors.image && <p className="text-xs text-red-400">{errors.image}</p>}
+                  {validationErrors.image && <p className="text-xs text-red-400">{validationErrors.image}</p>}
                 </div>
               </div>
               
@@ -420,13 +495,11 @@ export default function CreatePage() {
                   type="text"
                   value={tokenName}
                   onChange={e => setTokenName(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
                   placeholder="DOGX"
                   maxLength={32}
                   className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-all"
                 />
-                {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
+                {validationErrors.name && <p className="text-xs text-red-400 mt-1">{validationErrors.name}</p>}
               </div>
               
               {/* Symbol */}
@@ -436,13 +509,11 @@ export default function CreatePage() {
                   type="text"
                   value={tokenSymbol}
                   onChange={e => setTokenSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
                   placeholder="DOGX"
                   maxLength={10}
                   className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-all font-mono"
                 />
-                {errors.symbol && <p className="text-xs text-red-400 mt-1">{errors.symbol}</p>}
+                {validationErrors.symbol && <p className="text-xs text-red-400 mt-1">{validationErrors.symbol}</p>}
               </div>
               
               {/* Description */}
@@ -451,8 +522,6 @@ export default function CreatePage() {
                 <textarea
                   value={tokenDescription}
                   onChange={e => setTokenDescription(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
                   placeholder="Dog Empire on Solana"
                   rows={3}
                   maxLength={500}
@@ -463,7 +532,7 @@ export default function CreatePage() {
               {/* Button */}
               <button
                 onClick={handleSubmit}
-                disabled={!isFormValid.valid || uploadingImage || !connected}
+                disabled={isDisabled}
                 className="relative w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium text-sm overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
@@ -519,7 +588,7 @@ export default function CreatePage() {
         )}
       </AnimatePresence>
       
-      {/* Success Screen with Particle Explosion */}
+      {/* Success Screen */}
       <AnimatePresence>
         {success && mintAddress && (
           <motion.div
@@ -528,15 +597,11 @@ export default function CreatePage() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed inset-0 z-50 bg-[#050816] flex items-center justify-center p-6"
           >
-            {/* Background radial burst */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.15),transparent_60%)]" />
-            
-            {/* Token watermark */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
               <span className="text-[180px] font-black text-white/[0.03]">{previewSymbol}</span>
             </div>
             
-            {/* Particles */}
             {particles.map((p) => (
               <motion.div
                 key={p.id}
@@ -559,12 +624,10 @@ export default function CreatePage() {
                   )}
                 </div>
               </div>
-              
               <div>
                 <h2 className="text-5xl font-black text-white tracking-[-0.04em]">Token Deployed</h2>
                 <p className="text-gray-500 text-base mt-2">{previewSymbol} is now live</p>
               </div>
-              
               <div className="bg-white/5 rounded-xl p-4 border border-white/10 max-w-md mx-auto">
                 <p className="text-[10px] text-gray-500 uppercase mb-2">Mint Address</p>
                 <div className="flex items-center gap-2 justify-center">
@@ -574,7 +637,6 @@ export default function CreatePage() {
                   </button>
                 </div>
               </div>
-              
               <div className="flex gap-4 justify-center">
                 <button onClick={() => router.push("/dex")} className="px-6 h-10 rounded-xl bg-blue-600 text-white text-sm font-medium">
                   Trade on DEX
@@ -588,7 +650,6 @@ export default function CreatePage() {
                   </button>
                 )}
               </div>
-              
               <button onClick={() => {
                 setSuccess(false);
                 setTokenName("");
@@ -597,6 +658,7 @@ export default function CreatePage() {
                 setImagePreview(null);
                 setUploadedImageUrl(null);
                 setMintAddress(null);
+                setLaunchLink(null);
               }} className="text-xs text-gray-600 hover:text-gray-400 transition">
                 Create another token
               </button>
