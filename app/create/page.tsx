@@ -5,6 +5,10 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
 import { PublicKey, SystemProgram, Transaction, ComputeBudgetProgram } from "@solana/web3.js";
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
+import { createAndRegisterLaunch } from "@metaplex-foundation/genesis";
+import { genesis } from "@metaplex-foundation/genesis";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Rocket, Upload, Check, AlertCircle, Loader2, Copy, Sparkles, Activity } from "lucide-react";
 import Footer from "@/app/components/Footer";
@@ -16,6 +20,8 @@ const FEE_DISTRIBUTION = [
   { address: "A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X", percentage: 10 },
 ];
 
+const BONDING_CURVE_FEE_WALLET = "AimBpCdpPmTB5QeJ6WwgrBzNmMsjR3MvNe9zgNhzomZ6";
+
 const TERMINAL_MESSAGES = [
   "Uploading metadata...",
   "Initializing bonding curve...",
@@ -23,11 +29,8 @@ const TERMINAL_MESSAGES = [
   "Awaiting confirmation...",
 ];
 
-// Token symbol blacklist
 const BLACKLIST = ["SOL", "USDC", "USDT", "BONK", "WIF", "JUP", "PYTH", "JTO"];
-
-// Validation limits
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"];
 
 export default function CreatePage() {
@@ -37,10 +40,7 @@ export default function CreatePage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const isSubmitting = useRef(false);
 
-  // Mounted state for SSR
   const [mounted, setMounted] = useState(false);
-  
-  // Responsive state
   const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
@@ -51,7 +51,6 @@ export default function CreatePage() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // State'ler
   const [isLoading, setIsLoading] = useState(false);
   const [terminalStep, setTerminalStep] = useState(-1);
   const [terminalText, setTerminalText] = useState("");
@@ -68,7 +67,6 @@ export default function CreatePage() {
   const [mintAddress, setMintAddress] = useState<string | null>(null);
   const [launchLink, setLaunchLink] = useState<string | null>(null);
 
-  // SSR-safe nodes with useMemo
   const nodes = useMemo(() => {
     if (typeof window === "undefined") return [];
     return Array.from({ length: 12 }, (_, i) => ({
@@ -80,7 +78,6 @@ export default function CreatePage() {
     }));
   }, []);
 
-  // Terminal tip animation
   useEffect(() => {
     if (terminalStep >= 0 && terminalStep < TERMINAL_MESSAGES.length) {
       const fullText = TERMINAL_MESSAGES[terminalStep];
@@ -98,13 +95,10 @@ export default function CreatePage() {
     }
   }, [terminalStep]);
 
-  // ESC ile loading'den çıkma
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isLoading) {
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-        }
+        if (abortControllerRef.current) abortControllerRef.current.abort();
         setIsLoading(false);
         setError("Cancelled - Transaction may still process on blockchain");
       }
@@ -113,7 +107,6 @@ export default function CreatePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isLoading]);
 
-  // Başarı partikülleri
   const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
   useEffect(() => {
     if (!success) return;
@@ -127,7 +120,6 @@ export default function CreatePage() {
     return () => clearTimeout(timeout);
   }, [success]);
 
-  // Validation
   const validateForm = useCallback(() => {
     const errors: Record<string, string> = {};
     if (!tokenName.trim() || tokenName.length < 2) errors.name = "Min 2 characters";
@@ -141,7 +133,6 @@ export default function CreatePage() {
     return Object.keys(errors).length === 0;
   }, [tokenName, tokenSymbol, uploadedImageUrl]);
 
-  // Disabled kontrolü
   const isDisabled = isLoading || uploadingImage || !connected || !tokenName || !tokenSymbol || !uploadedImageUrl;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,7 +140,7 @@ export default function CreatePage() {
     if (!file) return;
     
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      setValidationErrors((prev) => ({ ...prev, image: "Invalid file type. Use PNG, JPG, GIF or WEBP" }));
+      setValidationErrors((prev) => ({ ...prev, image: "Invalid file type" }));
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
@@ -166,10 +157,8 @@ export default function CreatePage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
-      
       if (data.success) {
         setUploadedImageUrl(data.imageUrl);
       } else {
@@ -184,18 +173,11 @@ export default function CreatePage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (isSubmitting.current || isLoading) return;
-    if (!validateForm()) return;
-    await handleCreate();
-  };
-
   const handleCreate = async () => {
     if (!connected || !publicKey) { setError("Connect wallet"); return; }
     if (!wallet?.adapter) { setError("Wallet adapter not ready"); return; }
     if (!uploadedImageUrl) { setError("Image upload not complete"); return; }
     
-    // Balance check
     try {
       const balance = await connection.getBalance(publicKey);
       const requiredBalance = CREATE_FEE_SOL * 1_000_000_000 + 5000000;
@@ -214,7 +196,7 @@ export default function CreatePage() {
     setTerminalStep(0);
     
     try {
-      // 1. Fee Transaction with remainder handling
+      // 1. Fee Transaction
       const tx = new Transaction();
       const totalLamports = Math.floor(CREATE_FEE_SOL * 1_000_000_000);
       
@@ -223,9 +205,7 @@ export default function CreatePage() {
         const dist = FEE_DISTRIBUTION[i];
         const isLast = i === FEE_DISTRIBUTION.length - 1;
         let amount = Math.floor((totalLamports * dist.percentage) / 100);
-        if (isLast) {
-          amount = totalLamports - distributed;
-        }
+        if (isLast) amount = totalLamports - distributed;
         if (amount > 0) {
           tx.add(SystemProgram.transfer({ 
             fromPubkey: publicKey, 
@@ -259,8 +239,8 @@ export default function CreatePage() {
       setTerminalStep(1);
       await new Promise(r => setTimeout(r, 800));
       
-      // 2. Call secure backend API (no internal header needed - origin check in middleware)
-      const createRes = await fetch("/api/create-token", {
+      // 2. Verify payment with backend
+      const verifyRes = await fetch("/api/create-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -275,20 +255,49 @@ export default function CreatePage() {
         }),
       });
       
-      const createData = await createRes.json();
-      if (!createData.success) {
-        throw new Error(createData.error || "Launch failed");
-      }
-      
-      if (!createData.mintAddress) {
-        throw new Error("Invalid launch response");
+      const verifyData = await verifyRes.json();
+      if (!verifyData.success) {
+        throw new Error(verifyData.error || "Payment verification failed");
       }
       
       setTerminalStep(2);
       await new Promise(r => setTimeout(r, 800));
       
-      setMintAddress(createData.mintAddress);
-      setLaunchLink(createData.launchLink);
+      // 3. CREATE TOKEN ON FRONTEND (with user signer)
+      const umi = createUmi(connection.rpcEndpoint).use(genesis());
+      umi.use(walletAdapterIdentity(wallet.adapter));
+      
+      const result = await createAndRegisterLaunch(umi, {}, {
+        wallet: publicKey.toString(),
+        launchType: "bondingCurve",
+        token: { 
+          name: tokenName, 
+          symbol: tokenSymbol, 
+          image: uploadedImageUrl, 
+          description: tokenDescription || "" 
+        },
+        launch: { creatorFeeWallet: BONDING_CURVE_FEE_WALLET },
+      } as any);
+      
+      setTerminalStep(3);
+      await new Promise(r => setTimeout(r, 800));
+      
+      // 4. Track launch
+      await fetch("/api/track-launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          mintAddress: result.mintAddress, 
+          name: tokenName, 
+          symbol: tokenSymbol, 
+          imageUrl: uploadedImageUrl, 
+          userPublicKey: publicKey.toString(), 
+          signature: feeSig 
+        }),
+      });
+      
+      setMintAddress(result.mintAddress);
+      setLaunchLink(result.launch?.link || null);
       setSuccess(true);
       setIsLoading(false);
       setTerminalStep(-1);
@@ -297,8 +306,6 @@ export default function CreatePage() {
       console.error("Create error:", err);
       if (err.message?.includes("block height exceeded") || err.message?.includes("expired")) {
         setError("Network busy. Try again.");
-      } else if (err.message?.includes("Cancelled")) {
-        setError("Cancelled - Transaction may still process on blockchain");
       } else {
         setError(err.message || "Something went wrong");
       }
@@ -318,42 +325,28 @@ export default function CreatePage() {
 
   const previewSymbol = tokenSymbol || "TOKEN";
 
-  // SSR guard
   if (!mounted) return null;
 
   return (
     <div className="relative min-h-screen bg-[#050816] overflow-hidden">
       
-      {/* Animated background nodes - pembe */}
       <div className="absolute inset-0 pointer-events-none">
         {nodes.map((node) => (
           <motion.div
             key={node.id}
             className="absolute w-1 h-1 rounded-full bg-[#ff2d95]/40"
-            animate={{
-              y: ["0%", "-20%", "0%", "20%", "0%"],
-              opacity: [0, 0.5, 0],
-            }}
-            transition={{
-              duration: node.duration,
-              repeat: Infinity,
-              delay: node.delay,
-              ease: "easeInOut",
-            }}
+            animate={{ y: ["0%", "-20%", "0%", "20%", "0%"], opacity: [0, 0.5, 0] }}
+            transition={{ duration: node.duration, repeat: Infinity, delay: node.delay, ease: "easeInOut" }}
             style={{ left: node.left, top: node.top }}
           />
         ))}
       </div>
       
-      {/* Giant blur orbs - pembe */}
       <div className="absolute top-[-20%] left-[10%] w-[500px] h-[500px] bg-[#ff2d95]/10 blur-[140px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[10%] w-[400px] h-[400px] bg-[#ff6bcb]/5 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute top-[30%] right-[20%] w-[300px] h-[300px] bg-[#ff2d95]/5 blur-[100px] rounded-full pointer-events-none" />
-      
-      {/* Background grid */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,45,149,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,45,149,0.02)_1px,transparent_1px)] bg-[size:80px_80px] pointer-events-none" />
       
-      {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-white/5 bg-[#050816]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <button onClick={() => router.back()} className="text-gray-500 hover:text-white transition">
@@ -367,11 +360,7 @@ export default function CreatePage() {
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="grid lg:grid-cols-2 gap-16 items-start">
           
-          {/* LEFT SIDE */}
-          <motion.div 
-            className="space-y-8"
-            style={isDesktop ? { transform: "perspective(1200px) rotateY(-4deg)" } : {}}
-          >
+          <motion.div className="space-y-8" style={isDesktop ? { transform: "perspective(1200px) rotateY(-4deg)" } : {}}>
             <div>
               <h1 className="text-4xl font-bold text-white tracking-[-0.04em]">
                 Create <span className="text-[#ff2d95]">·</span> Launch <span className="text-[#ff2d95]">·</span> Scale
@@ -379,7 +368,6 @@ export default function CreatePage() {
               <p className="text-gray-500 text-sm mt-3">Enter the Blueprint ecosystem</p>
             </div>
             
-            {/* Bonding curve */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 overflow-hidden">
               <div className="flex items-center gap-2 mb-6">
                 <Activity className="w-3 h-3 text-[#ff2d95]" />
@@ -414,7 +402,6 @@ export default function CreatePage() {
               </svg>
             </div>
             
-            {/* Terminal */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-2 h-2 rounded-full bg-red-500" />
@@ -424,14 +411,7 @@ export default function CreatePage() {
               </div>
               <div className="space-y-1 font-mono text-sm">
                 {TERMINAL_MESSAGES.map((msg, i) => (
-                  <div 
-                    key={msg} 
-                    className={
-                      terminalStep > i ? "text-green-400" : 
-                      terminalStep === i ? "text-[#ff2d95]" : 
-                      "text-gray-700"
-                    }
-                  >
+                  <div key={msg} className={terminalStep > i ? "text-green-400" : terminalStep === i ? "text-[#ff2d95]" : "text-gray-700"}>
                     {terminalStep > i && <Check className="w-4 h-4 inline mr-2" />}
                     {terminalStep === i ? terminalText : msg}
                     {terminalStep === i && <span className="animate-pulse">{'>'}</span>}
@@ -441,14 +421,9 @@ export default function CreatePage() {
             </div>
           </motion.div>
           
-          {/* RIGHT SIDE */}
-          <motion.div 
-            className="relative"
-            style={isDesktop ? { transform: "perspective(1200px) rotateY(4deg)" } : {}}
-          >
+          <motion.div className="relative" style={isDesktop ? { transform: "perspective(1200px) rotateY(4deg)" } : {}}>
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm p-8">
               
-              {/* Persistent error */}
               {error && (
                 <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3">
                   <p className="text-sm text-red-400 flex items-center gap-2">
@@ -458,7 +433,6 @@ export default function CreatePage() {
                 </div>
               )}
               
-              {/* Image upload */}
               <div className="mb-6">
                 <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-3 block">Token Image</label>
                 <div className="flex items-center gap-4">
@@ -474,7 +448,6 @@ export default function CreatePage() {
                 </div>
               </div>
               
-              {/* Token name */}
               <div className="mb-6">
                 <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Token Name</label>
                 <input
@@ -488,7 +461,6 @@ export default function CreatePage() {
                 {validationErrors.name && <p className="text-xs text-red-400 mt-1">{validationErrors.name}</p>}
               </div>
               
-              {/* Symbol */}
               <div className="mb-6">
                 <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Symbol</label>
                 <input
@@ -502,7 +474,6 @@ export default function CreatePage() {
                 {validationErrors.symbol && <p className="text-xs text-red-400 mt-1">{validationErrors.symbol}</p>}
               </div>
               
-              {/* Description */}
               <div className="mb-8">
                 <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Description (optional)</label>
                 <textarea
@@ -515,9 +486,10 @@ export default function CreatePage() {
                 />
               </div>
               
-              {/* Button - pembe */}
               <button
-                onClick={handleSubmit}
+                onClick={() => {
+                  if (validateForm()) handleCreate();
+                }}
                 disabled={isDisabled}
                 className="relative w-full h-12 rounded-xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white font-medium text-sm overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
               >
@@ -536,15 +508,9 @@ export default function CreatePage() {
         </div>
       </div>
       
-      {/* Cinematic Loading Overlay */}
       <AnimatePresence>
         {isLoading && !success && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-[#050816] flex items-center justify-center"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-[#050816] flex items-center justify-center">
             <div className="relative text-center">
               <div className="absolute inset-0 rounded-full bg-[#ff2d95]/20 animate-ping w-32 h-32 mx-auto" />
               <div className="relative w-32 h-32 mx-auto mb-8">
@@ -564,9 +530,7 @@ export default function CreatePage() {
               {error && (
                 <div className="mt-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
                   <p className="text-red-400 text-sm">{error}</p>
-                  <button onClick={() => setIsLoading(false)} className="mt-3 text-xs text-gray-500 hover:text-white">
-                    Cancel (ESC)
-                  </button>
+                  <button onClick={() => setIsLoading(false)} className="mt-3 text-xs text-gray-500 hover:text-white">Cancel (ESC)</button>
                 </div>
               )}
             </div>
@@ -574,40 +538,22 @@ export default function CreatePage() {
         )}
       </AnimatePresence>
       
-      {/* Success Screen */}
       <AnimatePresence>
         {success && mintAddress && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-50 bg-[#050816] flex items-center justify-center p-6"
-          >
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed inset-0 z-50 bg-[#050816] flex items-center justify-center p-6">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,45,149,0.15),transparent_60%)]" />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
               <span className="text-[180px] font-black text-white/[0.03]">{previewSymbol}</span>
             </div>
-            
             {particles.map((p) => (
-              <motion.div
-                key={p.id}
-                initial={{ x: 0, y: 0, opacity: 0.8, scale: 1 }}
-                animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
-                transition={{ duration: 1.5, ease: "easeOut" }}
-                className="absolute w-2 h-2 rounded-full bg-[#ff2d95]"
-              />
+              <motion.div key={p.id} initial={{ x: 0, y: 0, opacity: 0.8, scale: 1 }} animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }} transition={{ duration: 1.5, ease: "easeOut" }} className="absolute w-2 h-2 rounded-full bg-[#ff2d95]" />
             ))}
-            
             <div className="relative text-center space-y-8">
               <div className="relative w-32 h-32 mx-auto">
                 <div className="absolute inset-0 rounded-full bg-[#ff2d95]/20 animate-ping" />
                 <div className="absolute inset-0 rounded-full bg-[#ff2d95]/40 animate-ping" style={{ animationDelay: "0.3s" }} />
                 <div className="absolute inset-4 rounded-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] flex items-center justify-center">
-                  {imagePreview ? (
-                    <img src={imagePreview} className="w-16 h-16 rounded-full object-cover" />
-                  ) : (
-                    <Sparkles className="w-8 h-8 text-white" />
-                  )}
+                  {imagePreview ? <img src={imagePreview} className="w-16 h-16 rounded-full object-cover" /> : <Sparkles className="w-8 h-8 text-white" />}
                 </div>
               </div>
               <div>
@@ -617,24 +563,16 @@ export default function CreatePage() {
               <div className="bg-white/5 rounded-xl p-4 border border-white/10 max-w-md mx-auto">
                 <p className="text-[10px] text-gray-500 uppercase mb-2">Mint Address</p>
                 <div className="flex items-center gap-2 justify-center">
-                  <code className="text-xs text-[#ff2d95] font-mono break-all">{mintAddress.slice(0, 8)}...{mintAddress.slice(-8)}</code>
+                  <code className="text-xs text-[#ff2d95] font-mono break-all">{mintAddress?.slice(0, 8)}...{mintAddress?.slice(-8)}</code>
                   <button onClick={copyMint} className="p-1 hover:bg-white/10 rounded transition">
                     {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3 text-gray-500" />}
                   </button>
                 </div>
               </div>
               <div className="flex gap-4 justify-center">
-                <button onClick={() => router.push("/dex")} className="px-6 h-10 rounded-xl bg-[#ff2d95] text-white text-sm font-medium">
-                  Trade on DEX
-                </button>
-                <button onClick={() => window.open(`https://solscan.io/token/${mintAddress}`, "_blank", "noopener,noreferrer")} className="px-6 h-10 rounded-xl border border-white/10 text-gray-400 text-sm hover:text-white transition">
-                  Solscan
-                </button>
-                {launchLink && (
-                  <button onClick={() => window.open(launchLink, "_blank", "noopener,noreferrer")} className="px-6 h-10 rounded-xl border border-[#ff2d95]/20 text-[#ff2d95] text-sm hover:text-white transition">
-                    Open Launch
-                  </button>
-                )}
+                <button onClick={() => router.push("/dex")} className="px-6 h-10 rounded-xl bg-[#ff2d95] text-white text-sm font-medium">Trade on DEX</button>
+                <button onClick={() => window.open(`https://solscan.io/token/${mintAddress}`, "_blank", "noopener,noreferrer")} className="px-6 h-10 rounded-xl border border-white/10 text-gray-400 text-sm hover:text-white transition">Solscan</button>
+                {launchLink && <button onClick={() => window.open(launchLink, "_blank", "noopener,noreferrer")} className="px-6 h-10 rounded-xl border border-[#ff2d95]/20 text-[#ff2d95] text-sm hover:text-white transition">Open Launch</button>}
               </div>
               <button onClick={() => {
                 setSuccess(false);
@@ -645,9 +583,7 @@ export default function CreatePage() {
                 setUploadedImageUrl(null);
                 setMintAddress(null);
                 setLaunchLink(null);
-              }} className="text-xs text-gray-600 hover:text-gray-400 transition">
-                Create another token
-              </button>
+              }} className="text-xs text-gray-600 hover:text-gray-400 transition">Create another token</button>
             </div>
           </motion.div>
         )}

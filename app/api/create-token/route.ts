@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPlatformUmi } from '@/app/lib/umi';
-import { createAndRegisterLaunch } from '@metaplex-foundation/genesis';
 import { redis } from '@/app/lib/redis';
 import { verifyPayment } from '@/app/lib/verify-payment';
 
 const validateTokenSymbol = (symbol: string): boolean => /^[A-Z0-9]{2,10}$/.test(symbol);
 const validateTokenName = (name: string): boolean => name.length >= 2 && name.length <= 32;
 const BLACKLIST = ["SOL", "USDC", "USDT", "BONK", "WIF", "JUP", "PYTH", "JTO"];
-const TIMEOUT_MS = 30000;
-
-interface LaunchResult {
-  mintAddress: string;
-  launch?: {
-    link?: string;
-  };
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -64,42 +54,17 @@ export async function POST(req: NextRequest) {
     await redis.expire(lockKey, 30);
 
     try {
-      // ✅ 2 ARGÜMAN (expectedAmount kalktı)
+      // Verify payment only (NO token creation here)
       const verifyResult = await verifyPayment(signature, userPublicKey);
       if (!verifyResult.verified) {
         return NextResponse.json({ error: verifyResult.error || 'Payment verification failed' }, { status: 400 });
       }
 
-      // Server-side launch with timeout
-      const umi = getPlatformUmi();
-      
-      const result = await Promise.race([
-        createAndRegisterLaunch(umi, {}, {
-          wallet: userPublicKey,
-          launchType: 'bondingCurve',
-          token: {
-            name: tokenData.name,
-            symbol: tokenData.symbol,
-            image: tokenData.imageUrl,
-            description: tokenData.description || '',
-          },
-          launch: { creatorFeeWallet: process.env.BONDING_CURVE_FEE_WALLET },
-        } as any) as Promise<LaunchResult>,
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Launch timeout')), TIMEOUT_MS))
-      ]);
-
-      if (!result?.mintAddress) {
-        throw new Error('Invalid launch response');
-      }
-
-      // Track launch
-      await redis.set(`bonding-curve:creator:${result.mintAddress}`, userPublicKey);
-      await redis.sadd('bonding-curve:tokens', result.mintAddress);
-
+      // Return success - frontend will create the token
       return NextResponse.json({
         success: true,
-        mintAddress: result.mintAddress,
-        launchLink: result.launch?.link || null,
+        verified: true,
+        message: 'Payment verified, ready to launch',
       });
 
     } finally {
