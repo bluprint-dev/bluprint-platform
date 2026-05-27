@@ -5,10 +5,6 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
 import { PublicKey, SystemProgram, Transaction, ComputeBudgetProgram } from "@solana/web3.js";
-import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
-import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
-import { createAndRegisterLaunch } from "@metaplex-foundation/genesis";
-import { genesis } from "@metaplex-foundation/genesis";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Rocket, Upload, Check, AlertCircle, Loader2, Copy, Sparkles, Activity } from "lucide-react";
 import Footer from "@/app/components/Footer";
@@ -19,7 +15,6 @@ const FEE_DISTRIBUTION = [
   { address: "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc", percentage: 32 },
   { address: "A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X", percentage: 10 },
 ];
-const BONDING_CURVE_FEE_WALLET = "AimBpCdpPmTB5QeJ6WwgrBzNmMsjR3MvNe9zgNhzomZ6";
 
 const TERMINAL_MESSAGES = [
   "Uploading metadata...",
@@ -264,13 +259,10 @@ export default function CreatePage() {
       setTerminalStep(1);
       await new Promise(r => setTimeout(r, 800));
       
-      // 2. Call secure backend API
+      // 2. Call secure backend API (no internal header needed - origin check in middleware)
       const createRes = await fetch("/api/create-token", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "x-internal-secret": process.env.NEXT_PUBLIC_INTERNAL_SECRET || ""
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           signature: feeSig,
           userPublicKey: publicKey.toString(),
@@ -332,12 +324,12 @@ export default function CreatePage() {
   return (
     <div className="relative min-h-screen bg-[#050816] overflow-hidden">
       
-      {/* Animated background nodes */}
+      {/* Animated background nodes - pembe */}
       <div className="absolute inset-0 pointer-events-none">
         {nodes.map((node) => (
           <motion.div
             key={node.id}
-            className="absolute w-1 h-1 rounded-full bg-blue-500/30"
+            className="absolute w-1 h-1 rounded-full bg-[#ff2d95]/40"
             animate={{
               y: ["0%", "-20%", "0%", "20%", "0%"],
               opacity: [0, 0.5, 0],
@@ -353,13 +345,13 @@ export default function CreatePage() {
         ))}
       </div>
       
-      {/* Giant blur orbs */}
-      <div className="absolute top-[-20%] left-[10%] w-[500px] h-[500px] bg-blue-500/10 blur-[140px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[10%] w-[400px] h-[400px] bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute top-[30%] right-[20%] w-[300px] h-[300px] bg-purple-500/5 blur-[100px] rounded-full pointer-events-none" />
+      {/* Giant blur orbs - pembe */}
+      <div className="absolute top-[-20%] left-[10%] w-[500px] h-[500px] bg-[#ff2d95]/10 blur-[140px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[10%] w-[400px] h-[400px] bg-[#ff6bcb]/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-[30%] right-[20%] w-[300px] h-[300px] bg-[#ff2d95]/5 blur-[100px] rounded-full pointer-events-none" />
       
       {/* Background grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px] pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,45,149,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,45,149,0.02)_1px,transparent_1px)] bg-[size:80px_80px] pointer-events-none" />
       
       {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-white/5 bg-[#050816]/80 backdrop-blur-xl">
@@ -382,7 +374,7 @@ export default function CreatePage() {
           >
             <div>
               <h1 className="text-4xl font-bold text-white tracking-[-0.04em]">
-                Create <span className="text-blue-400">·</span> Launch <span className="text-blue-400">·</span> Scale
+                Create <span className="text-[#ff2d95]">·</span> Launch <span className="text-[#ff2d95]">·</span> Scale
               </h1>
               <p className="text-gray-500 text-sm mt-3">Enter the Blueprint ecosystem</p>
             </div>
@@ -390,7 +382,7 @@ export default function CreatePage() {
             {/* Bonding curve */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 overflow-hidden">
               <div className="flex items-center gap-2 mb-6">
-                <Activity className="w-3 h-3 text-blue-400" />
+                <Activity className="w-3 h-3 text-[#ff2d95]" />
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider">Bonding Curve</span>
               </div>
               <svg width="100%" height="120" viewBox="0 0 400 120" className="w-full">
@@ -415,8 +407,8 @@ export default function CreatePage() {
                 />
                 <defs>
                   <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#06b6d4" />
+                    <stop offset="0%" stopColor="#ff2d95" />
+                    <stop offset="100%" stopColor="#ff6bcb" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -436,7 +428,7 @@ export default function CreatePage() {
                     key={msg} 
                     className={
                       terminalStep > i ? "text-green-400" : 
-                      terminalStep === i ? "text-blue-400" : 
+                      terminalStep === i ? "text-[#ff2d95]" : 
                       "text-gray-700"
                     }
                   >
@@ -470,11 +462,11 @@ export default function CreatePage() {
               <div className="mb-6">
                 <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-3 block">Token Image</label>
                 <div className="flex items-center gap-4">
-                  <label className="relative w-20 h-20 rounded-xl overflow-hidden cursor-pointer group border border-white/10 bg-white/5 flex items-center justify-center transition-all hover:border-blue-500/30">
+                  <label className="relative w-20 h-20 rounded-xl overflow-hidden cursor-pointer group border border-white/10 bg-white/5 flex items-center justify-center transition-all hover:border-[#ff2d95]/30">
                     {imagePreview ? (
                       <img src={imagePreview} className="w-full h-full object-cover" />
                     ) : (
-                      uploadingImage ? <Loader2 className="w-4 h-4 text-blue-400 animate-spin" /> : <Upload className="w-4 h-4 text-gray-600" />
+                      uploadingImage ? <Loader2 className="w-4 h-4 text-[#ff2d95] animate-spin" /> : <Upload className="w-4 h-4 text-gray-600" />
                     )}
                     <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                   </label>
@@ -491,7 +483,7 @@ export default function CreatePage() {
                   onChange={e => setTokenName(e.target.value)}
                   placeholder="DOGX"
                   maxLength={32}
-                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-all"
+                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-[#ff2d95]/50 transition-all"
                 />
                 {validationErrors.name && <p className="text-xs text-red-400 mt-1">{validationErrors.name}</p>}
               </div>
@@ -505,7 +497,7 @@ export default function CreatePage() {
                   onChange={e => setTokenSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
                   placeholder="DOGX"
                   maxLength={10}
-                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-all font-mono"
+                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-[#ff2d95]/50 transition-all font-mono"
                 />
                 {validationErrors.symbol && <p className="text-xs text-red-400 mt-1">{validationErrors.symbol}</p>}
               </div>
@@ -519,15 +511,15 @@ export default function CreatePage() {
                   placeholder="Dog Empire on Solana"
                   rows={3}
                   maxLength={500}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-all resize-none"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-[#ff2d95]/50 transition-all resize-none"
                 />
               </div>
               
-              {/* Button */}
+              {/* Button - pembe */}
               <button
                 onClick={handleSubmit}
                 disabled={isDisabled}
-                className="relative w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium text-sm overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
+                className="relative w-full h-12 rounded-xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white font-medium text-sm overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                 <span className="relative flex items-center justify-center gap-2">
@@ -554,16 +546,16 @@ export default function CreatePage() {
             className="fixed inset-0 z-50 bg-[#050816] flex items-center justify-center"
           >
             <div className="relative text-center">
-              <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping w-32 h-32 mx-auto" />
+              <div className="absolute inset-0 rounded-full bg-[#ff2d95]/20 animate-ping w-32 h-32 mx-auto" />
               <div className="relative w-32 h-32 mx-auto mb-8">
-                <div className="absolute inset-0 rounded-full border-2 border-blue-500/30 animate-spin" />
-                <div className="absolute inset-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-2 border-[#ff2d95]/30 animate-spin" />
+                <div className="absolute inset-4 rounded-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] flex items-center justify-center">
                   <Rocket className="w-8 h-8 text-white" />
                 </div>
               </div>
               <div className="space-y-3 font-mono text-sm">
                 {TERMINAL_MESSAGES.map((msg, i) => (
-                  <div key={msg} className={terminalStep >= i ? "text-blue-400" : "text-gray-700"}>
+                  <div key={msg} className={terminalStep >= i ? "text-[#ff2d95]" : "text-gray-700"}>
                     {terminalStep > i && <Check className="w-4 h-4 inline mr-2 text-green-500" />}
                     {terminalStep === i ? terminalText : msg}
                   </div>
@@ -591,7 +583,7 @@ export default function CreatePage() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed inset-0 z-50 bg-[#050816] flex items-center justify-center p-6"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.15),transparent_60%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,45,149,0.15),transparent_60%)]" />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
               <span className="text-[180px] font-black text-white/[0.03]">{previewSymbol}</span>
             </div>
@@ -602,15 +594,15 @@ export default function CreatePage() {
                 initial={{ x: 0, y: 0, opacity: 0.8, scale: 1 }}
                 animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
                 transition={{ duration: 1.5, ease: "easeOut" }}
-                className="absolute w-2 h-2 rounded-full bg-blue-500"
+                className="absolute w-2 h-2 rounded-full bg-[#ff2d95]"
               />
             ))}
             
             <div className="relative text-center space-y-8">
               <div className="relative w-32 h-32 mx-auto">
-                <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
-                <div className="absolute inset-0 rounded-full bg-blue-500/40 animate-ping" style={{ animationDelay: "0.3s" }} />
-                <div className="absolute inset-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full bg-[#ff2d95]/20 animate-ping" />
+                <div className="absolute inset-0 rounded-full bg-[#ff2d95]/40 animate-ping" style={{ animationDelay: "0.3s" }} />
+                <div className="absolute inset-4 rounded-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] flex items-center justify-center">
                   {imagePreview ? (
                     <img src={imagePreview} className="w-16 h-16 rounded-full object-cover" />
                   ) : (
@@ -625,21 +617,21 @@ export default function CreatePage() {
               <div className="bg-white/5 rounded-xl p-4 border border-white/10 max-w-md mx-auto">
                 <p className="text-[10px] text-gray-500 uppercase mb-2">Mint Address</p>
                 <div className="flex items-center gap-2 justify-center">
-                  <code className="text-xs text-blue-400 font-mono break-all">{mintAddress.slice(0, 8)}...{mintAddress.slice(-8)}</code>
+                  <code className="text-xs text-[#ff2d95] font-mono break-all">{mintAddress.slice(0, 8)}...{mintAddress.slice(-8)}</code>
                   <button onClick={copyMint} className="p-1 hover:bg-white/10 rounded transition">
                     {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3 text-gray-500" />}
                   </button>
                 </div>
               </div>
               <div className="flex gap-4 justify-center">
-                <button onClick={() => router.push("/dex")} className="px-6 h-10 rounded-xl bg-blue-600 text-white text-sm font-medium">
+                <button onClick={() => router.push("/dex")} className="px-6 h-10 rounded-xl bg-[#ff2d95] text-white text-sm font-medium">
                   Trade on DEX
                 </button>
                 <button onClick={() => window.open(`https://solscan.io/token/${mintAddress}`, "_blank", "noopener,noreferrer")} className="px-6 h-10 rounded-xl border border-white/10 text-gray-400 text-sm hover:text-white transition">
                   Solscan
                 </button>
                 {launchLink && (
-                  <button onClick={() => window.open(launchLink, "_blank", "noopener,noreferrer")} className="px-6 h-10 rounded-xl border border-cyan-500/20 text-cyan-400 text-sm hover:text-white transition">
+                  <button onClick={() => window.open(launchLink, "_blank", "noopener,noreferrer")} className="px-6 h-10 rounded-xl border border-[#ff2d95]/20 text-[#ff2d95] text-sm hover:text-white transition">
                     Open Launch
                   </button>
                 )}
