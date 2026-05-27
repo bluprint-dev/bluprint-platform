@@ -7,10 +7,14 @@ const VALID_RECIPIENTS = [
   'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X',
 ];
 
+// 0.01 SOL = 10,000,000 lamports
+// %58 = 5,800,000 lamports
+// %32 = 3,200,000 lamports
+// %10 = 1,000,000 lamports
 const EXPECTED_AMOUNTS: Record<string, number> = {
-  'aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x': 5800000, // 58% of 0.01 SOL
-  '2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc': 3200000, // 32% of 0.01 SOL
-  'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X': 1000000, // 10% of 0.01 SOL
+  'aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x': 5800000,
+  '2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc': 3200000,
+  'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X': 1000000,
 };
 
 export async function verifyPayment(
@@ -45,6 +49,11 @@ export async function verifyPayment(
       return { verified: false, error: 'Transaction already processed' };
     }
 
+    // Debug log
+    console.log('Verifying transaction:', signature);
+    console.log('Signer:', signer);
+    console.log('Expected amounts:', EXPECTED_AMOUNTS);
+
     // Verify exact amounts to specific recipients
     let verifiedCount = 0;
     const accountKeys = tx.transaction.message.getAccountKeys();
@@ -56,9 +65,12 @@ export async function verifyPayment(
       if (programId === programIdSystem) {
         const data = Buffer.from(instruction.data);
         
+        // SystemProgram.transfer instruction discriminator is 2
         if (data.length >= 9 && data[0] === 2) {
           const toPubkey = accountKeys.get(instruction.accounts[1])?.toString();
           const lamports = Number(data.readBigUInt64LE(1));
+          
+          console.log(`Found transfer: to=${toPubkey}, lamports=${lamports}`);
           
           if (toPubkey && EXPECTED_AMOUNTS[toPubkey] === lamports) {
             verifiedCount++;
@@ -66,6 +78,8 @@ export async function verifyPayment(
         }
       }
     }
+
+    console.log(`Verified transfers: ${verifiedCount}/3`);
 
     if (verifiedCount < 3) {
       return { verified: false, error: 'Invalid payment amounts or recipients' };
