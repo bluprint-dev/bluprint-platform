@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
     await redis.expire(lockKey, 30);
 
     try {
-      // Verify payment
-      const verifyResult = await verifyPayment(signature, userPublicKey, 0.01);
+      // ✅ 2 ARGÜMAN (expectedAmount kalktı)
+      const verifyResult = await verifyPayment(signature, userPublicKey);
       if (!verifyResult.verified) {
         return NextResponse.json({ error: verifyResult.error || 'Payment verification failed' }, { status: 400 });
       }
