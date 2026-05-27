@@ -2,29 +2,52 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPlatformUmi } from '@/app/lib/umi';
 import { createAndRegisterLaunch } from '@metaplex-foundation/genesis';
 import { redis } from '@/app/lib/redis';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { verifyPayment } from '@/app/lib/verify-payment';
+
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'your-internal-secret-change-me';
+
+const validateTokenSymbol = (symbol: string): boolean => {
+  return /^[A-Z0-9]{2,10}$/.test(symbol);
+};
+
+const validateTokenName = (name: string): boolean => {
+  return name.length >= 2 && name.length <= 32;
+};
+
+const BLACKLIST = ["SOL", "USDC", "USDT", "BONK", "WIF", "JUP", "PYTH", "JTO"];
 
 export async function POST(req: NextRequest) {
   try {
+    // Internal security check
+    const internalKey = req.headers.get('x-internal-secret');
+    if (internalKey !== INTERNAL_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { signature, userPublicKey, tokenData } = await req.json();
 
     if (!signature || !userPublicKey || !tokenData) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
-    // 1. Verify payment first
-    const verifyRes = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/verify-payment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ signature, userPublicKey, expectedAmount: 0.01 }),
-    });
+    // Backend validation
+    if (!validateTokenName(tokenData.name)) {
+      return NextResponse.json({ error: 'Invalid token name' }, { status: 400 });
+    }
     
-    const verifyData = await verifyRes.json();
-    if (!verifyData.success) {
-      return NextResponse.json({ error: 'Payment verification failed' }, { status: 400 });
+    if (!validateTokenSymbol(tokenData.symbol)) {
+      return NextResponse.json({ error: 'Invalid token symbol' }, { status: 400 });
+    }
+    
+    if (BLACKLIST.includes(tokenData.symbol)) {
+      return NextResponse.json({ error: 'Reserved ticker' }, { status: 400 });
+    }
+    
+    if (tokenData.description && tokenData.description.length > 500) {
+      return NextResponse.json({ error: 'Description too long' }, { status: 400 });
     }
 
-    // 2. Rate limit check (IP + wallet)
+    // Rate limit check
     const ip = req.headers.get('x-forwarded-for') || 'unknown';
     const rateKey = `rate:create:${ip}:${userPublicKey}`;
     const rateCount = await redis.incr(rateKey);
@@ -33,7 +56,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Rate limit exceeded. Try again later.' }, { status: 429 });
     }
 
-    // 3. Server-side launch
+    // Verify payment
+    const verifyResult = await verifyPayment(signature, userPublicKey, 0.01);
+    if (!verifyResult.verified) {
+      return NextResponse.json({ error: verifyResult.error || 'Payment verification failed' }, { status: 400 });
+    }
+
+    // Server-side launch
     const umi = getPlatformUmi();
     
     const result = await createAndRegisterLaunch(umi, {}, {
@@ -52,7 +81,7 @@ export async function POST(req: NextRequest) {
       throw new Error('Invalid launch response');
     }
 
-    // 4. Track launch
+    // Track launch
     await redis.set(`bonding-curve:creator:${result.mintAddress}`, userPublicKey);
     await redis.sadd('bonding-curve:tokens', result.mintAddress);
 
