@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
-import { PublicKey, SystemProgram, Transaction, ComputeBudgetProgram } from "@solana/web3.js";
+import { PublicKey, SystemProgram, Transaction, ComputeBudgetProgram, TransactionInstruction } from "@solana/web3.js";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 import { createAndRegisterLaunch } from "@metaplex-foundation/genesis";
@@ -12,6 +12,9 @@ import { genesis } from "@metaplex-foundation/genesis";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Rocket, Upload, Check, AlertCircle, Loader2, Copy, Sparkles, Activity } from "lucide-react";
 import Footer from "@/app/components/Footer";
+import { useDexStore } from "@/store/dexStore";
+import { normalizeToken } from "@/lib/dex/normalizeToken";
+import bs58 from "bs58";
 
 const CREATE_FEE_SOL = 0.01;
 const FEE_DISTRIBUTION = [
@@ -196,10 +199,10 @@ export default function CreatePage() {
     setTerminalStep(0);
     
     try {
-      // 1. Fee Transaction
-      const tx = new Transaction();
+      // Build fee instructions (will be included in the single launch transaction)
+      const feeIxs: TransactionInstruction[] = [];
       const totalLamports = Math.floor(CREATE_FEE_SOL * 1_000_000_000);
-      
+
       let distributed = 0;
       for (let i = 0; i < FEE_DISTRIBUTION.length; i++) {
         const dist = FEE_DISTRIBUTION[i];
@@ -207,44 +210,88 @@ export default function CreatePage() {
         let amount = Math.floor((totalLamports * dist.percentage) / 100);
         if (isLast) amount = totalLamports - distributed;
         if (amount > 0) {
-          tx.add(SystemProgram.transfer({ 
-            fromPubkey: publicKey, 
-            toPubkey: new PublicKey(dist.address), 
-            lamports: amount 
-          }));
+          feeIxs.push(
+            SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: new PublicKey(dist.address),
+              lamports: amount,
+            })
+          );
           distributed += amount;
         }
       }
+
+      let singleSig: string | null = null;
+
+      // 1. CREATE + REGISTER LAUNCH (single wallet approval / single on-chain transaction)
+      const umi = createUmi(connection.rpcEndpoint).use(genesis());
+      umi.use(walletAdapterIdentity(wallet.adapter));
       
-      const priorityFee = 1_000_000;
-      tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }));
-      tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee }));
-      
-      const latestBlockhash = await connection.getLatestBlockhash('finalized');
-      tx.recentBlockhash = latestBlockhash.blockhash;
-      tx.feePayer = publicKey;
-      
-      const feeSig = await sendTransaction(tx, connection, {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed',
-        maxRetries: 3,
-      });
-      
-      await connection.confirmTransaction({
-        signature: feeSig,
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-      }, 'finalized');
+      const result = await createAndRegisterLaunch(
+        umi,
+        {},
+        {
+          wallet: publicKey.toString(),
+          launchType: "bondingCurve",
+          token: {
+            name: tokenName,
+            symbol: tokenSymbol,
+            image: uploadedImageUrl,
+            description: tokenDescription || "",
+          },
+          launch: { creatorFeeWallet: BONDING_CURVE_FEE_WALLET },
+        } as any,
+        {
+          // Force single transaction: merge all generated instructions + fee ixs.
+          txSender: async (transactions: any[]) => {
+            const combined = new Transaction();
+
+            const priorityFee = 1_000_000;
+            combined.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 350_000 }));
+            combined.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee }));
+
+            // Fee distribution included in the same tx signature we verify server-side.
+            for (const ix of feeIxs) combined.add(ix);
+
+            for (const tx of transactions) {
+              const ixs = (tx?.instructions ?? []) as any[];
+              for (const ix of ixs) combined.add(ix);
+            }
+
+            const latestBlockhash = await connection.getLatestBlockhash("finalized");
+            combined.recentBlockhash = latestBlockhash.blockhash;
+            combined.feePayer = publicKey;
+
+            const sigStr = await sendTransaction(combined, connection, {
+              skipPreflight: false,
+              preflightCommitment: "confirmed",
+              maxRetries: 3,
+            });
+
+            await connection.confirmTransaction(
+              {
+                signature: sigStr,
+                blockhash: latestBlockhash.blockhash,
+                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+              },
+              "finalized"
+            );
+
+            singleSig = sigStr;
+            return Array.from({ length: transactions.length }, () => bs58.decode(sigStr));
+          },
+        }
+      );
       
       setTerminalStep(1);
       await new Promise(r => setTimeout(r, 800));
       
-      // 2. Verify payment with backend
+      // 2. Verify payment with backend (same signature as launch)
       const verifyRes = await fetch("/api/create-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          signature: feeSig,
+          signature: singleSig ?? "",
           userPublicKey: publicKey.toString(),
           tokenData: {
             name: tokenName,
@@ -254,35 +301,19 @@ export default function CreatePage() {
           },
         }),
       });
-      
+
       const verifyData = await verifyRes.json();
       if (!verifyData.success) {
         throw new Error(verifyData.error || "Payment verification failed");
       }
-      
+      if (!singleSig) {
+        throw new Error("Launch transaction signature missing");
+      }
+
       setTerminalStep(2);
       await new Promise(r => setTimeout(r, 800));
-      
-      // 3. CREATE TOKEN ON FRONTEND (with user signer)
-      const umi = createUmi(connection.rpcEndpoint).use(genesis());
-      umi.use(walletAdapterIdentity(wallet.adapter));
-      
-      const result = await createAndRegisterLaunch(umi, {}, {
-        wallet: publicKey.toString(),
-        launchType: "bondingCurve",
-        token: { 
-          name: tokenName, 
-          symbol: tokenSymbol, 
-          image: uploadedImageUrl, 
-          description: tokenDescription || "" 
-        },
-        launch: { creatorFeeWallet: BONDING_CURVE_FEE_WALLET },
-      } as any);
-      
-      setTerminalStep(3);
-      await new Promise(r => setTimeout(r, 800));
-      
-      // 4. Track launch
+
+      // 3. Track launch
       await fetch("/api/track-launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -292,9 +323,20 @@ export default function CreatePage() {
           symbol: tokenSymbol, 
           imageUrl: uploadedImageUrl, 
           userPublicKey: publicKey.toString(), 
-          signature: feeSig 
+          signature: singleSig ?? "" 
         }),
       });
+
+      useDexStore.getState().addOptimisticToken(
+        normalizeToken({
+          mint: result.mintAddress,
+          name: tokenName,
+          symbol: tokenSymbol,
+          imageUrl: uploadedImageUrl,
+          creator: publicKey.toString(),
+          createdAt: Date.now(),
+        })
+      );
       
       setMintAddress(result.mintAddress);
       setLaunchLink(result.launch?.link || null);

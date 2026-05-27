@@ -39,7 +39,19 @@ body {
   color: white;
 }
 
-/* ==================== MOBIL ==================== */
+/* ==================== DEX GLOW ==================== */
+.dex-glow {
+  box-shadow: 0 0 40px rgba(255, 45, 149, 0.12);
+}
+
+.dex-card-hover {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.dex-card-hover:hover {
+  box-shadow: 0 0 30px rgba(255, 45, 149, 0.15);
+}
+
 @media (max-width: 768px) {
   button, a {
     min-height: 44px;

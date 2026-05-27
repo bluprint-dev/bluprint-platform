@@ -1,41 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { redis } from '@/app/lib/redis';
+import { NextRequest, NextResponse } from "next/server";
+import { getDexTokenRegistry } from "@/lib/dex/tokenRegistry";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = parseInt(searchParams.get('offset') || '0');
-    
-    // Redis'ten token listesini al
-    const tokenMints = await redis.smembers('bonding-curve:tokens');
-    const tokenList = Array.isArray(tokenMints) ? tokenMints : [];
-    const reversed = tokenList.reverse();
-    const paginated = reversed.slice(offset, offset + limit);
-    
-    const tokens = [];
-    
-    for (const mint of paginated) {
-      if (typeof mint === 'string') {
-        const metadataRaw = await redis.get(`token:metadata:${mint}`);
-        if (metadataRaw && typeof metadataRaw === 'string') {
-          const metadata = JSON.parse(metadataRaw);
-          tokens.push({
-            mint,
-            ...metadata,
-          });
-        }
-      }
-    }
-    
+    const limit = parseInt(searchParams.get("limit") || "100", 10);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
+
+    const { tokens, total } = await getDexTokenRegistry({ limit, offset });
+
     return NextResponse.json({
       success: true,
       tokens,
-      total: tokenList.length,
+      total,
     });
-    
-  } catch (error: any) {
-    console.error('Tokens error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Tokens error:", error);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
