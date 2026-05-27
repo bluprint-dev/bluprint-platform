@@ -116,12 +116,18 @@ export default function CreatePage() {
         }
       }
       
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      // ✅ FIX: finalized commitment ile daha güvenli blockhash al
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
       tx.recentBlockhash = blockhash;
       tx.feePayer = publicKey;
       
       const feeSig = await sendTransaction(tx, connection);
-      await connection.confirmTransaction({ signature: feeSig, blockhash, lastValidBlockHeight }, "confirmed");
+      
+      // ✅ FIX: daha uzun timeout ve doğru confirmasyon
+      await connection.confirmTransaction(
+        { signature: feeSig, blockhash, lastValidBlockHeight },
+        'confirmed'
+      );
       console.log("✅ Create fee paid:", feeSig);
       
       // 2. TOKEN LAUNCH
@@ -162,7 +168,11 @@ export default function CreatePage() {
       
     } catch (err: any) {
       console.error("Create error:", err);
-      setError(err.message?.includes("rejected") ? "Transaction cancelled" : err.message || "Something went wrong");
+      if (err.message?.includes("block height exceeded") || err.message?.includes("expired")) {
+        setError("Transaction took too long. Please try again.");
+      } else {
+        setError(err.message?.includes("rejected") ? "Transaction cancelled" : err.message || "Something went wrong");
+      }
     } finally {
       setIsLoading(false);
     }
