@@ -24,7 +24,7 @@ const FEE_DISTRIBUTION = [
   { address: "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc", percentage: 32 },
   { address: "A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X", percentage: 10 },
 ];
-const BONDING_CURVE_FEE_WALLET = "Hn5UBz1BSDNzJVwbTx3KAK64gFBwtWoAaFbg2jCg6Vq5";
+const BONDING_CURVE_FEE_WALLET = "AimBpCdpPmTB5QeJ6WwgrBzNmMsjR3MvNe9zgNhzomZ6";
 const STEPS = ["Info", "Review", "Launch"];
 
 export default function CreatePage() {
