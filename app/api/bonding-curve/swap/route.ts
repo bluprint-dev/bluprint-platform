@@ -1,95 +1,266 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { publicKey } from '@metaplex-foundation/umi';
-import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
-import { getPlatformUmi } from '@/app/lib/umi';
-import { 
-  findBondingCurveBucketV2Pda, 
-  fetchBondingCurveBucketV2, 
-  getSwapResult, 
+import { NextRequest, NextResponse } from "next/server";
+import { publicKey } from "@metaplex-foundation/umi";
+import { findAssociatedTokenPda } from "@metaplex-foundation/mpl-toolbox";
+import { getPlatformUmi } from "@/app/lib/umi";
+import {
+  findBondingCurveBucketV2Pda,
+  fetchBondingCurveBucketV2,
+  getSwapResult,
   swapBondingCurveV2,
-  SwapDirection
-} from '@metaplex-foundation/genesis';
-import { Connection } from '@solana/web3.js';
+  SwapDirection,
+} from "@metaplex-foundation/genesis";
 
-const WSOL_MINT = 'So11111111111111111111111111111111111111112';
+const WSOL_MINT =
+  "So11111111111111111111111111111111111111112";
+
+// ----------------------------
+// SAFE BIGINT HELPERS (NO LITERALS)
+// ----------------------------
+
+const ONE = BigInt(1);
+const HUNDRED = BigInt(100);
+const ONE_SOL_LAMPORTS = BigInt(1000000000);
+
+function toBigIntSafe(value: any): bigint {
+  try {
+    if (typeof value === "bigint") return value;
+    return BigInt(value);
+  } catch {
+    throw new Error("Invalid bigint value");
+  }
+}
+
+function slippageMinOut(amountOut: bigint): bigint {
+  // %1 slippage
+  const num = BigInt(99);
+  const den = BigInt(100);
+  return (amountOut * num) / den;
+}
+
+// ----------------------------
+// HANDLER
+// ----------------------------
 
 export async function POST(req: NextRequest) {
   try {
-    const { mintAddress, amount, userPublicKey, isBuy } = await req.json();
+    const body = await req.json();
 
-    if (!mintAddress || !amount || !userPublicKey || isBuy === undefined) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const {
+      mintAddress,
+      amount,
+      userPublicKey,
+      isBuy,
+    } = body;
+
+    // ----------------------------
+    // VALIDATION
+    // ----------------------------
+
+    if (!mintAddress || !userPublicKey || amount == null) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Missing fields",
+        },
+        { status: 400 }
+      );
     }
 
-    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!);
+    let amountBigInt: bigint;
+
+    try {
+      amountBigInt = toBigIntSafe(amount);
+    } catch (e: any) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: e.message,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (amountBigInt <= BigInt(0)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Amount must be > 0",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ----------------------------
+    // UMI INIT
+    // ----------------------------
+
     const umi = getPlatformUmi();
-    const umiMint = publicKey(mintAddress);
-    const umiUser = publicKey(userPublicKey);
-    const umiWSOL = publicKey(WSOL_MINT);
 
-    // Bucket
-    const [bucketPda] = findBondingCurveBucketV2Pda(umi, { 
-      genesisAccount: umiMint, 
-      bucketIndex: 0 
-    });
-    const bucket = await fetchBondingCurveBucketV2(umi, bucketPda);
+    const genesisAccount = publicKey(mintAddress);
+    const user = publicKey(userPublicKey);
+    const wsol = publicKey(WSOL_MINT);
 
-    // ATA'lar
-    const [userBaseTokenAccount] = findAssociatedTokenPda(umi, { 
-      mint: umiMint, 
-      owner: umiUser 
-    });
-    const [userQuoteTokenAccount] = findAssociatedTokenPda(umi, { 
-      mint: umiWSOL, 
-      owner: umiUser 
+    // ----------------------------
+    // BONDING CURVE
+    // ----------------------------
+
+    const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
+      genesisAccount,
+      bucketIndex: 0,
     });
 
-    // Direction + Quote
-    const direction = isBuy ? SwapDirection.Buy : SwapDirection.Sell;
-    const amountBigInt = BigInt(amount);
-    const quote = getSwapResult(bucket, amountBigInt, direction);
+    let bucket;
 
-    // %1 slippage toleransı
-    const slippageNumerator = BigInt(99);
-    const slippageDenominator = BigInt(100);
-    const minAmountOutScaled = (quote.amountOut * slippageNumerator) / slippageDenominator;
+    try {
+      bucket = await fetchBondingCurveBucketV2(
+        umi,
+        bucketPda
+      );
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Bucket fetch failed",
+        },
+        { status: 502 }
+      );
+    }
 
-    // Builder - minAmountOutScaled ZORUNLU
-    const swapBuilder = swapBondingCurveV2(umi, {
-      genesisAccount: umiMint,
+    if (!bucket) {
+      return NextResponse.json(
+        {
+          success: false,
+          state: "NOT_READY",
+          error: "Curve not initialized",
+        },
+        { status: 409 }
+      );
+    }
+
+    // ----------------------------
+    // DIRECTION
+    // ----------------------------
+
+    const direction = isBuy
+      ? SwapDirection.Buy
+      : SwapDirection.Sell;
+
+    // ----------------------------
+    // QUOTE ENGINE
+    // ----------------------------
+
+    let quote;
+
+    try {
+      quote = getSwapResult(
+        bucket,
+        amountBigInt,
+        direction
+      );
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Quote failed",
+        },
+        { status: 500 }
+      );
+    }
+
+    // ----------------------------
+    // SLIPPAGE
+    // ----------------------------
+
+    const minOut = slippageMinOut(quote.amountOut);
+
+    // ----------------------------
+    // TOKEN ACCOUNTS
+    // ----------------------------
+
+    const [baseATA] = findAssociatedTokenPda(umi, {
+      mint: genesisAccount,
+      owner: user,
+    });
+
+    const [quoteATA] = findAssociatedTokenPda(umi, {
+      mint: wsol,
+      owner: user,
+    });
+
+    // ----------------------------
+    // BUILD SWAP
+    // ----------------------------
+
+    const builder = swapBondingCurveV2(umi, {
+      genesisAccount,
       bucket: bucketPda,
-      baseMint: umiMint,
-      quoteMint: umiWSOL,
-      baseTokenAccount: userBaseTokenAccount,
-      quoteTokenAccount: userQuoteTokenAccount,
-      quoteTokenOwner: umiUser,
-      baseTokenOwner: umiUser,
+
+      baseMint: genesisAccount,
+      quoteMint: wsol,
+
+      baseTokenAccount: baseATA,
+      quoteTokenAccount: quoteATA,
+
+      baseTokenOwner: user,
+      quoteTokenOwner: user,
+
       swapDirection: direction,
-      amount: quote.amountIn,
-      minAmountOutScaled: minAmountOutScaled,  // ✅ ZORUNLU
+
+      amount: amountBigInt,
+
+      minAmountOutScaled: minOut,
     });
 
-    // Build
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-    const umiTx = await swapBuilder.setBlockhash(blockhash).build(umi);
+    let tx;
 
-    // Serialize
-    const serializedTx = Buffer.from(
-      umi.transactions.serialize(umiTx)
-    ).toString('base64');
+    try {
+      tx = await builder.build(umi);
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Tx build failed",
+        },
+        { status: 500 }
+      );
+    }
+
+    const serialized = Buffer.from(
+      umi.transactions.serialize(tx)
+    ).toString("base64");
+
+    // ----------------------------
+    // RESPONSE
+    // ----------------------------
 
     return NextResponse.json({
       success: true,
-      transaction: serializedTx,
-      amountOut: quote.amountOut.toString(),
-      amountIn: quote.amountIn.toString(),
-      fee: quote.fee?.toString() || '0',
-      creatorFee: quote.creatorFee?.toString() || '0',
-      lastValidBlockHeight,
-    });
 
-  } catch (error: any) {
-    console.error('Swap build error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+      transaction: serialized,
+
+      quote: {
+        amountIn: quote.amountIn.toString(),
+        amountOut: quote.amountOut.toString(),
+        fee: quote.fee.toString(),
+      },
+
+      meta: {
+        mintAddress,
+        userPublicKey,
+        direction: isBuy ? "buy" : "sell",
+      },
+
+      state: "BUILT",
+    });
+  } catch (err: any) {
+    console.error("SWAP_FATAL:", err);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Internal error",
+      },
+      { status: 500 }
+    );
   }
 }

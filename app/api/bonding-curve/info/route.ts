@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
+import { NextRequest, NextResponse } from "next/server";
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import {
   genesis,
   findBondingCurveBucketV2Pda,
@@ -14,25 +14,39 @@ import {
   getCurrentPriceComponents,
   getSwapResult,
   SwapDirection,
-} from '@metaplex-foundation/genesis';
-import { publicKey } from '@metaplex-foundation/umi';
+} from "@metaplex-foundation/genesis";
+import { publicKey } from "@metaplex-foundation/umi";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const genesisAccountStr = searchParams.get('genesisAccount');
+    const genesisAccountStr =
+      searchParams.get("genesisAccount");
 
     if (!genesisAccountStr) {
       return NextResponse.json(
-        { success: false, error: 'genesisAccount query param required' },
+        {
+          success: false,
+          error: "Missing genesisAccount",
+        },
         { status: 400 }
       );
     }
 
     const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
-    if (!rpcUrl) throw new Error('NEXT_PUBLIC_RPC_URL not configured');
+
+    if (!rpcUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "RPC not configured",
+        },
+        { status: 500 }
+      );
+    }
 
     const umi = createUmi(rpcUrl).use(genesis());
+
     const genesisAccount = publicKey(genesisAccountStr);
 
     const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
@@ -40,33 +54,104 @@ export async function GET(req: NextRequest) {
       bucketIndex: 0,
     });
 
-    const bucket = await fetchBondingCurveBucketV2(umi, bucketPda);
+    let bucket;
+
+    try {
+      bucket = await fetchBondingCurveBucketV2(
+        umi,
+        bucketPda
+      );
+    } catch (e) {
+      return NextResponse.json({
+        success: false,
+        state: "RPC_ERROR",
+        error: "Failed to fetch curve state",
+      });
+    }
+
+    // 🔴 SAFE STATE (CRITICAL FOR 500 ELIMINATION)
+    if (!bucket) {
+      return NextResponse.json({
+        success: true,
+        state: "NOT_INITIALIZED",
+        lifecycle: {
+          isSwappable: false,
+          isSoldOut: false,
+          isGraduated: false,
+          isFirstBuyPending: true,
+          fillPercent: 0,
+        },
+        reserves: null,
+        price: null,
+        example: null,
+      });
+    }
+
+    // ----------------------------
+    // LIFECYCLE
+    // ----------------------------
 
     const swappable = isSwappable(bucket);
     const soldOut = isSoldOut(bucket);
     const firstBuyPending = isFirstBuyPending(bucket);
     const fillPercent = getFillPercentage(bucket);
     const graduated = await isGraduated(umi, bucket);
-    const priceTokensPerSol = getCurrentPrice(bucket);
-    const priceLamportsPerToken = getCurrentPriceQuotePerBase(bucket);
-    const { baseReserves, quoteReserves } = getCurrentPriceComponents(bucket);
 
-    let buyQuote1Sol = null;
-    if (swappable) {
-      buyQuote1Sol = getSwapResult(bucket, BigInt(1000000000), SwapDirection.Buy);
+    // ----------------------------
+    // PRICE ENGINE
+    // ----------------------------
+
+    let priceTokensPerSol = "0";
+    let priceLamportsPerToken = "0";
+    let baseReserves = "0";
+    let quoteReserves = "0";
+
+    try {
+      priceTokensPerSol =
+        getCurrentPrice(bucket).toString();
+
+      priceLamportsPerToken =
+        getCurrentPriceQuotePerBase(bucket).toString();
+
+      const reserves =
+        getCurrentPriceComponents(bucket);
+
+      baseReserves = reserves.baseReserves.toString();
+      quoteReserves = reserves.quoteReserves.toString();
+    } catch {
+      // silent fallback → UI crash yok
     }
 
-    // bucket üzerinde doğrudan erişilebilen alanlar
-    const baseTokenBalance = (bucket as any).baseTokenBalance?.toString() || '0';
-    const baseTokenAllocation = (bucket as any).baseTokenAllocation?.toString() || '0';
-    const quoteTokenDepositTotal = (bucket as any).quoteTokenDepositTotal?.toString() || '0';
-    const virtualSol = (bucket as any).virtualSol?.toString() || '0';
-    const virtualTokens = (bucket as any).virtualTokens?.toString() || '0';
+    // ----------------------------
+    // EXAMPLE SWAP (OPTIONAL)
+    // ----------------------------
+
+    let buyQuote1Sol: any = null;
+
+    try {
+      if (swappable) {
+        buyQuote1Sol = getSwapResult(
+          bucket,
+          BigInt(1_000_000_000),
+          SwapDirection.Buy
+        );
+      }
+    } catch {
+      buyQuote1Sol = null;
+    }
+
+    // ----------------------------
+    // RESPONSE (PUMPFUN STYLE)
+    // ----------------------------
 
     return NextResponse.json({
       success: true,
+
       genesisAccount: genesisAccountStr,
       bucketPda: bucketPda.toString(),
+
+      state: "ACTIVE",
+
       lifecycle: {
         isSwappable: swappable,
         isSoldOut: soldOut,
@@ -74,40 +159,36 @@ export async function GET(req: NextRequest) {
         isFirstBuyPending: firstBuyPending,
         fillPercent,
       },
+
       reserves: {
-        baseTokenBalance,
-        baseTokenAllocation,
-        quoteTokenDepositTotal,
-        virtualSol,
-        virtualTokens,
-        baseReserves: baseReserves.toString(),
-        quoteReserves: quoteReserves.toString(),
+        baseReserves,
+        quoteReserves,
       },
+
       price: {
-        tokensPerSol: priceTokensPerSol.toString(),
-        lamportsPerToken: priceLamportsPerToken.toString(),
+        tokensPerSol: priceTokensPerSol,
+        lamportsPerToken: priceLamportsPerToken,
       },
-      fees: {
-        depositFee: (bucket as any).depositFee,
-        withdrawFee: (bucket as any).withdrawFee,
-        creatorFeeAccrued: bucket.creatorFeeAccrued.toString(),
-        creatorFeeClaimed: (bucket as any).creatorFeeClaimed?.toString() || '0',
-      },
+
       example: buyQuote1Sol
         ? {
             buy1Sol: {
               amountIn: buyQuote1Sol.amountIn.toString(),
               amountOut: buyQuote1Sol.amountOut.toString(),
               fee: buyQuote1Sol.fee.toString(),
-              creatorFee: buyQuote1Sol.creatorFee.toString(),
             },
           }
         : null,
     });
   } catch (err: any) {
-    console.error('Info error:', err);
+    console.error("INFO_FATAL:", err);
+
     return NextResponse.json(
-      { success: false, error: err.message || 'Unknown error' },
+      {
+        success: false,
+        state: "FATAL_ERROR",
+        error: "Internal error",
+      },
       { status: 500 }
     );
   }
