@@ -40,6 +40,7 @@ export default function CreatePage() {
   const { connection } = useConnection();
   const router = useRouter();
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isSubmitting = useRef(false);
 
   // Mounted state for SSR
   const [mounted, setMounted] = useState(false);
@@ -102,7 +103,7 @@ export default function CreatePage() {
     }
   }, [terminalStep]);
 
-  // ESC ile loading'den çıkma (warning göster)
+  // ESC ile loading'den çıkma
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isLoading) {
@@ -117,7 +118,7 @@ export default function CreatePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isLoading]);
 
-  // Başarı partikülleri - cleanup ile
+  // Başarı partikülleri
   const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
   useEffect(() => {
     if (!success) return;
@@ -131,10 +132,7 @@ export default function CreatePage() {
     return () => clearTimeout(timeout);
   }, [success]);
 
-  // Double submit protection ref
-  const isSubmitting = useRef(false);
-
-  // Basit validation (submit'te çalışacak)
+  // Validation
   const validateForm = useCallback(() => {
     const errors: Record<string, string> = {};
     if (!tokenName.trim() || tokenName.length < 2) errors.name = "Min 2 characters";
@@ -155,7 +153,6 @@ export default function CreatePage() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Client-side validation
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       setValidationErrors((prev) => ({ ...prev, image: "Invalid file type. Use PNG, JPG, GIF or WEBP" }));
       return;
@@ -193,7 +190,6 @@ export default function CreatePage() {
   };
 
   const handleSubmit = async () => {
-    // Double submit protection
     if (isSubmitting.current || isLoading) return;
     if (!validateForm()) return;
     await handleCreate();
@@ -204,10 +200,10 @@ export default function CreatePage() {
     if (!wallet?.adapter) { setError("Wallet adapter not ready"); return; }
     if (!uploadedImageUrl) { setError("Image upload not complete"); return; }
     
-    // Balance check before anything
+    // Balance check
     try {
       const balance = await connection.getBalance(publicKey);
-      const requiredBalance = CREATE_FEE_SOL * 1_000_000_000 + 5000000; // + network fee
+      const requiredBalance = CREATE_FEE_SOL * 1_000_000_000 + 5000000;
       if (balance < requiredBalance) {
         setError(`Insufficient SOL. Need ${(requiredBalance / 1_000_000_000).toFixed(3)} SOL`);
         return;
@@ -265,18 +261,16 @@ export default function CreatePage() {
         lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
       }, 'finalized');
       
-      // Check if cancelled
-      if (abortControllerRef.current?.signal.aborted) {
-        throw new Error("Cancelled");
-      }
-      
       setTerminalStep(1);
       await new Promise(r => setTimeout(r, 800));
       
       // 2. Call secure backend API
       const createRes = await fetch("/api/create-token", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-internal-secret": process.env.NEXT_PUBLIC_INTERNAL_SECRET || ""
+        },
         body: JSON.stringify({
           signature: feeSig,
           userPublicKey: publicKey.toString(),
