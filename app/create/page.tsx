@@ -1,39 +1,42 @@
 "use client";
 
-import Footer from "@/app/components/Footer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { PublicKey, SystemProgram, Transaction, ComputeBudgetProgram } from "@solana/web3.js";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 import { createAndRegisterLaunch } from "@metaplex-foundation/genesis";
 import { genesis } from "@metaplex-foundation/genesis";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ArrowLeft, Rocket, Upload, Shield, Check, AlertCircle,
-  Flame, PartyPopper, ExternalLink, Copy, Loader2, ImageIcon, 
-  Sparkles, Star, Crown, Zap, Gift, TrendingUp
-} from "lucide-react";
+import { ArrowLeft, Rocket, Upload, Check, AlertCircle, Loader2, ImageIcon, Copy, ExternalLink } from "lucide-react";
+import Footer from "@/app/components/Footer";
 
 const CREATE_FEE_SOL = 0.01;
-const FREE_TIER_LIMIT = 150;
 const FEE_DISTRIBUTION = [
   { address: "aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x", percentage: 58 },
   { address: "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc", percentage: 32 },
   { address: "A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X", percentage: 10 },
 ];
 const BONDING_CURVE_FEE_WALLET = "AimBpCdpPmTB5QeJ6WwgrBzNmMsjR3MvNe9zgNhzomZ6";
-const STEPS = ["Info", "Review", "Launch"];
+
+// Loading states
+const LOADING_STEPS = [
+  "Initializing token",
+  "Uploading metadata",
+  "Creating bonding curve",
+  "Deploying",
+  "Confirmed"
+];
 
 export default function CreatePage() {
   const { connected, publicKey, sendTransaction, wallet } = useWallet();
   const { connection } = useConnection();
   const router = useRouter();
 
-  const [step, setStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -46,10 +49,16 @@ export default function CreatePage() {
   const [mintAddress, setMintAddress] = useState<string | null>(null);
   const [launchLink, setLaunchLink] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const totalTokensCreated = 87;
-  const isFirst150 = totalTokensCreated < FREE_TIER_LIMIT;
-  const remainingFree = FREE_TIER_LIMIT - totalTokensCreated;
+  
+  // Simulated market cap
+  const [simulatedMcap, setSimulatedMcap] = useState(4200);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSimulatedMcap(prev => prev + Math.floor(Math.random() * 50) - 20);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -99,10 +108,13 @@ export default function CreatePage() {
     if (!wallet?.adapter) { setError("Wallet adapter not ready"); return; }
     if (!uploadedImageUrl) { setError("Image upload not complete"); return; }
     
-    setIsLoading(true); setError("");
+    setIsLoading(true);
+    setError("");
+    setLoadingStep(0);
     
     try {
-      // 1. CREATE FEE TRANSACTION
+      // Step 1: Fee transaction
+      setLoadingStep(1);
       const tx = new Transaction();
       const totalLamports = Math.floor(CREATE_FEE_SOL * 1_000_000_000);
       for (const dist of FEE_DISTRIBUTION) {
@@ -116,21 +128,27 @@ export default function CreatePage() {
         }
       }
       
-      // ✅ FIX: finalized commitment ile daha güvenli blockhash al
+      const priorityFee = 1_000_000;
+      tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }));
+      tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee }));
+      
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
       tx.recentBlockhash = blockhash;
       tx.feePayer = publicKey;
       
-      const feeSig = await sendTransaction(tx, connection);
+      const feeSig = await sendTransaction(tx, connection, {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed',
+        maxRetries: 3,
+      });
       
-      // ✅ FIX: daha uzun timeout ve doğru confirmasyon
       await connection.confirmTransaction(
         { signature: feeSig, blockhash, lastValidBlockHeight },
         'confirmed'
       );
-      console.log("✅ Create fee paid:", feeSig);
       
-      // 2. TOKEN LAUNCH
+      // Step 2: Token launch
+      setLoadingStep(2);
       const umi = createUmi(connection.rpcEndpoint).use(genesis());
       umi.use(walletAdapterIdentity(wallet.adapter));
       
@@ -146,9 +164,8 @@ export default function CreatePage() {
         launch: { creatorFeeWallet: BONDING_CURVE_FEE_WALLET },
       } as any);
       
-      console.log("✅ Token created:", result.mintAddress);
-      
-      // 3. TRACK LAUNCH
+      // Step 3: Track launch
+      setLoadingStep(3);
       await fetch("/api/track-launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -162,6 +179,9 @@ export default function CreatePage() {
         }),
       });
       
+      setLoadingStep(4);
+      setTimeout(() => setLoadingStep(5), 500);
+      
       setMintAddress(result.mintAddress);
       setLaunchLink(result.launch?.link || null);
       setSuccess(true);
@@ -169,7 +189,7 @@ export default function CreatePage() {
     } catch (err: any) {
       console.error("Create error:", err);
       if (err.message?.includes("block height exceeded") || err.message?.includes("expired")) {
-        setError("Transaction took too long. Please try again.");
+        setError("Network busy. Please try again.");
       } else {
         setError(err.message?.includes("rejected") ? "Transaction cancelled" : err.message || "Something went wrong");
       }
@@ -185,438 +205,271 @@ export default function CreatePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const inputStyle = (hasError?: boolean) => ({
-    background: "rgba(255,255,255,0.03)",
-    border: `1px solid ${hasError ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}`,
-  });
+  // Live token preview
+  const previewSymbol = tokenSymbol || "TOKEN";
+  const previewName = tokenName || "Token Name";
 
   return (
-    <div className="relative z-10 min-h-screen">
-
-      {/* TOPBAR */}
-      <div className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0A0A0F]/90 backdrop-blur-2xl">
-        <div className="max-w-2xl mx-auto px-5 h-14 flex items-center gap-4">
-          <button
-            onClick={() => step > 0 ? setStep(step - 1) : router.back()}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/6 text-gray-600 hover:text-white transition"
-          >
+    <div className="relative min-h-screen bg-[#050816]">
+      
+      {/* Top bar */}
+      <div className="sticky top-0 z-40 border-b border-white/5 bg-[#050816]/80 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <button onClick={() => router.back()} className="text-gray-500 hover:text-white transition">
             <ArrowLeft className="w-4 h-4" />
           </button>
-
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-xl flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg,#ff2d95,#ff6bcb)", boxShadow: "0 4px 14px rgba(255,45,149,0.35)" }}>
-              <Rocket className="w-3.5 h-3.5 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-black text-white leading-none">Create Token</p>
-              <p className="text-[10px] text-gray-600 mt-0.5">Bonding curve · 0.01 SOL</p>
-            </div>
-          </div>
-
-          <div className="ml-auto flex items-center gap-1.5">
-            {STEPS.map((s, i) => (
-              <div key={s} className="flex items-center gap-1.5">
-                <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full transition ${
-                  i < step ? "text-green-400" : i === step ? "text-[#ff2d95]" : "text-gray-700"
-                }`}
-                  style={{
-                    background: i < step ? "rgba(34,197,94,0.1)" : i === step ? "rgba(255,45,149,0.12)" : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${i < step ? "rgba(34,197,94,0.2)" : i === step ? "rgba(255,45,149,0.25)" : "rgba(255,255,255,0.06)"}`,
-                  }}>
-                  {i < step ? <Check className="w-2.5 h-2.5" /> : <span>{i+1}</span>}
-                  <span className="hidden sm:inline">{s}</span>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div className="w-4 h-px" style={{ background: i < step ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.06)" }} />
-                )}
-              </div>
-            ))}
-          </div>
+          <div className="text-xs text-gray-600">Create Token</div>
+          <div className="w-4" />
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-5 py-8">
-        <AnimatePresence mode="wait">
-
-          {/* STEP 0: INFO */}
-          {step === 0 && (
-            <motion.div key="s0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
-
-              {/* PROMO BANNER */}
-              <div className="relative overflow-hidden rounded-2xl p-4 bg-gradient-to-r from-[#ff2d95]/20 via-[#ff6bcb]/10 to-[#ff2d95]/20 border border-[#ff2d95]/30">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-[#ff2d95]/20 rounded-full blur-2xl" />
-                <div className="relative flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#ff2d95]/20 flex items-center justify-center">
-                    {isFirst150 ? <Gift className="w-5 h-5 text-[#ff2d95]" /> : <Star className="w-5 h-5 text-[#ff2d95]" />}
-                  </div>
-                  <div className="flex-1">
-                    {isFirst150 ? (
-                      <>
-                        <p className="text-sm font-bold text-white">🎁 FIRST {FREE_TIER_LIMIT} TOKENS PROMO</p>
-                        <p className="text-xs text-gray-300">You are early! Only {remainingFree} spots left for 0.01 SOL fee</p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-sm font-bold text-white">✨ STANDARD LAUNCH FEE</p>
-                        <p className="text-xs text-gray-300">Regular fee applies after {FREE_TIER_LIMIT} tokens</p>
-                      </>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-black text-white">{isFirst150 ? "0.01" : "0.05"} SOL</p>
-                    <p className="text-[10px] text-gray-500">create fee</p>
-                  </div>
-                </div>
-                <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] rounded-full transition-all duration-500"
-                    style={{ width: `${(totalTokensCreated / FREE_TIER_LIMIT) * 100}%` }}
-                  />
-                </div>
-                <p className="text-[10px] text-gray-500 mt-2 text-center">
-                  {totalTokensCreated} / {FREE_TIER_LIMIT} tokens created
-                </p>
-              </div>
-
-              {/* MAIN CARD */}
-              <div className="rounded-2xl p-6 space-y-6"
-                style={{ background: "rgba(15,15,25,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}>
-
-                <div className="flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-[#ff2d95]" />
-                  <h2 className="text-base font-black text-white">Token Information</h2>
-                </div>
-
-                {/* Image Upload */}
-                <div>
-                  <p className="text-xs text-gray-500 mb-3 font-medium">Token Image *</p>
-                  <div className="flex items-center gap-5">
-                    <label className="relative w-20 h-20 rounded-2xl overflow-hidden cursor-pointer group flex-shrink-0 transition"
-                      style={{
-                        border: errors.image ? "2px solid rgba(239,68,68,0.5)" : imagePreview ? "2px solid rgba(255,45,149,0.4)" : "2px dashed rgba(255,255,255,0.1)",
-                      }}>
-                      {imagePreview ? (
-                        <>
-                          <img src={imagePreview} alt="" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                            style={{ background: "rgba(0,0,0,0.55)" }}>
-                            <Upload className="w-4 h-4 text-white" />
-                          </div>
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-1.5"
-                          style={{ background: "rgba(0,0,0,0.3)" }}>
-                          {uploadingImage
-                            ? <Loader2 className="w-4 h-4 text-[#ff2d95] animate-spin" />
-                            : <><ImageIcon className="w-5 h-5 text-gray-700" /><span className="text-[9px] text-gray-700">Upload</span></>}
-                        </div>
-                      )}
-                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                    </label>
-
-                    <div className="space-y-1.5">
-                      <p className="text-xs text-gray-600">PNG · JPG · GIF · WEBP</p>
-                      <p className="text-[11px] text-gray-700">Max 5MB · Square recommended</p>
-                      {uploadedImageUrl && !uploadingImage && (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                          <span className="text-[11px] text-green-500 font-medium">Saved to Arweave</span>
-                        </div>
-                      )}
-                      {uploadingImage && (
-                        <div className="flex items-center gap-1.5">
-                          <Loader2 className="w-3 h-3 text-[#ff2d95] animate-spin" />
-                          <span className="text-[11px] text-gray-600">Uploading...</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {errors.image && <p className="text-xs text-red-400 mt-2">{errors.image}</p>}
-                </div>
-
-                {/* Token Name */}
-                <div>
-                  <p className="text-xs text-gray-500 mb-2 font-medium">Token Name *</p>
-                  <input
-                    type="text" value={tokenName}
-                    onChange={e => setTokenName(e.target.value)}
-                    placeholder="e.g. Pink Whale"
-                    maxLength={32}
-                    className="w-full h-11 px-4 rounded-xl text-white text-sm placeholder-gray-800 focus:outline-none transition"
-                    style={inputStyle(!!errors.name)}
-                    onFocus={e => e.currentTarget.style.borderColor = "rgba(255,45,149,0.45)"}
-                    onBlur={e => e.currentTarget.style.borderColor = errors.name ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}
-                  />
-                  <div className="flex justify-between mt-1">
-                    {errors.name ? <p className="text-[11px] text-red-400">{errors.name}</p> : <span />}
-                    <span className="text-[10px] text-gray-800">{tokenName.length}/32</span>
-                  </div>
-                </div>
-
-                {/* Token Symbol */}
-                <div>
-                  <p className="text-xs text-gray-500 mb-2 font-medium">Symbol *</p>
-                  <input
-                    type="text" value={tokenSymbol}
-                    onChange={e => setTokenSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""))}
-                    placeholder="PINK"
-                    maxLength={10}
-                    className="w-full h-11 px-4 rounded-xl text-white text-sm font-mono tracking-[0.2em] placeholder-gray-800 focus:outline-none transition"
-                    style={inputStyle(!!errors.symbol)}
-                    onFocus={e => e.currentTarget.style.borderColor = "rgba(255,45,149,0.45)"}
-                    onBlur={e => e.currentTarget.style.borderColor = errors.symbol ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}
-                  />
-                  <div className="flex justify-between mt-1">
-                    {errors.symbol ? <p className="text-[11px] text-red-400">{errors.symbol}</p> : <span />}
-                    <span className="text-[10px] text-gray-800">{tokenSymbol.length}/10</span>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <p className="text-xs text-gray-500 mb-2 font-medium">Description <span className="text-gray-700 font-normal">(optional)</span></p>
-                  <textarea
-                    value={tokenDescription}
-                    onChange={e => setTokenDescription(e.target.value)}
-                    placeholder="Tell the community about your token..."
-                    rows={3} maxLength={500}
-                    className="w-full px-4 py-3 rounded-xl text-white text-sm placeholder-gray-800 focus:outline-none transition resize-none"
-                    style={inputStyle()}
-                    onFocus={e => e.currentTarget.style.borderColor = "rgba(255,45,149,0.45)"}
-                    onBlur={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"}
-                  />
-                  <div className="flex justify-end mt-1">
-                    <span className="text-[10px] text-gray-800">{tokenDescription.length}/500</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => { if (validate()) setStep(1); }}
-                disabled={uploadingImage}
-                className="w-full py-4 rounded-2xl text-white font-black text-sm transition disabled:opacity-40 flex items-center justify-center gap-2"
-                style={{
-                  background: "linear-gradient(135deg,#ff2d95,#ff6bcb)",
-                  boxShadow: "0 6px 24px rgba(255,45,149,0.3)",
-                }}>
-                Continue →
-              </button>
-            </motion.div>
-          )}
-
-          {/* STEP 1: REVIEW */}
-          {step === 1 && (
-            <motion.div key="s1" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
-
-              <div className="rounded-2xl p-6 space-y-5"
-                style={{ background: "rgba(15,15,25,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}>
-
-                <div className="flex items-center gap-2">
-                  <PartyPopper className="w-4 h-4 text-[#ff2d95]" />
-                  <h2 className="text-base font-black text-white">Review & Confirm</h2>
-                </div>
-
-                {/* Token Preview */}
-                <div className="flex items-center gap-4 p-4 rounded-xl"
-                  style={{ background: "rgba(255,45,149,0.04)", border: "1px solid rgba(255,45,149,0.12)" }}>
-                  {imagePreview ? (
-                    <img src={imagePreview} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" style={{ border: "1px solid rgba(255,45,149,0.2)" }} />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.05)" }}>
-                      <ImageIcon className="w-5 h-5 text-gray-700" />
-                    </div>
-                  )}
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-lg font-black text-white">{tokenName}</span>
-                      <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full"
-                        style={{ background: "rgba(255,45,149,0.15)", color: "#ff2d95", border: "1px solid rgba(255,45,149,0.2)" }}>
-                        ${tokenSymbol}
-                      </span>
-                    </div>
-                    {tokenDescription && <p className="text-xs text-gray-600 line-clamp-2">{tokenDescription}</p>}
-                  </div>
-                </div>
-
-                {/* Details Table */}
-                <div className="space-y-0 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-                  {[
-                    { label: "Launch type", value: "Bonding Curve" },
-                    { label: "Create fee", value: isFirst150 ? "0.01 SOL" : "0.05 SOL" },
-                    { label: "Platform fee", value: "0%" },
-                    { label: "Network", value: "Solana Mainnet" },
-                    { label: "Storage", value: "Arweave (permanent)" },
-                  ].map((row, i) => (
-                    <div key={row.label} className="flex justify-between items-center px-4 py-3 text-sm"
-                      style={{ background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent", borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                      <span className="text-gray-500">{row.label}</span>
-                      <span className="text-white font-medium">{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Bonding curve info */}
-                <div className="flex items-start gap-3 p-4 rounded-xl"
-                  style={{ background: "rgba(255,45,149,0.04)", border: "1px solid rgba(255,45,149,0.1)" }}>
-                  <Shield className="w-4 h-4 text-[#ff2d95] flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-white mb-0.5">Fair launch · Bonding curve</p>
-                    <p className="text-xs text-gray-600 leading-relaxed">Price rises automatically with every buy. No pre-sale, no insider allocation.</p>
-                  </div>
-                </div>
-
-                {!connected && (
-                  <div className="flex items-center gap-3 p-3 rounded-xl"
-                    style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}>
-                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <p className="text-xs text-red-400">Connect your wallet to continue</p>
+      <div className="max-w-6xl mx-auto px-6 py-12">
+        <div className="grid lg:grid-cols-2 gap-12">
+          
+          {/* LEFT SIDE - Live Preview & Simulation */}
+          <div className="space-y-8">
+            
+            {/* Token Preview Card */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+              <div className="flex items-center gap-4 mb-6">
+                {imagePreview ? (
+                  <img src={imagePreview} className="w-16 h-16 rounded-xl object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center">
+                    <ImageIcon className="w-6 h-6 text-gray-600" />
                   </div>
                 )}
-              </div>
-
-              <div className="flex gap-3">
-                <button onClick={() => setStep(0)}
-                  className="flex-1 h-12 rounded-2xl text-sm font-semibold text-gray-500 hover:text-white transition"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  ← Back
-                </button>
-                <button
-                  onClick={() => { setStep(2); handleCreate(); }}
-                  disabled={!connected}
-                  className="flex-[2] h-12 rounded-2xl text-white font-black text-sm flex items-center justify-center gap-2 transition disabled:opacity-35"
-                  style={{
-                    background: "linear-gradient(135deg,#ff2d95,#ff6bcb)",
-                    boxShadow: "0 6px 24px rgba(255,45,149,0.3)",
-                  }}>
-                  <Rocket className="w-4 h-4" />
-                  Launch Token
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* STEP 2: LAUNCHING */}
-          {step === 2 && !success && (
-            <motion.div key="s2" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center py-24 gap-6">
-
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full flex items-center justify-center"
-                  style={{ background: "rgba(255,45,149,0.1)", border: "1px solid rgba(255,45,149,0.2)" }}>
-                  <Rocket className="w-8 h-8 text-[#ff2d95]" />
-                </div>
-                <div className="absolute inset-0 rounded-full border border-[#ff2d95]/25 animate-ping" />
-                <div className="absolute -inset-3 rounded-full border border-[#ff2d95]/10 animate-ping" style={{ animationDelay: "0.3s" }} />
-              </div>
-
-              <div className="text-center">
-                <h3 className="text-xl font-black text-white mb-2">Launching your token...</h3>
-                <p className="text-sm text-gray-600">Confirm the transactions in your wallet</p>
-              </div>
-
-              {error && (
-                <div className="w-full max-w-xs rounded-xl p-4 flex items-start gap-3"
-                  style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.18)" }}>
-                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-red-400">{error}</p>
-                    <button onClick={() => { setStep(1); setError(""); }} className="text-xs text-red-400/60 hover:text-red-400 mt-1 underline">
-                      Go back
-                    </button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-white">{previewSymbol}</span>
+                    <span className="text-xs text-gray-600">{previewName}</span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div>
+                      <p className="text-[10px] text-gray-600 uppercase">Market Cap</p>
+                      <p className="text-sm font-mono text-blue-400">${simulatedMcap.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-600 uppercase">Price</p>
+                      <p className="text-sm font-mono text-green-400">${(simulatedMcap / 1000000).toFixed(6)}</p>
+                    </div>
                   </div>
                 </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* SUCCESS */}
-          {success && mintAddress && (
-            <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center gap-6 py-10">
-
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg,#ff2d95,#ff6bcb)", boxShadow: "0 0 60px rgba(255,45,149,0.4)" }}>
-                  <Check className="w-10 h-10 text-white" strokeWidth={3} />
+              </div>
+              
+              {/* Mini bonding curve visualization */}
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <div className="h-16 flex items-end gap-[2px]">
+                  {[...Array(30)].map((_, i) => (
+                    <div 
+                      key={i}
+                      className="flex-1 bg-blue-500/30 rounded-t-sm"
+                      style={{ height: `${20 + Math.sin(i * 0.5 + Date.now() * 0.002) * 10 + (i / 30) * 30}%` }}
+                    />
+                  ))}
                 </div>
-                {[...Array(5)].map((_,i) => (
-                  <motion.div key={i}
-                    initial={{ scale: 1, opacity: 0.6 }}
-                    animate={{ scale: 2.8, opacity: 0 }}
-                    transition={{ duration: 1, delay: i * 0.15 }}
-                    className="absolute inset-0 rounded-full"
-                    style={{ border: "1px solid rgba(255,45,149,0.3)" }}
-                  />
+                <div className="flex justify-between mt-2 text-[10px] text-gray-600">
+                  <span>Launch</span>
+                  <span>Graduation</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Swap Feed */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+              <p className="text-[10px] text-gray-600 uppercase mb-4">Live Activity</p>
+              <div className="space-y-2">
+                {[
+                  "0.4 SOL → DOGX",
+                  "1.2 SOL → DOGX",
+                  "0.8 SOL → DOGX"
+                ].map((trade, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.5 }}
+                    className="text-xs text-gray-500 font-mono"
+                  >
+                    {trade}
+                  </motion.div>
                 ))}
               </div>
-
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <Sparkles className="w-5 h-5 text-[#ff2d95]" />
-                  <h2 className="text-3xl font-black text-white">Token is Live!</h2>
-                  <Sparkles className="w-5 h-5 text-[#ff2d95]" />
-                </div>
-                <p className="text-gray-600 text-sm">
-                  <span className="font-bold" style={{ color: "#ff2d95" }}>${tokenSymbol}</span> is now trading on the bonding curve
-                </p>
-              </div>
-
-              {/* Mint address */}
-              <div className="w-full rounded-2xl p-4"
-                style={{ background: "rgba(255,45,149,0.04)", border: "1px solid rgba(255,45,149,0.12)" }}>
-                <p className="text-[10px] text-gray-700 mb-2 font-semibold uppercase tracking-widest">Mint Address</p>
-                <div className="flex items-center gap-3">
-                  <code className="flex-1 text-xs font-mono break-all leading-relaxed" style={{ color: "#ff2d95" }}>
-                    {mintAddress}
-                  </code>
-                  <button onClick={copyMint}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 transition hover:bg-white/6"
-                    style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
-                    {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-gray-600" />}
-                  </button>
+            </div>
+          </div>
+          
+          {/* RIGHT SIDE - Create Form */}
+          <div className="space-y-6">
+            
+            {/* Form */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 space-y-5">
+              
+              {/* Image upload */}
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Token Image</label>
+                <div className="flex items-center gap-4">
+                  <label className="relative w-16 h-16 rounded-xl overflow-hidden cursor-pointer group border border-white/10 bg-white/5 flex items-center justify-center">
+                    {imagePreview ? (
+                      <img src={imagePreview} className="w-full h-full object-cover" />
+                    ) : (
+                      uploadingImage ? <Loader2 className="w-4 h-4 text-blue-400 animate-spin" /> : <Upload className="w-4 h-4 text-gray-600" />
+                    )}
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  </label>
+                  {errors.image && <p className="text-xs text-red-400">{errors.image}</p>}
                 </div>
               </div>
-
-              {/* Action buttons */}
-              <div className="w-full space-y-2.5">
-                <button onClick={() => router.push("/dex")}
-                  className="w-full h-12 rounded-2xl text-white font-black text-sm flex items-center justify-center gap-2 transition hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg,#ff2d95,#ff6bcb)", boxShadow: "0 6px 24px rgba(255,45,149,0.3)" }}>
-                  Trade on DEX →
-                </button>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button onClick={() => window.open(`https://solscan.io/token/${mintAddress}`,"_blank")}
-                    className="h-11 rounded-xl text-sm font-semibold text-gray-400 hover:text-white flex items-center justify-center gap-1.5 transition"
-                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Solscan
-                  </button>
-                  {launchLink && (
-                    <button onClick={() => window.open(launchLink,"_blank")}
-                      className="h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition hover:opacity-80"
-                      style={{ background: "rgba(255,45,149,0.08)", border: "1px solid rgba(255,45,149,0.18)", color: "#ff2d95" }}>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Genesis
-                    </button>
-                  )}
-                </div>
-
-                <button onClick={() => {
-                    setStep(0); setSuccess(false); setTokenName(""); setTokenSymbol("");
-                    setTokenDescription(""); setImagePreview(null); setUploadedImageUrl(null);
-                    setMintAddress(null); setLaunchLink(null);
-                  }}
-                  className="w-full py-2.5 text-xs text-gray-700 hover:text-gray-500 transition">
-                  Create another token
-                </button>
+              
+              {/* Token name */}
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Token Name</label>
+                <input
+                  type="text"
+                  value={tokenName}
+                  onChange={e => setTokenName(e.target.value)}
+                  placeholder="DOGX"
+                  maxLength={32}
+                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition"
+                />
+                {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
               </div>
-            </motion.div>
-          )}
-
-        </AnimatePresence>
+              
+              {/* Symbol */}
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Symbol</label>
+                <input
+                  type="text"
+                  value={tokenSymbol}
+                  onChange={e => setTokenSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                  placeholder="DOGX"
+                  maxLength={10}
+                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition font-mono"
+                />
+                {errors.symbol && <p className="text-xs text-red-400 mt-1">{errors.symbol}</p>}
+              </div>
+              
+              {/* Description */}
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 block">Description (optional)</label>
+                <textarea
+                  value={tokenDescription}
+                  onChange={e => setTokenDescription(e.target.value)}
+                  placeholder="Dog Empire on Solana"
+                  rows={3}
+                  maxLength={500}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition resize-none"
+                />
+              </div>
+              
+              {/* Create button */}
+              <button
+                onClick={handleCreate}
+                disabled={!validate() || uploadingImage || !connected}
+                className="relative w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium text-sm overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                <span className="relative flex items-center justify-center gap-2">
+                  <Rocket className="w-4 h-4" />
+                  Launch on Solana
+                </span>
+              </button>
+              
+              {!connected && (
+                <p className="text-xs text-center text-gray-600">Connect wallet to launch</p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
+      
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {isLoading && !success && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-[#050816]/95 backdrop-blur-md flex items-center justify-center"
+          >
+            <div className="text-center space-y-6">
+              <div className="relative w-12 h-12 mx-auto">
+                <div className="absolute inset-0 rounded-full border-2 border-blue-500/20 animate-ping" />
+                <div className="absolute inset-0 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+              </div>
+              <div className="space-y-2 font-mono text-sm">
+                {LOADING_STEPS.map((step, i) => (
+                  <motion.div
+                    key={step}
+                    initial={{ opacity: 0.3 }}
+                    animate={{ opacity: loadingStep > i ? 1 : 0.3 }}
+                    className="text-gray-400"
+                  >
+                    {loadingStep > i ? <Check className="w-4 h-4 inline mr-2 text-green-500" /> : <span className="inline-block w-4 mr-2" />}
+                    {step}
+                  </motion.div>
+                ))}
+              </div>
+              {error && (
+                <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                  {error}
+                  <button onClick={() => setIsLoading(false)} className="block mx-auto mt-3 text-xs text-gray-500 hover:text-white">
+                    Go back
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Success Screen */}
+      <AnimatePresence>
+        {success && mintAddress && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="fixed inset-0 z-50 bg-[#050816]/95 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <div className="max-w-md w-full space-y-6 text-center">
+              <div className="w-12 h-12 mx-auto rounded-full bg-green-500/20 flex items-center justify-center">
+                <Check className="w-6 h-6 text-green-500" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Token Deployed</h2>
+                <p className="text-gray-500 text-sm mt-1">{tokenSymbol} is now live on Blueprint</p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <p className="text-[10px] text-gray-500 uppercase mb-2">Mint Address</p>
+                <div className="flex items-center gap-2 justify-center">
+                  <code className="text-xs text-blue-400 font-mono break-all">{mintAddress.slice(0, 8)}...{mintAddress.slice(-8)}</code>
+                  <button onClick={copyMint} className="p-1 hover:bg-white/10 rounded transition">
+                    {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3 text-gray-500" />}
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => router.push("/dex")} className="flex-1 h-10 rounded-xl bg-blue-600 text-white text-sm font-medium">
+                  Trade on DEX
+                </button>
+                <button onClick={() => window.open(`https://solscan.io/token/${mintAddress}`, "_blank")} className="flex-1 h-10 rounded-xl border border-white/10 text-gray-400 text-sm hover:text-white transition">
+                  Solscan
+                </button>
+              </div>
+              <button onClick={() => {
+                setSuccess(false);
+                setTokenName("");
+                setTokenSymbol("");
+                setTokenDescription("");
+                setImagePreview(null);
+                setUploadedImageUrl(null);
+                setMintAddress(null);
+              }} className="text-xs text-gray-600 hover:text-gray-400 transition">
+                Create another token
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       <Footer />
     </div>
