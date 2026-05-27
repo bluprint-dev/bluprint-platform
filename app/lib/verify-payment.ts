@@ -1,21 +1,9 @@
-import { Connection, PublicKey, SystemProgram } from '@solana/web3.js';
+import { Connection } from '@solana/web3.js';
 import { redis } from './redis';
 
-const VALID_RECIPIENTS = [
-  'aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x',
-  '2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc',
-  'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X',
-];
-
-// 0.01 SOL = 10,000,000 lamports
-// %58 = 5,800,000 lamports
-// %32 = 3,200,000 lamports
-// %10 = 1,000,000 lamports
-const EXPECTED_AMOUNTS: Record<string, number> = {
-  'aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x': 5800000,
-  '2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc': 3200000,
-  'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X': 1000000,
-};
+const PLATFORM_WALLET = 'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X';
+const EXPECTED_FEE_SOL = 0.01;
+const EXPECTED_FEE_LAMPORTS = EXPECTED_FEE_SOL * 1_000_000_000;
 
 export async function verifyPayment(
   signature: string,
@@ -23,10 +11,16 @@ export async function verifyPayment(
   expectedAmount: number
 ): Promise<{ verified: boolean; error?: string }> {
   try {
+    console.log('🔍 Verifying payment...', { signature, userPublicKey, expectedAmount });
+
     const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!);
-    const tx = await connection.getTransaction(signature, { commitment: 'finalized' });
+    const tx = await connection.getTransaction(signature, { 
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0 
+    });
 
     if (!tx) {
+      console.error('❌ Transaction not found:', signature);
       return { verified: false, error: 'Transaction not found' };
     }
 
@@ -34,64 +28,61 @@ export async function verifyPayment(
     const now = Math.floor(Date.now() / 1000);
     const blockTime = tx.blockTime;
     if (!blockTime || now - blockTime > 300) {
+      console.error('❌ Transaction too old:', blockTime, now);
       return { verified: false, error: 'Transaction too old' };
     }
 
-    // Verify user is the signer
-    const signer = tx.transaction.message.getAccountKeys().get(0)?.toString();
-    if (signer !== userPublicKey) {
-      return { verified: false, error: 'Invalid signer' };
-    }
-
-    // Check replay attack
-    const processed = await redis.get(`tx:${signature}`);
-    if (processed) {
-      return { verified: false, error: 'Transaction already processed' };
-    }
-
-    // Debug log
-    console.log('Verifying transaction:', signature);
-    console.log('Signer:', signer);
-    console.log('Expected amounts:', EXPECTED_AMOUNTS);
-
-    // Verify exact amounts to specific recipients
-    let verifiedCount = 0;
+    // ✅ BALANCE DELTA METHOD - çok daha güvenilir
+    const preBalances = tx.meta?.preBalances;
+    const postBalances = tx.meta?.postBalances;
     const accountKeys = tx.transaction.message.getAccountKeys();
-    const programIdSystem = SystemProgram.programId.toString();
 
-    for (const instruction of tx.transaction.message.instructions) {
-      const programId = accountKeys.get(instruction.programIdIndex)?.toString();
-      
-      if (programId === programIdSystem) {
-        const data = Buffer.from(instruction.data);
-        
-        // SystemProgram.transfer instruction discriminator is 2
-        if (data.length >= 9 && data[0] === 2) {
-          const toPubkey = accountKeys.get(instruction.accounts[1])?.toString();
-          const lamports = Number(data.readBigUInt64LE(1));
-          
-          console.log(`Found transfer: to=${toPubkey}, lamports=${lamports}`);
-          
-          if (toPubkey && EXPECTED_AMOUNTS[toPubkey] === lamports) {
-            verifiedCount++;
-          }
-        }
+    if (!preBalances || !postBalances) {
+      console.error('❌ No balance data in transaction');
+      return { verified: false, error: 'No balance data' };
+    }
+
+    let platformWalletIndex = -1;
+    for (let i = 0; i < accountKeys.length; i++) {
+      const key = accountKeys.get(i)?.toString();
+      if (key === PLATFORM_WALLET) {
+        platformWalletIndex = i;
+        break;
       }
     }
 
-    console.log(`Verified transfers: ${verifiedCount}/3`);
+    if (platformWalletIndex === -1) {
+      console.error('❌ Platform wallet not found in transaction accounts');
+      return { verified: false, error: 'Platform wallet not found' };
+    }
 
-    if (verifiedCount < 3) {
-      return { verified: false, error: 'Invalid payment amounts or recipients' };
+    const preBalance = preBalances[platformWalletIndex];
+    const postBalance = postBalances[platformWalletIndex];
+    const balanceDelta = postBalance - preBalance;
+
+    console.log(`💰 Platform wallet balance change: ${preBalance} → ${postBalance} (delta: ${balanceDelta})`);
+    console.log(`📊 Expected: ${EXPECTED_FEE_LAMPORTS} lamports`);
+
+    if (balanceDelta < EXPECTED_FEE_LAMPORTS) {
+      console.error('❌ Insufficient payment:', balanceDelta, '<', EXPECTED_FEE_LAMPORTS);
+      return { verified: false, error: 'Insufficient payment' };
+    }
+
+    // Check for replay attack
+    const processed = await redis.get(`tx:${signature}`);
+    if (processed) {
+      console.error('❌ Transaction already processed:', signature);
+      return { verified: false, error: 'Transaction already processed' };
     }
 
     // Mark as processed
     await redis.set(`tx:${signature}`, 'processed', { ex: 3600 });
+    console.log('✅ Payment verified successfully!');
 
     return { verified: true };
     
   } catch (error: any) {
-    console.error('Verification error:', error);
+    console.error('❌ Verification error:', error);
     return { verified: false, error: error.message };
   }
 }
