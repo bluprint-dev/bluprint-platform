@@ -2,6 +2,22 @@ import type { DexToken, DexTokensResponse, SwapBuildResponse } from "@/types/dex
 import { fetchJson, withRetry } from "@/services/http";
 import { normalizeToken, sortTokensNewest } from "@/lib/dex/normalizeToken";
 
+function mergeToken(existing: DexToken | undefined, incoming: Partial<DexToken> & { mint: string }): DexToken {
+  if (!existing) return normalizeToken(incoming);
+
+  // Prefer incoming only when it actually has useful values.
+  const merged: Partial<DexToken> & { mint: string } = {
+    mint: incoming.mint,
+    name: incoming.name?.trim() ? incoming.name : existing.name,
+    symbol: incoming.symbol?.trim() ? incoming.symbol : existing.symbol,
+    imageUrl: incoming.imageUrl?.trim() ? incoming.imageUrl : existing.imageUrl,
+    creator: incoming.creator?.trim() ? incoming.creator : existing.creator,
+    createdAt: incoming.createdAt ?? existing.createdAt,
+  };
+
+  return normalizeToken(merged);
+}
+
 function mergeTokenResponses(responses: DexTokensResponse[]): DexTokensResponse {
   const map = new Map<string, DexToken>();
 
@@ -9,13 +25,7 @@ function mergeTokenResponses(responses: DexTokensResponse[]): DexTokensResponse 
     for (const token of response.tokens ?? []) {
       if (!token?.mint) continue;
       const existing = map.get(token.mint);
-      map.set(
-        token.mint,
-        normalizeToken({
-          ...(existing ?? {}),
-          ...token,
-        })
-      );
+      map.set(token.mint, mergeToken(existing, token));
     }
   }
 
