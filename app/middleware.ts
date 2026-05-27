@@ -1,57 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { rateLimitByIP, getClientIp } from '@/app/lib/redis';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-// Rate limit uygulanacak path'ler
-const RATE_LIMIT_PATHS = ['/api/', '/launch', '/create', '/revoke'];
+// Internal API'leri koru (sadece backend'den çağrılabilir)
+const INTERNAL_API_PATHS = ['/api/create-token', '/api/verify-payment'];
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
   
-  // Sadece API route'larına rate limit uygula
-  if (!RATE_LIMIT_PATHS.some(path => pathname.startsWith(path))) {
-    return NextResponse.next();
+  if (INTERNAL_API_PATHS.some(p => path.startsWith(p))) {
+    // Internal API'ler sadece aynı origin'den çağrılabilir
+    const origin = request.headers.get('origin');
+    const host = request.headers.get('host');
+    
+    if (origin && !origin.includes(host || '')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
   }
   
-  const ip = getClientIp(request);
-  
-  // Farklı endpoint'ler için farklı limitler
-  let limit = 20;
-  let windowMs = 60 * 1000;
-  
-  if (pathname === '/api/create-token') {
-    limit = 5;  // Token oluşturma: 5 istek/dakika
-  } else if (pathname === '/api/claim-referral') {
-    limit = 3;  // Claim: 3 istek/dakika
-  }
-  
-  const result = await rateLimitByIP(ip, limit, windowMs);
-  
-  if (!result.success) {
-    return NextResponse.json(
-      { 
-        success: false,
-        error: 'Too many requests. Please slow down.', 
-        retryAfter: result.retryAfter 
-      },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': result.retryAfter?.toString() || '60',
-          'X-RateLimit-Limit': limit.toString(),
-          'X-RateLimit-Remaining': '0',
-        },
-      }
-    );
-  }
-  
-  const response = NextResponse.next();
-  response.headers.set('X-RateLimit-Remaining', result.remaining.toString());
-  response.headers.set('X-RateLimit-Limit', limit.toString());
-  
-  return response;
+  return NextResponse.next();
 }
 
-// Middleware sadece API route'larında çalışsın
 export const config = {
   matcher: '/api/:path*',
 };

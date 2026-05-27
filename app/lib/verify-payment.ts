@@ -7,6 +7,12 @@ const VALID_RECIPIENTS = [
   'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X',
 ];
 
+const EXPECTED_AMOUNTS: Record<string, number> = {
+  'aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x': 5800000, // 58% of 0.01 SOL
+  '2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc': 3200000, // 32% of 0.01 SOL
+  'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X': 1000000, // 10% of 0.01 SOL
+};
+
 export async function verifyPayment(
   signature: string,
   userPublicKey: string,
@@ -33,45 +39,36 @@ export async function verifyPayment(
       return { verified: false, error: 'Invalid signer' };
     }
 
-    // Check for replay attack
+    // Check replay attack
     const processed = await redis.get(`tx:${signature}`);
     if (processed) {
       return { verified: false, error: 'Transaction already processed' };
     }
 
-    // Verify amount AND recipient
-    let totalTransferred = 0;
+    // Verify exact amounts to specific recipients
+    let verifiedCount = 0;
     const accountKeys = tx.transaction.message.getAccountKeys();
     const programIdSystem = SystemProgram.programId.toString();
-    
+
     for (const instruction of tx.transaction.message.instructions) {
-      // Get program ID
-      const programIdIndex = instruction.programIdIndex;
-      const programId = accountKeys.get(programIdIndex)?.toString();
+      const programId = accountKeys.get(instruction.programIdIndex)?.toString();
       
       if (programId === programIdSystem) {
-        // This is a System Program instruction
-        // Transfer instruction data format: 
-        // - first byte: instruction type (2 for transfer)
-        // - next 8 bytes: lamports (little-endian)
         const data = Buffer.from(instruction.data);
         
         if (data.length >= 9 && data[0] === 2) {
-          // Get recipient (accounts[1] is the destination)
-          const toPubkeyIndex = instruction.accounts[1];
-          const toPubkey = accountKeys.get(toPubkeyIndex)?.toString();
+          const toPubkey = accountKeys.get(instruction.accounts[1])?.toString();
+          const lamports = Number(data.readBigUInt64LE(1));
           
-          if (toPubkey && VALID_RECIPIENTS.includes(toPubkey)) {
-            const lamports = data.readBigUInt64LE(1);
-            totalTransferred += Number(lamports);
+          if (toPubkey && EXPECTED_AMOUNTS[toPubkey] === lamports) {
+            verifiedCount++;
           }
         }
       }
     }
 
-    const expectedLamports = Math.floor(expectedAmount * 1_000_000_000);
-    if (totalTransferred < expectedLamports) {
-      return { verified: false, error: 'Insufficient payment to valid recipients' };
+    if (verifiedCount < 3) {
+      return { verified: false, error: 'Invalid payment amounts or recipients' };
     }
 
     // Mark as processed
