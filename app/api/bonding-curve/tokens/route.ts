@@ -3,38 +3,65 @@ import { redis } from '@/app/lib/redis';
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = parseInt(searchParams.get('offset') || '0');
-    
+    // Token listesini al
     const tokenMints = await redis.smembers('bonding-curve:tokens');
-    const tokenList = Array.isArray(tokenMints) ? tokenMints : [];
-    const reversed = tokenList.reverse();
-    const paginated = reversed.slice(offset, offset + limit);
+    
+    // Log için
+    console.log('Token mints from Redis:', tokenMints);
     
     const tokens = [];
     
-    for (const mint of paginated) {
-      if (typeof mint === 'string') {
+    for (const mint of tokenMints) {
+      if (typeof mint !== 'string') continue;
+      
+      try {
         const metadataRaw = await redis.get(`token:metadata:${mint}`);
+        console.log(`Metadata for ${mint}:`, metadataRaw);
+        
         if (metadataRaw && typeof metadataRaw === 'string') {
           const metadata = JSON.parse(metadataRaw);
           tokens.push({
             mint,
             ...metadata,
           });
+        } else {
+          // Metadata yoksa sadece mint'i ekle
+          tokens.push({
+            mint,
+            name: 'Unknown',
+            symbol: '???',
+            imageUrl: '',
+            creator: '',
+            createdAt: Date.now(),
+          });
         }
+      } catch (parseError) {
+        console.error(`Error parsing metadata for ${mint}:`, parseError);
+        // Hatalı metadata'yı sil
+        await redis.del(`token:metadata:${mint}`);
+        // Sadece mint'i ekle
+        tokens.push({
+          mint,
+          name: 'Unknown',
+          symbol: '???',
+          imageUrl: '',
+          creator: '',
+          createdAt: Date.now(),
+        });
       }
     }
     
     return NextResponse.json({
       success: true,
       tokens,
-      total: tokenList.length,
+      total: tokenMints.length,
     });
     
   } catch (error: any) {
-    console.error('Tokens error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Tokens API error:', error);
+    return NextResponse.json({
+      success: false,
+      error: error.message,
+    }, { status: 500 });
   }
 }
