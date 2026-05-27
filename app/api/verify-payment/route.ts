@@ -5,11 +5,12 @@ export async function POST(req: NextRequest) {
   try {
     const { signature, userPublicKey, expectedAmount } = await req.json();
 
-    if (!signature || !userPublicKey || !expectedAmount) {
+    if (!signature || !userPublicKey) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
-    const result = await verifyPayment(signature, userPublicKey, expectedAmount);
+    // ✅ expectedAmount artık kullanılmıyor (verify-payment içinde sabit)
+    const result = await verifyPayment(signature, userPublicKey);
     
     if (!result.verified) {
       return NextResponse.json({ error: result.error }, { status: 400 });

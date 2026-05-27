@@ -1,88 +1,126 @@
-import { Connection } from '@solana/web3.js';
-import { redis } from './redis';
+import { Connection, PublicKey } from "@solana/web3.js";
+import { redis } from "./redis";
 
-const PLATFORM_WALLET = 'A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X';
-const EXPECTED_FEE_SOL = 0.01;
-const EXPECTED_FEE_LAMPORTS = EXPECTED_FEE_SOL * 1_000_000_000;
+const PLATFORM_WALLET = new PublicKey(
+  "A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X"
+);
+
+const EXPECTED_FEE_LAMPORTS = 0.01 * 1_000_000_000;
+const MAX_TX_AGE_SECONDS = 300;
+
+type VerifyResult = {
+  verified: boolean;
+  error?: string;
+};
+
+function safeGet(keys: any, i: number) {
+  try {
+    return keys.get(i)?.toString();
+  } catch {
+    return null;
+  }
+}
 
 export async function verifyPayment(
   signature: string,
-  userPublicKey: string,
-  expectedAmount: number
-): Promise<{ verified: boolean; error?: string }> {
+  userPublicKey: string
+): Promise<VerifyResult> {
   try {
-    console.log('🔍 Verifying payment...', { signature, userPublicKey, expectedAmount });
+    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!, "confirmed");
 
-    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!);
-    const tx = await connection.getTransaction(signature, { 
-      commitment: 'confirmed',
-      maxSupportedTransactionVersion: 0 
+    const tx = await connection.getTransaction(signature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
-    if (!tx) {
-      console.error('❌ Transaction not found:', signature);
-      return { verified: false, error: 'Transaction not found' };
+    if (!tx || !tx.meta) {
+      return { verified: false, error: "Transaction not found" };
     }
 
-    // Check transaction age (max 5 minutes)
+    // 1. REPLAY PROTECTION
+    const already = await redis.get(`tx:${signature}`);
+    if (already) {
+      return { verified: false, error: "Already processed tx" };
+    }
+
+    // 2. TIME CHECK
     const now = Math.floor(Date.now() / 1000);
-    const blockTime = tx.blockTime;
-    if (!blockTime || now - blockTime > 300) {
-      console.error('❌ Transaction too old:', blockTime, now);
-      return { verified: false, error: 'Transaction too old' };
+    const blockTime = tx.blockTime ?? 0;
+
+    if (now - blockTime > MAX_TX_AGE_SECONDS) {
+      return { verified: false, error: "Transaction too old" };
     }
 
-    // ✅ BALANCE DELTA METHOD - çok daha güvenilir
-    const preBalances = tx.meta?.preBalances;
-    const postBalances = tx.meta?.postBalances;
-    const accountKeys = tx.transaction.message.getAccountKeys();
+    // 3. USER SIGNER CHECK (SAFE)
+    const message = tx.transaction.message;
+    const keys = message.getAccountKeys();
 
-    if (!preBalances || !postBalances) {
-      console.error('❌ No balance data in transaction');
-      return { verified: false, error: 'No balance data' };
+    const feePayer = safeGet(keys, 0);
+
+    if (feePayer !== userPublicKey) {
+      return { verified: false, error: "Invalid signer" };
     }
 
-    let platformWalletIndex = -1;
-    for (let i = 0; i < accountKeys.length; i++) {
-      const key = accountKeys.get(i)?.toString();
-      if (key === PLATFORM_WALLET) {
-        platformWalletIndex = i;
-        break;
+    // 4. BALANCE DELTA CHECK (PRIMARY)
+    const pre = tx.meta.preBalances;
+    const post = tx.meta.postBalances;
+
+    if (!pre || !post) {
+      return { verified: false, error: "Missing balance data" };
+    }
+
+    const accountKeys = message.getAccountKeys().staticAccountKeys;
+
+    const platformIndex = accountKeys.findIndex(
+      (k: any) => k.toString() === PLATFORM_WALLET.toString()
+    );
+
+    if (platformIndex === -1) {
+      return { verified: false, error: "Platform wallet not in tx" };
+    }
+
+    const balanceDelta = post[platformIndex] - pre[platformIndex];
+
+    // 5. FALLBACK: INSTRUCTION CHECK (SECONDARY)
+    let instructionAmount = 0;
+
+    const instructions = tx.transaction.message.compiledInstructions;
+
+    for (const ix of instructions) {
+      const programId = accountKeys[ix.programIdIndex]?.toString();
+
+      if (programId !== "11111111111111111111111111111111") continue;
+
+      const to = accountKeys[ix.accountKeyIndexes[1]]?.toString();
+
+      // SystemProgram transfer only heuristic fallback
+      if (to === PLATFORM_WALLET.toString()) {
+        const lamports = Number(
+          Buffer.from(ix.data).readBigUInt64LE(1)
+        );
+
+        instructionAmount += lamports;
       }
     }
 
-    if (platformWalletIndex === -1) {
-      console.error('❌ Platform wallet not found in transaction accounts');
-      return { verified: false, error: 'Platform wallet not found' };
+    // 6. FINAL PAYMENT DECISION
+    const received = Math.max(balanceDelta, instructionAmount);
+
+    if (received < EXPECTED_FEE_LAMPORTS) {
+      return {
+        verified: false,
+        error: "Insufficient payment",
+      };
     }
 
-    const preBalance = preBalances[platformWalletIndex];
-    const postBalance = postBalances[platformWalletIndex];
-    const balanceDelta = postBalance - preBalance;
-
-    console.log(`💰 Platform wallet balance change: ${preBalance} → ${postBalance} (delta: ${balanceDelta})`);
-    console.log(`📊 Expected: ${EXPECTED_FEE_LAMPORTS} lamports`);
-
-    if (balanceDelta < EXPECTED_FEE_LAMPORTS) {
-      console.error('❌ Insufficient payment:', balanceDelta, '<', EXPECTED_FEE_LAMPORTS);
-      return { verified: false, error: 'Insufficient payment' };
-    }
-
-    // Check for replay attack
-    const processed = await redis.get(`tx:${signature}`);
-    if (processed) {
-      console.error('❌ Transaction already processed:', signature);
-      return { verified: false, error: 'Transaction already processed' };
-    }
-
-    // Mark as processed
-    await redis.set(`tx:${signature}`, 'processed', { ex: 3600 });
-    console.log('✅ Payment verified successfully!');
+    // 7. MARK AS PROCESSED
+    await redis.set(`tx:${signature}`, "1", { ex: 3600 });
 
     return { verified: true };
-    
-  } catch (error: any) {
-    console.error('❌ Verification error:', error);
-    return { verified: false, error: error.message };
+  } catch (err: any) {
+    return {
+      verified: false,
+      error: err?.message || "Verification failed",
+    };
   }
 }
