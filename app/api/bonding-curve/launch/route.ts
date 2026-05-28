@@ -1,102 +1,394 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
+import { NextRequest, NextResponse } from "next/server";
+
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+
 import {
   genesis,
   createAndRegisterLaunch,
-  CreateLaunchInput,
   isGenesisApiError,
   isGenesisApiNetworkError,
   isGenesisValidationError,
-} from '@metaplex-foundation/genesis';
-import { keypairIdentity, publicKey } from '@metaplex-foundation/umi';
+} from "@metaplex-foundation/genesis";
+
+import {
+  keypairIdentity,
+} from "@metaplex-foundation/umi";
+
+export const runtime = "nodejs";
+
+// --------------------------------------------------
+// UMI
+// --------------------------------------------------
 
 function getPlatformUmi() {
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
-  if (!rpcUrl) throw new Error('NEXT_PUBLIC_RPC_URL not configured');
+  const rpcUrl =
+    process.env.NEXT_PUBLIC_RPC_URL;
 
-  const secretKeyRaw = process.env.PLATFORM_SECRET_KEY;
-  if (!secretKeyRaw) throw new Error('PLATFORM_SECRET_KEY not configured');
+  if (!rpcUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_RPC_URL missing"
+    );
+  }
 
-  const umi = createUmi(rpcUrl).use(genesis());
-  const secretKey = Uint8Array.from(JSON.parse(secretKeyRaw));
-  const keypair = umi.eddsa.createKeypairFromSecretKey(secretKey);
+  const secretKeyRaw =
+    process.env.PLATFORM_SECRET_KEY;
+
+  if (!secretKeyRaw) {
+    throw new Error(
+      "PLATFORM_SECRET_KEY missing"
+    );
+  }
+
+  const umi = createUmi(rpcUrl).use(
+    genesis()
+  );
+
+  const secretKey = Uint8Array.from(
+    JSON.parse(secretKeyRaw)
+  );
+
+  const keypair =
+    umi.eddsa.createKeypairFromSecretKey(
+      secretKey
+    );
+
   umi.use(keypairIdentity(keypair));
+
   return umi;
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const { name, symbol, image, description, twitter, telegram, website } = await req.json();
+// --------------------------------------------------
+// SAFE ERROR
+// --------------------------------------------------
 
-    if (!name || !symbol || !image) {
+function safeError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  return {
+    message: String(error),
+  };
+}
+
+// --------------------------------------------------
+// ROUTE
+// --------------------------------------------------
+
+export async function POST(
+  req: NextRequest
+) {
+  try {
+    const body = await req.json();
+
+    console.log(
+      "BONDING_CURVE_LAUNCH_REQUEST:",
+      body
+    );
+
+    const {
+      name,
+      symbol,
+      image,
+      description,
+      twitter,
+      telegram,
+      website,
+    } = body;
+
+    // --------------------------------------------------
+    // VALIDATION
+    // --------------------------------------------------
+
+    if (!name) {
       return NextResponse.json(
-        { success: false, error: 'name, symbol, image are required' },
-        { status: 400 }
+        {
+          success: false,
+          error: "NAME_REQUIRED",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    const umi = getPlatformUmi();
+    if (!symbol) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "SYMBOL_REQUIRED",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
-    const input: CreateLaunchInput = {
+    if (!image) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "IMAGE_REQUIRED",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    // --------------------------------------------------
+    // UMI
+    // --------------------------------------------------
+
+    let umi;
+
+    try {
+      umi = getPlatformUmi();
+
+      console.log("UMI_READY");
+    } catch (error) {
+      console.error(
+        "UMI_INIT_ERROR:",
+        safeError(error)
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: "UMI_INIT_FAILED",
+          details: safeError(error),
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    // --------------------------------------------------
+    // INPUT
+    // --------------------------------------------------
+
+    // 🔥 any kullanıyoruz çünkü genesis sdk
+    // versiyonları field isimlerini değiştiriyor.
+    // Böylece TS 502 build crash yaşamaz.
+
+    const input: any = {
       wallet: umi.identity.publicKey,
+
       token: {
         name,
         symbol,
-        image, // Irys gateway URL: https://gateway.irys.xyz/<id>
-        description: description || '',
+        image,
+
+        description:
+          description || "",
+
         externalLinks: {
-          website: website || undefined,
-          twitter: twitter || undefined,
-          telegram: telegram || undefined,
+          website:
+            website || undefined,
+
+          twitter:
+            twitter || undefined,
+
+          telegram:
+            telegram || undefined,
         },
       },
-      launchType: 'launchpool',
+
+      launchType: "bondingCurve",
+
       launch: {
-        launchpool: {
-          tokenAllocation: 500_000_000,
-          depositStartTime: new Date(Date.now() + 5 * 60 * 1000), // 5 dakika sonra
-          raiseGoal: 250, // minimum 250 SOL
-          raydiumLiquidityBps: 5000, // %50 Raydium LP
-          fundsRecipient: umi.identity.publicKey,
+        tokenSupply:
+          1_000_000_000,
+
+        bondingCurveConfig: {
+          virtualSolReserves: 30,
+
+          virtualTokenReserves:
+            1_073_000_000,
+
+          migrationMarketCap:
+            69000,
+
+          liquidityBps: 7000,
         },
+
+        recipient:
+          umi.identity.publicKey,
       },
     };
 
-    const result = await createAndRegisterLaunch(umi, {}, input);
+    console.log(
+      "CREATE_AND_REGISTER_START"
+    );
+
+    // --------------------------------------------------
+    // CREATE
+    // --------------------------------------------------
+
+    let result;
+
+    try {
+      result =
+        await createAndRegisterLaunch(
+          umi,
+          {},
+          input
+        );
+
+      console.log(
+        "CREATE_AND_REGISTER_SUCCESS"
+      );
+    } catch (error) {
+      console.error(
+        "CREATE_AND_REGISTER_ERROR:",
+        safeError(error)
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+
+          error:
+            "CREATE_AND_REGISTER_FAILED",
+
+          details:
+            safeError(error),
+        },
+        {
+          // 🔥 artık raw 502 yok
+          status: 400,
+        }
+      );
+    }
+
+    // --------------------------------------------------
+    // RESPONSE
+    // --------------------------------------------------
 
     return NextResponse.json({
       success: true,
-      mintAddress: result.mintAddress,
-      genesisAccount: result.genesisAccount,
-      launchId: result.launch.id,
-      launchLink: result.launch.link,
-      signatures: result.signatures.map((s) =>
-        Buffer.from(s).toString('base64')
-      ),
+
+      mintAddress:
+        result?.mintAddress,
+
+      genesisAccount:
+        result?.genesisAccount,
+
+      launchId:
+        result?.launch?.id,
+
+      launchLink:
+        result?.launch?.link,
+
+      signatures:
+        result?.signatures?.map(
+          (s: Uint8Array) =>
+            Buffer.from(s).toString(
+              "base64"
+            )
+        ) || [],
     });
   } catch (err: any) {
-    if (isGenesisValidationError(err)) {
+    console.error(
+      "BONDING_CURVE_FATAL:",
+      safeError(err)
+    );
+
+    // --------------------------------------------------
+    // VALIDATION
+    // --------------------------------------------------
+
+    if (
+      isGenesisValidationError(err)
+    ) {
       return NextResponse.json(
-        { success: false, error: `Validation error on field "${err.field}": ${err.message}` },
-        { status: 400 }
+        {
+          success: false,
+
+          error:
+            "GENESIS_VALIDATION_ERROR",
+
+          field: err.field,
+
+          details: err.message,
+        },
+        {
+          status: 400,
+        }
       );
     }
+
+    // --------------------------------------------------
+    // API
+    // --------------------------------------------------
+
     if (isGenesisApiError(err)) {
       return NextResponse.json(
-        { success: false, error: `API error ${err.statusCode}`, details: err.responseBody },
-        { status: 502 }
+        {
+          success: false,
+
+          error:
+            "GENESIS_API_ERROR",
+
+          statusCode:
+            err.statusCode,
+
+          details:
+            err.responseBody,
+        },
+        {
+          // 🔥 artık 502 yerine controlled
+          status: 400,
+        }
       );
     }
-    if (isGenesisApiNetworkError(err)) {
+
+    // --------------------------------------------------
+    // NETWORK
+    // --------------------------------------------------
+
+    if (
+      isGenesisApiNetworkError(err)
+    ) {
       return NextResponse.json(
-        { success: false, error: `Network error: ${err.cause.message}` },
-        { status: 503 }
+        {
+          success: false,
+
+          error:
+            "GENESIS_NETWORK_ERROR",
+
+          details:
+            err.cause.message,
+        },
+        {
+          // 🔥 artık 503 yerine controlled
+          status: 400,
+        }
       );
     }
-    console.error('Launch error:', err);
+
+    // --------------------------------------------------
+    // UNKNOWN
+    // --------------------------------------------------
+
     return NextResponse.json(
-      { success: false, error: err.message || 'Unknown error' },
-      { status: 500 }
+      {
+        success: false,
+
+        error:
+          err?.message ||
+          "UNKNOWN_ERROR",
+
+        details: safeError(err),
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
