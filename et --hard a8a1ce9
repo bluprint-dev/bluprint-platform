@@ -1,0 +1,58 @@
+[33mcaf78c9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m chore: add ioredis for Redis connection
+[33m7a04c2c[m chore: add ioredis for Redis connection
+[33m459cd40[m chore: add ioredis for Redis connection
+[33me50cbb8[m chore: add ioredis for Redis connection
+[33maf0607b[m build: production hardening for launchpad architecture and worker protection
+[33ma8a1ce9[m fix: ioredis EX compatibility + stabilize swap worker loop
+[33mc6faa20[m fix: preserve token metadata in DEX merge
+[33m3ab36b6[m feat: single-tx token launch and pump-style DEX UI
+[33m580a7bd[m fix: add Irys and Arweave gateways to CSP
+[33mdebf1cb[m fix: metadata PDA derivation and token display on DEX
+[33mb80d2be[m fix: use manual PDA derivation with findProgramAddressSync for metadata
+[33m5b2d465[m feat: fetch token metadata from Solscan if not in Redis cache
+[33mb942780[m fix: improve tokens API error handling and JSON parsing
+[33m059f835[m fix: add metaplex.com to CSP connect-src permanently
+[33m804fa70[m feat: frontend token creation with user signer, backend only verifies payment
+[33m5b01ba2[m fix: use base58 format for PLATFORM_SECRET_KEY in umi config
+[33m621c70b[m fix: remove 3rd argument from verifyPayment call
+[33mbde9d55[m fix: remove expectedAmount argument from verifyPayment call
+[33m7c5c8f0[m fix: use balance delta method instead of fragile instruction parsing
+[33ma63798e[m fix: correct expected amounts in verify-payment for 0.01 SOL fee distribution
+[33m510e4b6[m feat: change theme from blue to pink, remove internal header from frontend
+[33me0deac4[m feat: change theme from blue to pink, remove internal header from frontend
+[33mf4895e1[m fix: remove unused PLATFORM_SECRET_KEY parse that was causing JSON.parse(undefined) error
+[33md622212[m feat: final create page with all security features and internal API integration
+[33ma6e5c52[m feat: add internal secret for backend API security
+[33md12dd07[m feat: complete create page with balance check, blacklist, double submit, SSR guard, and secure backend verification
+[33m371901a[m fix: remove useMediaQuery hook, use window resize directly
+[33m230672b[m fix: remove window dependency, add SSR-safe animations, premium upgrades
+[33m6600894[m fix: escape > character in terminal animation
+[33mbf68d34[m chore: update @solana/web3.js and refactor create page
+[33m79d2395[m fix: transaction timeout issues and wallet config updates
+[33mdbe6006[m fix: update create page with new wallet config
+[33m32d1359[m fix: proper Irys mainnet config with correct endpoint
+[33m438bb3c[m fix: configure Irys mainnet with specific node URL
+[33m2c9dc58[m fix: use mainnet Irys instead of devnet
+[33m24feb32[m fix: restore upload API for image uploads
+[33maec96fe[m clean: rewrite create page with upload API and working fee distribution
+[33mbe14200[m feat: user pays Irys upload fee directly - removed backend upload API
+[33mb68e40d[m clean: rewrite create page with proper Irys upload and fee handling
+[33m6c51eeb[m fix: restore Irys upload with platform wallet (SOL added)
+[33m363c152[m fix: remove Irys upload, use default image temporarily
+[33m8350849[m fix: remove duplicate Footer imports in dex page
+[33m80c79a5[m fix: charge Irys upload fee from user wallet instead of platform wallet
+[33mea1e40b[m fix: clean duplicate Footer imports, fix Irys fee transaction flow
+[33mc927669[m fix: add Footer to create and dex pages
+[33m7521d11[m fix: improve table header visibility on DEX page
+[33m56a6849[m fix: darken create page card backgrounds for better contrast
+[33m1fe2d86[m fix: remove black background from page, let Background show through
+[33m22cf201[m fix: add Background component to homepage
+[33m8864b06[m fix: complete homepage with proper imports and types
+[33m9fb568f[m fix: complete homepage with swap animation and correct imports
+[33m5a22391[m feat: premium scrolling homepage with buy/sell animation and platform info
+[33m84dc23d[m feat: premium bonding curve simulation with floating UI cards
+[33mc9a9230[m chore: trigger vercel redeploy
+[33m1a66b60[m refactor: ultra clean homepage - minimal design, premium motion, no fake data
+[33m8e61f01[m feat: premium interactive homepage with orb, ecosystem visual, cinematic buttons
+[33mbcf87e4[m fix: make canvas background more visible with higher opacity and brighter colors
+[33m68f2ff2[m feat: premium UI for create page - first 150 tokens promo banner
