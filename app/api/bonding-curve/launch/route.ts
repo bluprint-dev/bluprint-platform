@@ -14,6 +14,8 @@ import {
   keypairIdentity,
 } from "@metaplex-foundation/umi";
 
+import { redis } from "@/app/lib/redis";
+
 export const runtime = "nodejs";
 
 function getPlatformUmi() {
@@ -109,7 +111,6 @@ export async function POST(
     const umi =
       getPlatformUmi();
 
-    // ✅ GERÇEK SDK PAYLOAD
     const input = {
       wallet:
         umi.identity.publicKey,
@@ -144,7 +145,6 @@ export async function POST(
         creatorFeeWallet:
           umi.identity.publicKey,
 
-        // optional
         firstBuyAmount: 0,
       },
     };
@@ -164,6 +164,53 @@ export async function POST(
     console.log(
       "CREATE_RESULT:",
       result
+    );
+
+    // =========================
+    // REDIS SAVE
+    // =========================
+
+    await redis.sadd(
+      "bonding-curve:tokens",
+      result.mintAddress
+    );
+
+    await redis.set(
+      `token:metadata:${result.mintAddress}`,
+      JSON.stringify({
+        mint:
+          result.mintAddress,
+
+        name,
+
+        symbol,
+
+        imageUrl:
+          image,
+
+        description:
+          description || "",
+
+        creator:
+          umi.identity.publicKey.toString(),
+
+        website:
+          website || "",
+
+        twitter:
+          twitter || "",
+
+        telegram:
+          telegram || "",
+
+        createdAt:
+          Date.now(),
+      })
+    );
+
+    console.log(
+      "REDIS_METADATA_SAVED:",
+      result.mintAddress
     );
 
     return NextResponse.json({
