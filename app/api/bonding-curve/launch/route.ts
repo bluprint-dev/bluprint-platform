@@ -52,7 +52,9 @@ function getPlatformUmi() {
       secretKey
     );
 
-  umi.use(keypairIdentity(keypair));
+  umi.use(
+    keypairIdentity(keypair)
+  );
 
   return umi;
 }
@@ -61,7 +63,9 @@ function getPlatformUmi() {
 // SAFE ERROR
 // --------------------------------------------------
 
-function safeError(error: unknown) {
+function safeError(
+  error: unknown
+) {
   if (error instanceof Error) {
     return {
       name: error.name,
@@ -71,7 +75,9 @@ function safeError(error: unknown) {
   }
 
   return {
-    message: String(error),
+    message: globalThis.String(
+      error
+    ),
   };
 }
 
@@ -83,10 +89,11 @@ export async function POST(
   req: NextRequest
 ) {
   try {
-    const body = await req.json();
+    const body =
+      await req.json();
 
     console.log(
-      "BONDING_CURVE_LAUNCH_REQUEST:",
+      "LAUNCH_REQUEST:",
       body
     );
 
@@ -108,7 +115,8 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: "NAME_REQUIRED",
+          error:
+            "NAME_REQUIRED",
         },
         {
           status: 400,
@@ -120,7 +128,8 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: "SYMBOL_REQUIRED",
+          error:
+            "SYMBOL_REQUIRED",
         },
         {
           status: 400,
@@ -132,7 +141,8 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: "IMAGE_REQUIRED",
+          error:
+            "IMAGE_REQUIRED",
         },
         {
           status: 400,
@@ -147,9 +157,12 @@ export async function POST(
     let umi;
 
     try {
-      umi = getPlatformUmi();
+      umi =
+        getPlatformUmi();
 
-      console.log("UMI_READY");
+      console.log(
+        "UMI_READY"
+      );
     } catch (error) {
       console.error(
         "UMI_INIT_ERROR:",
@@ -159,8 +172,11 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: "UMI_INIT_FAILED",
-          details: safeError(error),
+          error:
+            "UMI_INIT_FAILED",
+
+          details:
+            safeError(error),
         },
         {
           status: 500,
@@ -172,12 +188,13 @@ export async function POST(
     // INPUT
     // --------------------------------------------------
 
-    // 🔥 any kullanıyoruz çünkü genesis sdk
-    // versiyonları field isimlerini değiştiriyor.
-    // Böylece TS 502 build crash yaşamaz.
+    // any kullanıyoruz çünkü
+    // genesis sdk versiyonları
+    // field isimlerini değiştiriyor.
 
     const input: any = {
-      wallet: umi.identity.publicKey,
+      wallet:
+        umi.identity.publicKey,
 
       token: {
         name,
@@ -189,24 +206,29 @@ export async function POST(
 
         externalLinks: {
           website:
-            website || undefined,
+            website ||
+            undefined,
 
           twitter:
-            twitter || undefined,
+            twitter ||
+            undefined,
 
           telegram:
-            telegram || undefined,
+            telegram ||
+            undefined,
         },
       },
 
-      launchType: "bondingCurve",
+      launchType:
+        "bondingCurve",
 
       launch: {
         tokenSupply:
           1_000_000_000,
 
         bondingCurveConfig: {
-          virtualSolReserves: 30,
+          virtualSolReserves:
+            30,
 
           virtualTokenReserves:
             1_073_000_000,
@@ -214,7 +236,8 @@ export async function POST(
           migrationMarketCap:
             69000,
 
-          liquidityBps: 7000,
+          liquidityBps:
+            7000,
         },
 
         recipient:
@@ -223,14 +246,15 @@ export async function POST(
     };
 
     console.log(
-      "CREATE_AND_REGISTER_START"
+      "CREATE_INPUT:",
+      input
     );
 
     // --------------------------------------------------
     // CREATE
     // --------------------------------------------------
 
-    let result;
+    let result: any;
 
     try {
       result =
@@ -241,11 +265,16 @@ export async function POST(
         );
 
       console.log(
-        "CREATE_AND_REGISTER_SUCCESS"
+        "CREATE_RESULT:",
+        result
+      );
+
+      console.log(
+        "CREATE_SUCCESS"
       );
     } catch (error) {
       console.error(
-        "CREATE_AND_REGISTER_ERROR:",
+        "CREATE_ERROR:",
         safeError(error)
       );
 
@@ -254,17 +283,36 @@ export async function POST(
           success: false,
 
           error:
-            "CREATE_AND_REGISTER_FAILED",
+            "CREATE_FAILED",
 
           details:
             safeError(error),
         },
         {
-          // 🔥 artık raw 502 yok
           status: 400,
         }
       );
     }
+
+    // --------------------------------------------------
+    // SIGNATURES
+    // --------------------------------------------------
+
+    const signatures =
+      Array.isArray(
+        result?.signatures
+      )
+        ? result.signatures.map(
+            (
+              s: unknown
+            ) =>
+              Buffer.from(
+                s as Uint8Array
+              ).toString(
+                "base64"
+              )
+          )
+        : [];
 
     // --------------------------------------------------
     // RESPONSE
@@ -285,17 +333,14 @@ export async function POST(
       launchLink:
         result?.launch?.link,
 
-      signatures:
-        result?.signatures?.map(
-          (s: Uint8Array) =>
-            Buffer.from(s).toString(
-              "base64"
-            )
-        ) || [],
+      signatures,
+
+      rawResult:
+        result,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error(
-      "BONDING_CURVE_FATAL:",
+      "LAUNCH_FATAL:",
       safeError(err)
     );
 
@@ -304,7 +349,9 @@ export async function POST(
     // --------------------------------------------------
 
     if (
-      isGenesisValidationError(err)
+      isGenesisValidationError(
+        err
+      )
     ) {
       return NextResponse.json(
         {
@@ -313,9 +360,11 @@ export async function POST(
           error:
             "GENESIS_VALIDATION_ERROR",
 
-          field: err.field,
+          field:
+            err.field,
 
-          details: err.message,
+          details:
+            err.message,
         },
         {
           status: 400,
@@ -327,7 +376,9 @@ export async function POST(
     // API
     // --------------------------------------------------
 
-    if (isGenesisApiError(err)) {
+    if (
+      isGenesisApiError(err)
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -342,7 +393,6 @@ export async function POST(
             err.responseBody,
         },
         {
-          // 🔥 artık 502 yerine controlled
           status: 400,
         }
       );
@@ -353,7 +403,9 @@ export async function POST(
     // --------------------------------------------------
 
     if (
-      isGenesisApiNetworkError(err)
+      isGenesisApiNetworkError(
+        err
+      )
     ) {
       return NextResponse.json(
         {
@@ -366,7 +418,6 @@ export async function POST(
             err.cause.message,
         },
         {
-          // 🔥 artık 503 yerine controlled
           status: 400,
         }
       );
@@ -381,10 +432,12 @@ export async function POST(
         success: false,
 
         error:
-          err?.message ||
-          "UNKNOWN_ERROR",
+          err instanceof Error
+            ? err.message
+            : "UNKNOWN_ERROR",
 
-        details: safeError(err),
+        details:
+          safeError(err),
       },
       {
         status: 500,
