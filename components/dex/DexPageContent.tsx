@@ -194,10 +194,10 @@ export default function DexPageContent() {
                 <EmptyState hasSearch={Boolean(search.trim())} />
               ) : (
                 <TokenList
-                  tokens={filteredTokens}
-                  selectedMint={selectedMint}
-                  onSelect={handleSelectToken}
-                />
+  tokens={filteredTokens}
+  selectedToken={selectedToken}
+  onSelect={handleSelectToken}
+/>
               )}
             </div>
           </div>

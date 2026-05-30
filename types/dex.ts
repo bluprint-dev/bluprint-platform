@@ -1,9 +1,14 @@
 export type DexToken = {
   mint: string;
+
+  genesisAccount?: string;
+
   name: string;
   symbol: string;
+
   imageUrl?: string;
   creator?: string;
+
   createdAt?: number;
 };
 
@@ -23,5 +28,7 @@ export type SwapBuildResponse =
       creatorFee: string;
       lastValidBlockHeight?: number;
     }
-  | { success?: false; error: string };
-
+  | {
+      success?: false;
+      error: string;
+    };

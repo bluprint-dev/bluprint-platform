@@ -7,12 +7,27 @@ import { useEffect, useMemo } from "react";
 
 export const DEX_TOKENS_QUERY_KEY = ["dex", "tokens"] as const;
 
-function mergeTokens(server: DexToken[], optimistic: DexToken[]): DexToken[] {
+// ------------------------------
+// SAFE MERGE
+// ------------------------------
+function mergeTokens(
+  server: DexToken[],
+  optimistic: DexToken[]
+): DexToken[] {
   const map = new Map<string, DexToken>();
-  for (const token of server) map.set(token.mint, token);
-  for (const token of optimistic) {
-    if (!map.has(token.mint)) map.set(token.mint, token);
+
+  // server first (source of truth)
+  for (const token of server) {
+    if (!token?.mint) continue;
+    map.set(token.mint, token);
   }
+
+  // optimistic overlay
+  for (const token of optimistic) {
+    if (!token?.mint) continue;
+    map.set(token.mint, token);
+  }
+
   return sortTokensNewest(Array.from(map.values()));
 }
 
@@ -35,13 +50,22 @@ export function useDexTokens() {
 
   useEffect(() => {
     if (!query.data?.success || optimisticTokens.length === 0) return;
-    const serverMints = new Set((query.data.tokens ?? []).map((t) => t.mint));
-    const allSynced = optimisticTokens.every((t) => serverMints.has(t.mint));
+
+    const serverMints = new Set(
+      (query.data.tokens ?? []).map((t) => t.mint)
+    );
+
+    const allSynced = optimisticTokens.every((t) =>
+      serverMints.has(t.mint)
+    );
+
     if (allSynced) clearOptimisticTokens();
   }, [query.data, optimisticTokens, clearOptimisticTokens]);
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: DEX_TOKENS_QUERY_KEY });
+    await queryClient.invalidateQueries({
+      queryKey: DEX_TOKENS_QUERY_KEY,
+    });
     return query.refetch();
   };
 

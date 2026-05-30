@@ -10,56 +10,32 @@ import {
   isGenesisValidationError,
 } from "@metaplex-foundation/genesis";
 
-import {
-  keypairIdentity,
-} from "@metaplex-foundation/umi";
-
+import { keypairIdentity } from "@metaplex-foundation/umi";
 import { redis } from "@/app/lib/redis";
 
 export const runtime = "nodejs";
 
+// -----------------------------
+// UMI INIT
+// -----------------------------
 function getPlatformUmi() {
-  const rpcUrl =
-    process.env.NEXT_PUBLIC_RPC_URL;
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
+  if (!rpcUrl) throw new Error("NEXT_PUBLIC_RPC_URL missing");
 
-  if (!rpcUrl) {
-    throw new Error(
-      "NEXT_PUBLIC_RPC_URL missing"
-    );
-  }
+  const secretKeyRaw = process.env.PLATFORM_SECRET_KEY;
+  if (!secretKeyRaw) throw new Error("PLATFORM_SECRET_KEY missing");
 
-  const secretKeyRaw =
-    process.env.PLATFORM_SECRET_KEY;
+  const umi = createUmi(rpcUrl).use(genesis());
 
-  if (!secretKeyRaw) {
-    throw new Error(
-      "PLATFORM_SECRET_KEY missing"
-    );
-  }
+  const secretKey = Uint8Array.from(JSON.parse(secretKeyRaw));
+  const keypair = umi.eddsa.createKeypairFromSecretKey(secretKey);
 
-  const umi = createUmi(rpcUrl).use(
-    genesis()
-  );
-
-  const secretKey = Uint8Array.from(
-    JSON.parse(secretKeyRaw)
-  );
-
-  const keypair =
-    umi.eddsa.createKeypairFromSecretKey(
-      secretKey
-    );
-
-  umi.use(
-    keypairIdentity(keypair)
-  );
-
+  umi.use(keypairIdentity(keypair));
   return umi;
 }
 
-function safeError(
-  error: unknown
-) {
+// -----------------------------
+function safeError(error: unknown) {
   if (error instanceof Error) {
     return {
       name: error.name,
@@ -67,23 +43,17 @@ function safeError(
       stack: error.stack,
     };
   }
-
-  return {
-    message: String(error),
-  };
+  return { message: String(error) };
 }
 
-export async function POST(
-  req: NextRequest
-) {
+// -----------------------------
+// ROUTE
+// -----------------------------
+export async function POST(req: NextRequest) {
   try {
-    const body =
-      await req.json();
+    const body = await req.json();
 
-    console.log(
-      "LAUNCH_REQUEST:",
-      body
-    );
+    console.log("LAUNCH_REQUEST:", body);
 
     const {
       name,
@@ -97,225 +67,145 @@ export async function POST(
 
     if (!name || !symbol || !image) {
       return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Missing required fields",
-        },
-        {
-          status: 400,
-        }
+        { success: false, error: "Missing required fields" },
+        { status: 400 }
       );
     }
 
-    const umi =
-      getPlatformUmi();
+    const umi = getPlatformUmi();
 
     const input = {
-      wallet:
-        umi.identity.publicKey,
+      wallet: umi.identity.publicKey,
 
       token: {
         name,
         symbol,
         image,
-
-        description:
-          description || "",
-
+        description: description || "",
         externalLinks: {
-          website:
-            website ||
-            undefined,
-
-          twitter:
-            twitter ||
-            undefined,
-
-          telegram:
-            telegram ||
-            undefined,
+          website: website || undefined,
+          twitter: twitter || undefined,
+          telegram: telegram || undefined,
         },
       },
 
-      launchType:
-        "bondingCurve" as const,
+      launchType: "bondingCurve" as const,
 
       launch: {
-        creatorFeeWallet:
-          umi.identity.publicKey,
-
+        creatorFeeWallet: umi.identity.publicKey,
         firstBuyAmount: 0,
       },
     };
 
-    console.log(
-      "CREATE_INPUT:",
-      input
-    );
+    console.log("CREATE_INPUT:", input);
 
-    const result =
-      await createAndRegisterLaunch(
-        umi,
-        {},
-        input
-      );
+    const result = await createAndRegisterLaunch(umi, {}, input);
 
-    console.log(
-      "CREATE_RESULT:",
-      result
-    );
+    console.log("CREATE_RESULT:", result);
 
-    // =========================
-    // REDIS SAVE
-    // =========================
+    // ======================================================
+    // 🔥 REDIS FIX (DUAL WRITE + BACKWARD COMPATIBILITY)
+    // ======================================================
 
     await redis.sadd(
-      "bonding-curve:tokens",
-      result.mintAddress
-    );
+  "bonding-curve:tokens",
+  result.mintAddress
+);
 
+    // 2) LEGACY SUPPORT (optional fallback)
+    await redis.sadd("bonding-curve:tokens:legacy", result.mintAddress);
+
+    console.log("LAUNCH_ADDRESSES", {
+      mintAddress: result.mintAddress,
+      genesisAccount: result.genesisAccount,
+    });
+
+    // ======================================================
+    // METADATA (UNCHANGED - SAFE)
+    // ======================================================
     await redis.set(
       `token:metadata:${result.mintAddress}`,
       JSON.stringify({
-        mint:
-          result.mintAddress,
+        mint: result.mintAddress,
+        genesisAccount: result.genesisAccount,
 
         name,
-
         symbol,
+        imageUrl: image,
 
-        imageUrl:
-          image,
+        description: description || "",
 
-        description:
-          description || "",
+        creator: umi.identity.publicKey.toString(),
 
-        creator:
-          umi.identity.publicKey.toString(),
+        website: website || "",
+        twitter: twitter || "",
+        telegram: telegram || "",
 
-        website:
-          website || "",
-
-        twitter:
-          twitter || "",
-
-        telegram:
-          telegram || "",
-
-        createdAt:
-          Date.now(),
+        createdAt: Date.now(),
       })
     );
 
-    console.log(
-      "REDIS_METADATA_SAVED:",
-      result.mintAddress
-    );
+    console.log("REDIS_METADATA_SAVED:", result.mintAddress);
 
     return NextResponse.json({
       success: true,
 
-      mintAddress:
-        result.mintAddress,
+      mintAddress: result.mintAddress,
+      genesisAccount: result.genesisAccount,
 
-      genesisAccount:
-        result.genesisAccount,
+      launchId: result.launch.id,
+      launchLink: result.launch.link,
 
-      launchId:
-        result.launch.id,
-
-      launchLink:
-        result.launch.link,
-
-      token:
-        result.token,
+      token: {
+        mint: result.mintAddress,
+        genesisAccount: result.genesisAccount,
+      },
     });
   } catch (err) {
-    console.error(
-      "LAUNCH_FATAL:",
-      safeError(err)
-    );
+    console.error("LAUNCH_FATAL:", safeError(err));
 
-    if (
-      isGenesisValidationError(
-        err
-      )
-    ) {
+    if (isGenesisValidationError(err)) {
       return NextResponse.json(
         {
           success: false,
-          type:
-            "VALIDATION_ERROR",
-
-          field:
-            err.field,
-
-          error:
-            err.message,
+          type: "VALIDATION_ERROR",
+          field: err.field,
+          error: err.message,
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    if (
-      isGenesisApiError(err)
-    ) {
+    if (isGenesisApiError(err)) {
       return NextResponse.json(
         {
           success: false,
-          type:
-            "GENESIS_API_ERROR",
-
-          statusCode:
-            err.statusCode,
-
-          details:
-            err.responseBody,
+          type: "GENESIS_API_ERROR",
+          statusCode: err.statusCode,
+          details: err.responseBody,
         },
-        {
-          status: 502,
-        }
+        { status: 502 }
       );
     }
 
-    if (
-      isGenesisApiNetworkError(
-        err
-      )
-    ) {
+    if (isGenesisApiNetworkError(err)) {
       return NextResponse.json(
         {
           success: false,
-          type:
-            "NETWORK_ERROR",
-
-          error:
-            err.cause.message,
+          type: "NETWORK_ERROR",
+          error: err.cause.message,
         },
-        {
-          status: 503,
-        }
+        { status: 503 }
       );
     }
 
     return NextResponse.json(
       {
         success: false,
-
-        type:
-          "UNKNOWN_ERROR",
-
-        error:
-          err instanceof Error
-            ? err.message
-            : "Unknown error",
+        type: "UNKNOWN_ERROR",
+        error: err instanceof Error ? err.message : "Unknown error",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
