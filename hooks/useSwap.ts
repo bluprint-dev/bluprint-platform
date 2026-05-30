@@ -26,7 +26,7 @@ export function useSwap() {
           Number(input.amount) * 1_000_000_000
         ).toString();
 
-        const res = await fetch("/api/swap", {
+        const res = await fetch("/api/bonding-curve/swap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
