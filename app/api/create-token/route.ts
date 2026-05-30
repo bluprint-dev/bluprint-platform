@@ -2,77 +2,272 @@ import { NextRequest, NextResponse } from 'next/server';
 import { redis } from '@/app/lib/redis';
 import { verifyPayment } from '@/app/lib/verify-payment';
 
-const validateTokenSymbol = (symbol: string): boolean => /^[A-Z0-9]{2,10}$/.test(symbol);
-const validateTokenName = (name: string): boolean => name.length >= 2 && name.length <= 32;
-const BLACKLIST = ["SOL", "USDC", "USDT", "BONK", "WIF", "JUP", "PYTH", "JTO"];
+const REFERRAL_REWARD = 0.05;
+
+const validateTokenSymbol = (symbol: string): boolean =>
+  /^[A-Z0-9]{2,10}$/.test(symbol);
+
+const validateTokenName = (name: string): boolean =>
+  name.length >= 2 && name.length <= 32;
+
+const BLACKLIST = [
+  'SOL',
+  'USDC',
+  'USDT',
+  'BONK',
+  'WIF',
+  'JUP',
+  'PYTH',
+  'JTO',
+];
 
 export async function POST(req: NextRequest) {
   try {
-    const { signature, userPublicKey, tokenData } = await req.json();
+    const body = await req.json();
+
+    const {
+      signature,
+      userPublicKey,
+      tokenData,
+      promoCode,
+    } = body;
+
+    // =========================
+    // REQUIRED FIELDS
+    // =========================
 
     if (!signature || !userPublicKey || !tokenData) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Missing fields' },
+        { status: 400 }
+      );
     }
 
-    // Validation
+    // =========================
+    // TOKEN VALIDATION
+    // =========================
+
     if (!validateTokenName(tokenData.name)) {
-      return NextResponse.json({ error: 'Invalid token name' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid token name' },
+        { status: 400 }
+      );
     }
+
     if (!validateTokenSymbol(tokenData.symbol)) {
-      return NextResponse.json({ error: 'Invalid token symbol' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid token symbol' },
+        { status: 400 }
+      );
     }
+
     if (BLACKLIST.includes(tokenData.symbol)) {
-      return NextResponse.json({ error: 'Reserved ticker' }, { status: 400 });
-    }
-    if (tokenData.description && tokenData.description.length > 500) {
-      return NextResponse.json({ error: 'Description too long' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Reserved ticker' },
+        { status: 400 }
+      );
     }
 
-    // Rate limits
-    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    if (
+      tokenData.description &&
+      tokenData.description.length > 500
+    ) {
+      return NextResponse.json(
+        { error: 'Description too long' },
+        { status: 400 }
+      );
+    }
+
+    // =========================
+    // RATE LIMIT
+    // =========================
+
+    const ip =
+      req.headers.get('x-forwarded-for') || 'unknown';
+
     const rateKey = `rate:create:${ip}:${userPublicKey}`;
+
     const rateCount = await redis.incr(rateKey);
-    if (rateCount === 1) await redis.expire(rateKey, 60);
+
+    if (rateCount === 1) {
+      await redis.expire(rateKey, 60);
+    }
+
     if (rateCount > 3) {
-      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+      return NextResponse.json(
+        { error: 'Rate limit exceeded' },
+        { status: 429 }
+      );
     }
 
-    // Wallet daily limit
+    // =========================
+    // DAILY WALLET LIMIT
+    // =========================
+
     const walletRateKey = `rate:wallet:${userPublicKey}`;
-    const walletRateCount = await redis.incr(walletRateKey);
-    if (walletRateCount === 1) await redis.expire(walletRateKey, 86400);
-    if (walletRateCount > 10) {
-      return NextResponse.json({ error: 'Daily limit reached' }, { status: 429 });
+
+    const walletRateCount =
+      await redis.incr(walletRateKey);
+
+    if (walletRateCount === 1) {
+      await redis.expire(walletRateKey, 86400);
     }
 
-    // Redis lock
-    const lockKey = `lock:create:${userPublicKey}`;
-    const locked = await redis.setnx(lockKey, 'locked');
-    if (!locked) {
-      return NextResponse.json({ error: 'Previous request still processing' }, { status: 429 });
+    if (walletRateCount > 10) {
+      return NextResponse.json(
+        { error: 'Daily limit reached' },
+        { status: 429 }
+      );
     }
+
+    // =========================
+    // CREATE LOCK
+    // =========================
+
+    const lockKey = `lock:create:${userPublicKey}`;
+
+    const locked = await redis.setnx(
+      lockKey,
+      'locked'
+    );
+
+    if (!locked) {
+      return NextResponse.json(
+        {
+          error:
+            'Previous request still processing',
+        },
+        { status: 429 }
+      );
+    }
+
     await redis.expire(lockKey, 30);
 
     try {
-      // Verify payment only (NO token creation here)
-      const verifyResult = await verifyPayment(signature, userPublicKey);
+      // =========================
+      // VERIFY PAYMENT
+      // =========================
+
+      const verifyResult =
+        await verifyPayment(
+          signature,
+          userPublicKey
+        );
+
       if (!verifyResult.verified) {
-        return NextResponse.json({ error: verifyResult.error || 'Payment verification failed' }, { status: 400 });
+        return NextResponse.json(
+          {
+            error:
+              verifyResult.error ||
+              'Payment verification failed',
+          },
+          { status: 400 }
+        );
       }
 
-      // Return success - frontend will create the token
+      // =========================
+      // REFERRAL SYSTEM
+      // =========================
+
+      let referralApplied = false;
+      let inviterWallet: string | null = null;
+
+      if (
+        promoCode &&
+        typeof promoCode === 'string'
+      ) {
+        const normalizedCode =
+          promoCode.trim().toUpperCase();
+
+        // code -> wallet
+        inviterWallet = await redis.get(
+          `ref:code:${normalizedCode}`
+        );
+
+        // valid code
+        if (
+          inviterWallet &&
+          inviterWallet !== userPublicKey
+        ) {
+          // reward add
+          await redis.incrbyfloat(
+            `ref:earnings:${inviterWallet}:pending`,
+            REFERRAL_REWARD
+          );
+
+          // referral count
+          await redis.incr(
+            `ref:count:${inviterWallet}`
+          );
+
+          // referral history
+          await redis.sadd(
+            `ref:list:${inviterWallet}`,
+            userPublicKey
+          );
+
+          // track creator referrals
+          await redis.sadd(
+            `ref:used-by:${userPublicKey}`,
+            normalizedCode
+          );
+
+          referralApplied = true;
+        }
+      }
+
+      // =========================
+      // USER TOKEN TRACKING
+      // =========================
+
+      await redis.sadd(
+        'users',
+        userPublicKey
+      );
+
+      // =========================
+      // SUCCESS
+      // =========================
+
       return NextResponse.json({
         success: true,
         verified: true,
-        message: 'Payment verified, ready to launch',
-      });
 
+        referralApplied,
+
+        inviterWallet:
+          referralApplied
+            ? inviterWallet
+            : null,
+
+        rewardAmount:
+          referralApplied
+            ? REFERRAL_REWARD
+            : 0,
+
+        message:
+          'Payment verified, ready to launch',
+      });
     } finally {
+      // =========================
+      // RELEASE LOCK
+      // =========================
+
       await redis.del(lockKey);
     }
-
   } catch (error: any) {
-    console.error('Create token error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    console.error(
+      'Create token error:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          error.message ||
+          'Internal server error',
+      },
+      { status: 500 }
+    );
   }
 }

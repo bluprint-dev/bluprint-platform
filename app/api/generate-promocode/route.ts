@@ -1,89 +1,174 @@
-import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { NextRequest, NextResponse } from 'next/server';
+import { redis } from '@/app/lib/redis';
 
-const PROMOCODES_FILE = path.join(process.cwd(), 'data', 'promocodes.json');
+const CODE_LENGTH = 7;
 
-// Benzersiz kod oluştur (6 karakter, harf+rakam)
-function generateUniqueCode(existingCodes: string[]): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
-  let code: string;
-  do {
-    code = '';
-    for (let i = 0; i < 6; i++) {
-      code += chars[Math.floor(Math.random() * chars.length)];
-    }
-  } while (existingCodes.includes(code));
+function generateCode(): string {
+  const chars =
+    'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+
+  let code = '';
+
+  for (let i = 0; i < CODE_LENGTH; i++) {
+    code += chars[
+      Math.floor(Math.random() * chars.length)
+    ];
+  }
+
   return code;
 }
 
-// Promocode'ları oku
-function getPromoCodes() {
-  try {
-    if (fs.existsSync(PROMOCODES_FILE)) {
-      return JSON.parse(fs.readFileSync(PROMOCODES_FILE, 'utf-8'));
+async function generateUniqueCode(): Promise<string> {
+  while (true) {
+    const code = generateCode();
+
+    const exists = await redis.exists(
+      `ref:code:${code}`
+    );
+
+    if (!exists) {
+      return code;
     }
-  } catch (e) {}
-  return {};
+  }
 }
 
-// Promocode kaydet
-function savePromoCodes(codes: any) {
-  const dir = path.dirname(PROMOCODES_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(PROMOCODES_FILE, JSON.stringify(codes, null, 2));
-}
-
-export async function POST(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { walletAddress } = await req.json();
-    const promoCodes = getPromoCodes();
-    
-    // Zaten promocode'u varsa gönder
-    if (promoCodes[walletAddress] && promoCodes[walletAddress].code) {
+    const { searchParams } = new URL(req.url);
+
+    const wallet =
+      searchParams.get('wallet');
+
+    if (!wallet) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Wallet required',
+        },
+        { status: 400 }
+      );
+    }
+
+    // wallet -> code
+    const existingCode =
+      await redis.get(
+        `ref:user:${wallet}`
+      );
+
+    return NextResponse.json({
+      success: true,
+      hasCode: !!existingCode,
+      code: existingCode || null,
+    });
+  } catch (error: any) {
+    console.error(
+      'GET_PROMOCODE_ERROR:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error.message ||
+          'Internal server error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    const wallet =
+      body.walletAddress;
+
+    if (!wallet) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Wallet required',
+        },
+        { status: 400 }
+      );
+    }
+
+    // =========================
+    // EXISTING CODE CHECK
+    // =========================
+
+    const existingCode =
+      await redis.get(
+        `ref:user:${wallet}`
+      );
+
+    if (existingCode) {
       return NextResponse.json({
         success: true,
-        code: promoCodes[walletAddress].code,
+        code: existingCode,
         isNew: false,
       });
     }
-    
-    // Yeni promocode oluştur
-    const existingCodes = Object.values(promoCodes).map((p: any) => p.code);
-    const newCode = generateUniqueCode(existingCodes);
-    
-    promoCodes[walletAddress] = {
-      code: newCode,
-      createdAt: new Date().toISOString(),
-      isActive: true,
-    };
-    
-    savePromoCodes(promoCodes);
-    
+
+    // =========================
+    // GENERATE UNIQUE CODE
+    // =========================
+
+    const newCode =
+      await generateUniqueCode();
+
+    // =========================
+    // SAVE MAPPINGS
+    // =========================
+
+    // wallet -> code
+    await redis.set(
+      `ref:user:${wallet}`,
+      newCode
+    );
+
+    // code -> wallet
+    await redis.set(
+      `ref:code:${newCode}`,
+      wallet
+    );
+
+    // optional metadata
+    await redis.set(
+      `ref:meta:${wallet}`,
+      JSON.stringify({
+        code: newCode,
+        createdAt: Date.now(),
+      })
+    );
+
+    console.log(
+      'PROMOCODE_CREATED:',
+      wallet,
+      newCode
+    );
+
     return NextResponse.json({
       success: true,
       code: newCode,
       isNew: true,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message });
-  }
-}
+    console.error(
+      'CREATE_PROMOCODE_ERROR:',
+      error
+    );
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const wallet = searchParams.get('wallet');
-  
-  if (!wallet) {
-    return NextResponse.json({ success: false, error: 'Wallet required' });
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error.message ||
+          'Internal server error',
+      },
+      { status: 500 }
+    );
   }
-  
-  const promoCodes = getPromoCodes();
-  const userCode = promoCodes[wallet];
-  
-  return NextResponse.json({
-    success: true,
-    hasCode: !!userCode,
-    code: userCode?.code || null,
-  });
 }

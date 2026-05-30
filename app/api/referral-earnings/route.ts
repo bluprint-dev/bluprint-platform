@@ -1,80 +1,160 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, KEYS } from '@/app/lib/redis';
+import { redis } from '@/app/lib/redis';
 
 const MILESTONES = [
   { count: 10, bonus: 0.1 },
-  { count: 25, bonus: 0.2 },
+  { count: 25, bonus: 0.25 },
   { count: 50, bonus: 0.5 },
   { count: 100, bonus: 1.0 },
 ];
 
+// =========================
+// GET (READ ONLY VIEW)
+// =========================
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const wallet = searchParams.get('wallet');
-
-  if (!wallet) {
-    return NextResponse.json({ success: false, error: 'Wallet required' }, { status: 400 });
-  }
-
   try {
-    const earningsKey = `${KEYS.earnings}:${wallet}`;
-    const raw = await redis.get(earningsKey);
-    const data: { pending: number; claimed: number; referrals: string[]; milestones?: number[] } =
-      raw
-        ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
-        : { pending: 0, claimed: 0, referrals: [], milestones: [] };
+    const { searchParams } = new URL(req.url);
+    const wallet = searchParams.get('wallet');
 
-    const totalReferrals = data.referrals?.length || 0;
-    const claimedMilestones = data.milestones || [];
+    if (!wallet) {
+      return NextResponse.json(
+        { success: false, error: 'Wallet required' },
+        { status: 400 }
+      );
+    }
 
-    const milestoneInfo = MILESTONES.map((m) => ({
+    // =========================
+    // LOAD STATE (single source)
+    // =========================
+    const raw = await redis.get(`ref:state:${wallet}`);
+
+    const state = raw
+      ? typeof raw === 'string'
+        ? JSON.parse(raw)
+        : raw
+      : {
+          pending: 0,
+          claimed: 0,
+          referrals: [],
+          milestonesClaimed: [],
+        };
+
+    const totalReferrals = state.referrals.length;
+
+    // =========================
+    // MILESTONES CALC
+    // =========================
+    const milestones = MILESTONES.map((m) => ({
       count: m.count,
       bonus: m.bonus,
       reached: totalReferrals >= m.count,
-      claimed: claimedMilestones.includes(m.count),
+      claimed: state.milestonesClaimed.includes(m.count),
     }));
 
-    const nextMilestone = MILESTONES.find((m) => totalReferrals < m.count) || null;
+    const nextMilestone =
+      MILESTONES.find((m) => totalReferrals < m.count) || null;
 
     return NextResponse.json({
       success: true,
-      earnings: data.pending || 0,
-      claimed: data.claimed || 0,
+      earnings: state.pending,
+      claimed: state.claimed,
       totalReferrals,
-      milestones: milestoneInfo,
-      nextMilestone: nextMilestone ? nextMilestone.count : null,
+      referrals: state.referrals,
+      milestones,
+      nextMilestone: nextMilestone?.count || null,
     });
+
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(req: Request) {
+// =========================
+// POST (CLAIM SAFE)
+// =========================
+export async function POST(req: NextRequest) {
   try {
     const { wallet, amount } = await req.json();
 
-    if (!wallet || amount === undefined) {
-      return NextResponse.json({ success: false, error: 'Wallet and amount required' });
+    if (!wallet || typeof amount !== 'number') {
+      return NextResponse.json(
+        { success: false, error: 'Wallet and amount required' },
+        { status: 400 }
+      );
     }
 
-    const earningsKey = `${KEYS.earnings}:${wallet}`;
-    const raw = await redis.get(earningsKey);
-    const data: { pending: number; claimed: number; referrals: string[]; milestones?: number[] } =
-      raw
-        ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
-        : { pending: 0, claimed: 0, referrals: [], milestones: [] };
-
-    if ((data.pending || 0) < amount) {
-      return NextResponse.json({ success: false, error: 'Insufficient earnings' });
+    if (amount <= 0) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid amount' },
+        { status: 400 }
+      );
     }
 
-    data.pending = (data.pending || 0) - amount;
-    data.claimed = (data.claimed || 0) + amount;
+    const lockKey = `lock:claim:${wallet}`;
 
-    await redis.set(earningsKey, JSON.stringify(data));
+    // =========================
+    // ATOMIC LOCK (SAFE)
+    // =========================
+    const lock = await redis.set(lockKey, '1', {
+      nx: true,
+      ex: 10,
+    });
 
-    return NextResponse.json({ success: true, amount });
+    if (!lock) {
+      return NextResponse.json(
+        { success: false, error: 'Claim already processing' },
+        { status: 429 }
+      );
+    }
+
+    try {
+      const key = `ref:state:${wallet}`;
+
+      const raw = await redis.get(key);
+
+      const state = raw
+        ? typeof raw === 'string'
+          ? JSON.parse(raw)
+          : raw
+        : {
+            pending: 0,
+            claimed: 0,
+            referrals: [],
+            milestonesClaimed: [],
+          };
+
+      if (state.pending < amount) {
+        return NextResponse.json(
+          { success: false, error: 'Insufficient earnings' },
+          { status: 400 }
+        );
+      }
+
+      // =========================
+      // UPDATE STATE SAFELY
+      // =========================
+      state.pending -= amount;
+      state.claimed += amount;
+
+      await redis.set(key, JSON.stringify(state));
+
+      return NextResponse.json({
+        success: true,
+        claimedAmount: amount,
+        remainingPending: state.pending,
+      });
+
+    } finally {
+      await redis.del(lockKey);
+    }
+
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
   }
 }
