@@ -9,6 +9,7 @@ import {
   getSwapResult,
   swapBondingCurveV2,
   SwapDirection,
+  isSwappable,
 } from "@metaplex-foundation/genesis";
 
 const WSOL_MINT =
@@ -269,6 +270,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("STEP_BUCKET_OK");
+
+    if (!isSwappable(bucket)) {
+      console.error("TOKEN_NOT_SWAPPABLE");
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: "TOKEN_NOT_SWAPPABLE",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     // ------------------------------------------------
     // DIRECTION
     // ------------------------------------------------
@@ -284,13 +301,15 @@ export async function POST(req: NextRequest) {
     let quote;
 
     try {
+      console.log("STEP_QUOTE_START");
+
       quote = getSwapResult(
         bucket,
         amountBigInt,
         direction
       );
 
-      console.log("QUOTE_OK");
+      console.log("STEP_QUOTE_OK");
     } catch (error) {
       console.error(
         "QUOTE_ERROR:",
@@ -357,6 +376,8 @@ export async function POST(req: NextRequest) {
     let builder;
 
     try {
+      console.log("STEP_BUILDER_START");
+
       builder = swapBondingCurveV2(umi, {
         genesisAccount,
         bucket: bucketPda,
@@ -377,7 +398,7 @@ export async function POST(req: NextRequest) {
         minAmountOutScaled: minOut,
       });
 
-      console.log("BUILDER_OK");
+      console.log("STEP_BUILDER_OK");
     } catch (error) {
       console.error(
         "BUILDER_ERROR:",
@@ -403,9 +424,11 @@ export async function POST(req: NextRequest) {
     let tx;
 
     try {
+      console.log("STEP_TX_BUILD_START");
+
       tx = await builder.build(umi);
 
-      console.log("TX_BUILD_OK");
+      console.log("STEP_TX_BUILD_OK");
     } catch (error) {
       console.error(
         "TX_BUILD_ERROR:",
@@ -431,11 +454,13 @@ export async function POST(req: NextRequest) {
     let serialized: string;
 
     try {
+      console.log("STEP_SERIALIZE_START");
+
       serialized = Buffer.from(
         umi.transactions.serialize(tx)
       ).toString("base64");
 
-      console.log("SERIALIZE_OK");
+      console.log("STEP_SERIALIZE_OK");
     } catch (error) {
       console.error(
         "SERIALIZE_ERROR:",
@@ -454,9 +479,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ------------------------------------------------
-    // SUCCESS
-    // ------------------------------------------------
+    console.log("STEP_SUCCESS");
 
     return NextResponse.json({
       success: true,
