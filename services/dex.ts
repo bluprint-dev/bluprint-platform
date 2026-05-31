@@ -64,7 +64,7 @@ function mergeTokenResponses(
 }
 
 // ------------------------------
-// GET TOKENS (FINAL SAFE FLOW)
+// GET TOKENS
 // ------------------------------
 export async function getDexTokens(params?: {
   limit?: number;
@@ -131,9 +131,11 @@ export async function getDexTokens(params?: {
 }
 
 // ------------------------------
-// SWAP BUILD (UNCHANGED LOGIC SAFE)
+// SWAP BUILD
+// ✅ FIX: genesisAccount + mintAddress ayrı ayrı gönderiliyor
 // ------------------------------
 export async function buildSwapTx(input: {
+  genesisAccount: string;
   mintAddress: string;
   amountLamports: string;
   userPublicKey: string;
@@ -146,7 +148,8 @@ export async function buildSwapTx(input: {
         timeoutMs: 20_000,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mintAddress: input.mintAddress,
+          genesisAccount: input.genesisAccount, // ✅ curve işlemleri için
+          mintAddress: input.mintAddress,        // ✅ baseMint fallback için
           amount: input.amountLamports,
           userPublicKey: input.userPublicKey,
           isBuy: input.isBuy,
