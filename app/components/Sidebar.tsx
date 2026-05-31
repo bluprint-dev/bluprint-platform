@@ -14,7 +14,7 @@ const F = {
 };
 
 const menuItems = [
-  { href: "/",        label: "Home",   icon: Home      },
+  { href: "/",         label: "Home",   icon: Home      },
   { href: "/create",  label: "Create", icon: Sparkles  },
   { href: "/dex",     label: "DEX",    icon: LineChart  },
   { href: "/referral",label: "Refer",  icon: Users     },
@@ -43,14 +43,7 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
       <div style={{ position: "absolute", top: -40, left: -20, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(153,69,255,0.12) 0%, transparent 70%)", filter: "blur(30px)", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: 60, left: -10, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(20,241,149,0.06) 0%, transparent 70%)", filter: "blur(24px)", pointerEvents: "none" }} />
 
-      {/* grid texture */}
-      <div style={{ position: "absolute", inset: 0, opacity: 0.025, pointerEvents: "none",
-        backgroundImage: "linear-gradient(rgba(153,69,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(153,69,255,1) 1px,transparent 1px)",
-        backgroundSize: "32px 32px" }} />
-
-      {/* content */}
       <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", height: "100%" }}>
-
         {/* live badge */}
         <div style={{ padding: "16px 12px 8px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(20,241,149,0.12)" }}>
@@ -69,7 +62,7 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
             <img src="/favicon.ico" alt="BluPrint" style={{ width: 28, height: 28, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(153,69,255,0.5))" }} />
             <div style={{ display: "flex", fontFamily: F.display, fontSize: 18, fontWeight: 900, letterSpacing: "-0.02em" }}>
               <span style={{ color: "#fff" }}>Blu</span>
-              <span style={{ background: "linear-gradient(135deg,#9945FF,#14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Print</span>
+              <span style={{ color: "#9945FF", textShadow: "0 0 12px rgba(153,69,255,0.6)" }}>Print</span>
             </div>
           </Link>
         </div>
@@ -96,11 +89,10 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
                   background: active ? "linear-gradient(135deg,rgba(153,69,255,0.14),rgba(20,241,149,0.05))" : "transparent",
                   border: active ? "1px solid rgba(153,69,255,0.22)" : "1px solid transparent",
                 }}>
-                {/* active indicator */}
                 {active && (
                   <div style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 2, borderRadius: "0 2px 2px 0", background: "linear-gradient(180deg,#9945FF,#14F195)" }} />
                 )}
-                <Icon size={17} color={active ? "#9945FF" : "rgba(255,255,255,0.3)"} />
+                <Icon size={17} color={active ? "#14F195" : "rgba(255,255,255,0.3)"} />
                 <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: active ? 700 : 500, color: active ? "#fff" : "rgba(255,255,255,0.38)", letterSpacing: "-0.01em" }}>
                   {item.label}
                 </span>
@@ -141,11 +133,6 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
                 {connected && publicKey ? shortenAddress(publicKey.toString()) : "Connect Wallet"}
               </p>
             </div>
-            {connected && (
-              <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 6px #14F195" }} />
-              </div>
-            )}
           </button>
         </div>
       </div>
@@ -166,37 +153,46 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop */}
-      <aside style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 224, zIndex: 40, display: "none" }} className="md:block">
+      {/* Desktop Wrapper (Always Visible on MD+) */}
+      <aside style={{ position: "fixed", left: 0, top: 36, bottom: 0, width: 224, zIndex: 40, display: "none" }} className="md:block">
         <SidebarContent />
       </aside>
 
-      {/* Mobile header */}
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 30, background: "rgba(8,4,18,0.95)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(153,69,255,0.12)" }} className="md:hidden">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px" }}>
+      {/* Mobile Top Bar */}
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "rgba(8,4,18,0.95)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(153,69,255,0.12)", height: 50 }} className="md:hidden">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 16px", height: "100%" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-            <img src="/favicon.ico" alt="BluPrint" style={{ width: 26, height: 26, objectFit: "contain", filter: "drop-shadow(0 0 6px rgba(153,69,255,0.5))" }} />
-            <div style={{ display: "flex", fontFamily: F.display, fontSize: 17, fontWeight: 900 }}>
+            <img src="/favicon.ico" alt="BluPrint" style={{ width: 24, height: 24, objectFit: "contain" }} />
+            <div style={{ display: "flex", fontFamily: F.display, fontSize: 16, fontWeight: 900 }}>
               <span style={{ color: "#fff" }}>Blu</span>
-              <span style={{ background: "linear-gradient(135deg,#9945FF,#14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Print</span>
+              <span style={{ color: "#9945FF" }}>Print</span>
             </div>
           </Link>
           <button onClick={() => setIsMobileOpen(!isMobileOpen)}
-            style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(153,69,255,0.08)", border: "1px solid rgba(153,69,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-            {isMobileOpen ? <X size={18} color="#fff" /> : <Menu size={18} color="#fff" />}
+            style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(153,69,255,0.08)", border: "1px solid rgba(153,69,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            {isMobileOpen ? <X size={16} color="#fff" /> : <Menu size={16} color="#fff" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile drawer */}
+      {/* Mobile Drawer Slide-in */}
       <AnimatePresence>
         {isMobileOpen && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
               onClick={() => setIsMobileOpen(false)}
-              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)", zIndex: 50 }} className="md:hidden" />
-            <motion.div initial={{ x: -224 }} animate={{ x: 0 }} exit={{ x: -224 }} transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 224, zIndex: 60 }} className="md:hidden">
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 55 }}
+            />
+            <motion.div 
+              initial={{ x: "-100%" }} 
+              animate={{ x: 0 }} 
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+              style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 240, zIndex: 60 }}
+            >
               <SidebarContent onLinkClick={() => setIsMobileOpen(false)} />
             </motion.div>
           </>
