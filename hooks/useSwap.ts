@@ -1,15 +1,13 @@
 import { useCallback, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { Transaction } from "@solana/web3.js";
+import { VersionedTransaction } from "@solana/web3.js";
 import { useToast } from "@/app/components/ToastProvider";
 
-// ✅ FIX: genesisAccount ve mint ayrı alanlar
-// genesisAccount → bonding curve PDA türetme, swap işlemi için
-// mint           → display, metadata, ATA için (server tarafında kullanılır)
+// ✅ genesisAccount ve mint ayrı alanlar
 export type SwapInput = {
   genesisAccount: string; // Metaplex Genesis launch account
   mint: string;           // SPL token mint (display only)
-  amount: string;         // SOL (buy) veya token miktarı (sell) — insan okunur
+  amount: string;         // SOL (buy) veya token miktarı (sell)
   isBuy: boolean;
 };
 
@@ -32,8 +30,6 @@ export function useSwap() {
       setError("");
 
       try {
-        // Buy: SOL miktarı → lamports
-        // Sell: token miktarı → direkt gönder (token decimals server'da handle edilir)
         const amount = input.isBuy
           ? Math.floor(Number(input.amount) * 1_000_000_000).toString()
           : input.amount;
@@ -42,8 +38,8 @@ export function useSwap() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            genesisAccount: input.genesisAccount, // ✅ ayrı alan — mint değil
-            mintAddress: input.mint,              // server'da metadata/ATA için
+            genesisAccount: input.genesisAccount,
+            mintAddress: input.mint,
             amount,
             userPublicKey: publicKey.toString(),
             isBuy: input.isBuy,
@@ -56,7 +52,9 @@ export function useSwap() {
           throw new Error(data.error ?? "SWAP_FAILED");
         }
 
-        const tx = Transaction.from(
+        // ✅ FIX: Umi versioned transaction üretiyor, Transaction.from() değil
+        // VersionedTransaction.deserialize() kullanılmalı
+        const tx = VersionedTransaction.deserialize(
           Buffer.from(data.transaction, "base64")
         );
 
