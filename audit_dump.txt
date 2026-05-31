@@ -1,0 +1,1821 @@
+﻿===== components/dex/DexPageContent.tsx =====
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { ArrowUpDown, Sparkles, TrendingUp } from "lucide-react";
+import Footer from "@/app/components/Footer";
+import DexHeader from "@/components/dex/Header";
+import StatsBar from "@/components/dex/StatsBar";
+import SearchBar from "@/components/dex/SearchBar";
+import TokenList from "@/components/dex/TokenList";
+import TradePanel from "@/components/dex/TradePanel";
+import TokenModal from "@/components/dex/TokenModal";
+import LoadingSkeleton from "@/components/dex/LoadingSkeleton";
+import EmptyState from "@/components/dex/EmptyState";
+import ErrorState from "@/components/dex/ErrorState";
+import { useDexTokens } from "@/hooks/useDexTokens";
+import { useBondingCurveInfo } from "@/hooks/useBondingCurveInfo";
+import { useSwap } from "@/hooks/useSwap";
+import { useDexStore } from "@/store/dexStore";
+import { filterTokens } from "@/lib/dex/normalizeToken";
+
+type SortMode = "newest" | "name";
+
+export default function DexPageContent() {
+  const searchParams = useSearchParams();
+  const mintFromUrl = searchParams.get("mint");
+
+  const {
+    search,
+    selectedMint,
+    isBuy,
+    amount,
+    setSearch,
+    selectToken,
+    setIsBuy,
+    setAmount,
+    resetTrade,
+  } = useDexStore();
+
+  const { tokens, total, isLoading, isFetching, isError, error, refresh } = useDexTokens();
+  const { swap, isSwapping, error: swapError, setError: setSwapError } = useSwap();
+  const [mobileTradeOpen, setMobileTradeOpen] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>("newest");
+
+  const filteredTokens = useMemo(() => {
+    const base = filterTokens(tokens, search);
+    const copy = [...base];
+    if (sortMode === "newest") {
+      copy.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    } else if (sortMode === "name") {
+      copy.sort((a, b) => (a.symbol ?? "").localeCompare(b.symbol ?? ""));
+    }
+    return copy;
+  }, [tokens, search, sortMode]);
+
+  const selectedToken = useMemo(
+    () => tokens.find((t) => t.mint === selectedMint) ?? null,
+    [tokens, selectedMint]
+  );
+
+  const { data: curveInfo, isLoading: isLoadingCurve } = useBondingCurveInfo(selectedMint);
+
+  useEffect(() => {
+    if (mintFromUrl && tokens.some((t) => t.mint === mintFromUrl)) {
+      selectToken(mintFromUrl);
+    }
+  }, [mintFromUrl, tokens, selectToken]);
+
+  const handleSelectToken = (token: typeof tokens[0]) => {
+    selectToken(token.mint);
+    setSwapError("");
+    if (window.innerWidth < 1024) setMobileTradeOpen(true);
+  };
+
+  const handleSwap = async () => {
+    if (!selectedToken || !amount) return;
+    const ok = await swap({ mint: selectedToken.mint, amount, isBuy });
+    if (ok) {
+      resetTrade();
+      setMobileTradeOpen(false);
+    }
+  };
+
+  const tradePanelProps = {
+    token: selectedToken,
+    isBuy,
+    amount,
+    isSwapping,
+    swapError,
+    curveInfo: curveInfo ?? null,
+    isLoadingCurve,
+    onToggleBuy: setIsBuy,
+    onAmountChange: setAmount,
+    onSwap: handleSwap,
+  };
+
+  return (
+    <div className="min-h-screen relative">
+      {/* Premium background layers (pump-like vibe, BluPrint palette) */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-24 left-10 h-[520px] w-[520px] rounded-full bg-[#ff2d95]/10 blur-[140px]" />
+        <div className="absolute top-[20%] right-10 h-[460px] w-[460px] rounded-full bg-[#7c3aed]/10 blur-[160px]" />
+        <div className="absolute bottom-[-10%] left-[25%] h-[420px] w-[420px] rounded-full bg-[#ff6bcb]/10 blur-[150px]" />
+        <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(circle_at_1px_1px,rgba(255,45,149,0.7)_1px,transparent_1px)] [background-size:28px_28px]" />
+      </div>
+
+      <DexHeader onRefresh={() => refresh()} isRefreshing={isFetching} />
+
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur-sm p-6">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.5] bg-[radial-gradient(circle_at_20%_10%,rgba(255,45,149,0.18),transparent_45%),radial-gradient(circle_at_80%_20%,rgba(124,58,237,0.16),transparent_45%)]" />
+          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-400">
+                <Sparkles className="w-3.5 h-3.5 text-[#ff2d95]" />
+                Pump-style bonding curve trading
+              </div>
+              <h2 className="mt-3 text-3xl md:text-4xl font-black tracking-tight text-white">
+                Trade the <span className="text-[#ff2d95]">newest</span> launches on BluPrint
+              </h2>
+              <p className="mt-2 text-sm text-gray-400 max-w-2xl">
+                Instant swaps, live curve info, and a clean terminal-grade UI that matches BluPrintâ€™s pink-whale theme.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                href="/create"
+                className="inline-flex items-center justify-center h-11 px-5 rounded-2xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white text-sm font-semibold shadow-[0_0_35px_rgba(255,45,149,0.22)] hover:shadow-[0_0_55px_rgba(255,45,149,0.32)] transition"
+              >
+                Launch token
+              </Link>
+              <a
+                href="#market"
+                className="inline-flex items-center justify-center h-11 px-5 rounded-2xl border border-white/10 bg-white/5 text-gray-200 text-sm hover:border-[#ff2d95]/40 hover:text-white transition"
+              >
+                View market
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <StatsBar totalTokens={total} isLoading={isLoading} />
+
+        <div id="market" className="grid lg:grid-cols-3 gap-6 scroll-mt-28">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <SearchBar value={search} onChange={setSearch} />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSortMode((m) => (m === "newest" ? "name" : "newest"))}
+                  className="inline-flex items-center gap-2 h-12 px-4 rounded-2xl bg-white/5 border border-white/10 text-gray-200 hover:border-[#ff2d95]/40 hover:text-white transition"
+                >
+                  <ArrowUpDown className="w-4 h-4 text-[#ff2d95]" />
+                  <span className="text-sm font-medium">
+                    {sortMode === "newest" ? "Newest" : "Name"}
+                  </span>
+                </button>
+
+                <div className="hidden sm:flex items-center gap-2 h-12 px-4 rounded-2xl bg-white/5 border border-white/10 text-gray-400">
+                  <TrendingUp className="w-4 h-4 text-green-400" />
+                  <span className="text-xs font-mono">{isFetching ? "syncing" : "live"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* List container (premium card) */}
+            <div className="rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur-sm p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-3 px-1">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                  <p className="text-xs text-gray-500">
+                    {isLoading ? "Loading market..." : `${filteredTokens.length} tokens`}
+                  </p>
+                </div>
+                <p className="text-[10px] text-gray-600 font-mono">
+                  {isFetching ? "syncing..." : "synced"}
+                </p>
+              </div>
+
+              {isLoading ? (
+                <LoadingSkeleton />
+              ) : isError ? (
+                <ErrorState
+                  message={error instanceof Error ? error.message : undefined}
+                  onRetry={() => refresh()}
+                />
+              ) : filteredTokens.length === 0 ? (
+                <EmptyState hasSearch={Boolean(search.trim())} />
+              ) : (
+                <TokenList
+  tokens={filteredTokens}
+  selectedToken={selectedToken}
+  onSelect={handleSelectToken}
+/>
+              )}
+            </div>
+          </div>
+
+          <div className="hidden lg:block">
+            <TradePanel {...tradePanelProps} />
+          </div>
+        </div>
+      </div>
+
+      <TokenModal
+        token={selectedToken}
+        open={mobileTradeOpen}
+        curveInfo={curveInfo ?? null}
+        isLoadingCurve={isLoadingCurve}
+        onClose={() => setMobileTradeOpen(false)}
+      >
+        <TradePanel {...tradePanelProps} showDetail={false} compact />
+      </TokenModal>
+
+      <Footer />
+    </div>
+  );
+}
+
+===== components/dex/TradePanel.tsx =====
+"use client";
+
+import { Loader2 } from "lucide-react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import type { DexToken } from "@/types/dex";
+import TokenDetailPanel from "./TokenDetailPanel";
+import type { BondingCurveInfo } from "@/hooks/useBondingCurveInfo";
+
+type TradePanelProps = {
+  token: DexToken | null;
+  isBuy: boolean;
+  amount: string;
+  isSwapping: boolean;
+  swapError: string;
+  curveInfo?: BondingCurveInfo | null;
+  isLoadingCurve?: boolean;
+  showDetail?: boolean;
+  compact?: boolean;
+  onToggleBuy: (isBuy: boolean) => void;
+  onAmountChange: (amount: string) => void;
+  onSwap: () => void;
+};
+
+export default function TradePanel({
+  token,
+  isBuy,
+  amount,
+  isSwapping,
+  swapError,
+  curveInfo,
+  isLoadingCurve,
+  showDetail = true,
+  compact = false,
+  onToggleBuy,
+  onAmountChange,
+  onSwap,
+}: TradePanelProps) {
+  const { connected } = useWallet();
+
+  if (!token) {
+    return (
+      <div className="rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur-sm p-6 sticky top-24">
+        <div className="text-center py-16">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#ff2d95]/20 to-[#ff6bcb]/20 flex items-center justify-center">
+            <span className="text-2xl">âš¡</span>
+          </div>
+          <p className="text-gray-400">Select a token to start trading</p>
+        </div>
+      </div>
+    );
+  }
+
+  const lifecycle = curveInfo?.lifecycle;
+  const canTrade = lifecycle?.isSwappable !== false;
+  const fillPercent = lifecycle?.fillPercent ?? 0;
+  const priceTokensPerSol = curveInfo?.price?.tokensPerSol ? Number(curveInfo.price.tokensPerSol) : null;
+  const priceText =
+    priceTokensPerSol && Number.isFinite(priceTokensPerSol)
+      ? `${priceTokensPerSol.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token.symbol} / SOL`
+      : "â€”";
+
+  return (
+    <div
+      className={`rounded-3xl border border-white/5 bg-[#12121A]/80 backdrop-blur-xl p-6 shadow-[0_0_40px_rgba(255,45,149,0.08)] ${
+        compact ? "" : "sticky top-24"
+      }`}
+    >
+      {showDetail && (
+        <TokenDetailPanel token={token} curveInfo={curveInfo} isLoadingCurve={isLoadingCurve} />
+      )}
+
+      {/* Pump-like quick stats */}
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Price</p>
+          <p className="text-white font-bold text-sm truncate">{isLoadingCurve ? "..." : priceText}</p>
+        </div>
+        <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Curve Fill</p>
+          <p className="text-white font-bold text-sm">
+            {isLoadingCurve ? "..." : `${Math.max(0, Math.min(fillPercent, 100)).toFixed(1)}%`}
+          </p>
+          <div className="mt-2 h-1.5 rounded-full bg-white/5 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] transition-all duration-500"
+              style={{ width: `${Math.min(fillPercent, 100)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 p-1 rounded-xl bg-white/5 mb-5">
+        <button
+          onClick={() => onToggleBuy(true)}
+          className={`flex-1 py-2.5 rounded-lg font-bold transition ${
+            isBuy ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "text-gray-400 hover:text-white"
+          }`}
+        >
+          Buy
+        </button>
+        <button
+          onClick={() => onToggleBuy(false)}
+          className={`flex-1 py-2.5 rounded-lg font-bold transition ${
+            !isBuy ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-gray-400 hover:text-white"
+          }`}
+        >
+          Sell
+        </button>
+      </div>
+
+      <div className="mb-4">
+        <label className="text-sm text-gray-400 mb-2 block">
+          {isBuy ? "You pay (SOL)" : "You sell (tokens)"}
+        </label>
+        <input
+          type="number"
+          min="0"
+          step="any"
+          value={amount}
+          onChange={(e) => onAmountChange(e.target.value)}
+          placeholder="0.00"
+          className="w-full h-12 px-4 rounded-xl bg-[#0A0A0F] border border-white/10 text-white text-lg focus:outline-none focus:border-[#ff2d95]/50 transition"
+        />
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        {(isBuy ? ["0.1", "0.5", "1"] : ["25", "50", "100"]).map((preset) => (
+          <button
+            key={preset}
+            onClick={() => onAmountChange(preset)}
+            className="flex-1 py-2 rounded-lg text-xs font-medium bg-white/5 border border-white/5 text-gray-300 hover:border-[#ff2d95]/30 hover:text-white transition"
+          >
+            {preset}{isBuy ? " SOL" : "%"}
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={onSwap}
+        disabled={isSwapping || !amount || !connected || !canTrade}
+        className={`w-full h-12 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed ${
+          isBuy
+            ? "bg-gradient-to-r from-green-500 to-emerald-400 hover:shadow-lg hover:shadow-green-500/20"
+            : "bg-gradient-to-r from-red-500 to-rose-400 hover:shadow-lg hover:shadow-red-500/20"
+        }`}
+      >
+        {isSwapping ? (
+          <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+        ) : !canTrade ? (
+          "Trading unavailable"
+        ) : (
+          `${isBuy ? "Buy" : "Sell"} ${token.symbol}`
+        )}
+      </button>
+
+      {swapError && <p className="text-red-400 text-sm mt-3 text-center">{swapError}</p>}
+
+      {!connected && (
+        <p className="text-gray-500 text-sm mt-3 text-center">Connect wallet to trade</p>
+      )}
+    </div>
+  );
+}
+
+
+===== components/dex/TokenModal.tsx =====
+"use client";
+
+import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
+import type { DexToken } from "@/types/dex";
+import TokenDetailPanel from "./TokenDetailPanel";
+import type { BondingCurveInfo } from "@/hooks/useBondingCurveInfo";
+
+type TokenModalProps = {
+  token: DexToken | null;
+  open: boolean;
+  curveInfo?: BondingCurveInfo | null;
+  isLoadingCurve?: boolean;
+  onClose: () => void;
+  children?: React.ReactNode;
+};
+
+export default function TokenModal({
+  token,
+  open,
+  curveInfo,
+  isLoadingCurve,
+  onClose,
+  children,
+}: TokenModalProps) {
+  return (
+    <AnimatePresence>
+      {open && token && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden"
+          />
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            className="fixed inset-x-0 bottom-0 z-50 lg:hidden rounded-t-3xl border border-white/10 bg-[#12121A] p-5 max-h-[85vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold">Trade {token.symbol}</h3>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <TokenDetailPanel token={token} curveInfo={curveInfo} isLoadingCurve={isLoadingCurve} />
+            {children}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+
+===== components/dex/TokenList.tsx =====
+"use client";
+
+import type { DexToken } from "@/types/dex";
+import TokenCard from "./TokenCard";
+
+type TokenListProps = {
+  tokens: DexToken[];
+  selectedToken: DexToken | null;
+  onSelect: (token: DexToken) => void;
+};
+
+export default function TokenList({
+  tokens,
+  selectedToken,
+  onSelect,
+}: TokenListProps) {
+  return (
+    <div className="grid gap-2 max-h-[calc(100vh-22rem)] overflow-y-auto pr-1">
+      {tokens.map((token, index) => (
+        <TokenCard
+          key={token.mint}
+          token={token}
+          index={index}
+          selected={
+            selectedToken?.mint === token.mint
+          }
+          onSelect={onSelect}
+        />
+      ))}
+    </div>
+  );
+}
+
+===== components/dex/TokenCard.tsx =====
+"use client";
+
+import { memo } from "react";
+import { motion } from "framer-motion";
+import { ChevronRight } from "lucide-react";
+import type { DexToken } from "@/types/dex";
+import { shortMint } from "@/lib/dex/normalizeToken";
+
+type TokenCardProps = {
+  token: DexToken;
+  selected?: boolean;
+  index?: number;
+  onSelect: (token: DexToken) => void;
+};
+
+function TokenAvatar({ token }: { token: DexToken }) {
+  if (token.imageUrl) {
+    return (
+      <img
+        src={token.imageUrl}
+        alt={token.symbol}
+        className="w-11 h-11 rounded-full object-cover ring-2 ring-white/5"
+        loading="lazy"
+      />
+    );
+  }
+
+  return (
+    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#ff2d95] to-[#7c3aed] flex items-center justify-center ring-2 ring-white/5">
+      <span className="text-white font-bold text-lg">
+        {token.symbol.charAt(0) || "?"}
+      </span>
+    </div>
+  );
+}
+
+function TokenCardComponent({
+  token,
+  selected,
+  index = 0,
+  onSelect,
+}: TokenCardProps) {
+  return (
+    <motion.button
+      type="button"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.02, 0.3) }}
+      whileHover={{ scale: 1.01, x: 2 }}
+      whileTap={{ scale: 0.99 }}
+      onClick={() => onSelect(token)}
+      className={`group relative w-full text-left flex items-center justify-between p-3 sm:p-4 rounded-2xl border transition-all dex-card-hover ${
+        selected
+          ? "bg-[#ff2d95]/10 border-[#ff2d95]/40 shadow-[0_0_30px_rgba(255,45,149,0.15)]"
+          : "bg-white/[0.02] border-white/5 hover:border-[#ff2d95]/25 hover:bg-white/[0.04]"
+      }`}
+    >
+      {/* glow */}
+      <div
+        className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition pointer-events-none ${
+          selected ? "opacity-100" : ""
+        }`}
+        style={{
+          background:
+            "radial-gradient(700px circle at 10% 0%, rgba(255,45,149,0.12), transparent 45%)",
+        }}
+      />
+
+      {/* left */}
+      <div className="relative flex items-center gap-3 min-w-0">
+        <TokenAvatar token={token} />
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-white font-bold">
+              {token.symbol}
+            </span>
+            <span className="text-xs text-gray-500 truncate">
+              {token.name}
+            </span>
+          </div>
+
+          {/* âš ï¸ still mint display ONLY (UI safe) */}
+          <p className="text-xs text-gray-600 font-mono truncate">
+            {shortMint(token.mint)}
+          </p>
+        </div>
+      </div>
+
+      {/* right */}
+      <ChevronRight
+        className={`relative w-4 h-4 shrink-0 transition ${
+          selected
+            ? "text-[#ff2d95]"
+            : "text-gray-600 group-hover:text-gray-300"
+        }`}
+      />
+    </motion.button>
+  );
+}
+
+export default memo(TokenCardComponent);
+
+===== components/dex/TokenDetailPanel.tsx =====
+"use client";
+
+import { ExternalLink } from "lucide-react";
+import type { DexToken } from "@/types/dex";
+import { shortMint } from "@/lib/dex/normalizeToken";
+import type { BondingCurveInfo } from "@/hooks/useBondingCurveInfo";
+
+type TokenDetailPanelProps = {
+  token: DexToken;
+  curveInfo?: BondingCurveInfo | null;
+  isLoadingCurve?: boolean;
+};
+
+export default function TokenDetailPanel({
+  token,
+  curveInfo,
+  isLoadingCurve,
+}: TokenDetailPanelProps) {
+  const fillPercent = curveInfo?.lifecycle?.fillPercent ?? 0;
+  const price = curveInfo?.price?.tokensPerSol;
+
+  return (
+    <div className="space-y-4 pb-6 border-b border-white/5">
+      <div className="flex items-center gap-3">
+        {token.imageUrl ? (
+          <img
+            src={token.imageUrl}
+            alt={token.symbol}
+            className="w-14 h-14 rounded-full object-cover ring-2 ring-[#ff2d95]/30"
+          />
+        ) : (
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#ff2d95] to-[#7c3aed] flex items-center justify-center">
+            <span className="text-white font-bold text-2xl">{token.symbol.charAt(0) || "?"}</span>
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-white font-bold text-xl">{token.symbol}</span>
+            <span className="text-xs text-gray-500 truncate">{token.name}</span>
+          </div>
+          <p className="text-xs text-gray-600 font-mono">{shortMint(token.mint, 8, 6)}</p>
+          <button
+            onClick={() => window.open(`https://solscan.io/token/${token.mint}`, "_blank")}
+            className="mt-1 text-xs text-gray-500 hover:text-[#ff2d95] transition flex items-center gap-1"
+          >
+            <ExternalLink className="w-3 h-3" />
+            View on Solscan
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl bg-white/[0.03] border border-white/5 p-3">
+          <p className="text-xs text-gray-500 mb-1">Curve Fill</p>
+          <p className="text-white font-bold">
+            {isLoadingCurve ? "..." : `${fillPercent.toFixed(1)}%`}
+          </p>
+        </div>
+        <div className="rounded-xl bg-white/[0.03] border border-white/5 p-3">
+          <p className="text-xs text-gray-500 mb-1">Price</p>
+          <p className="text-white font-bold text-sm truncate">
+            {isLoadingCurve ? "..." : price ? `${Number(price).toLocaleString()} / SOL` : "â€”"}
+          </p>
+        </div>
+      </div>
+
+      {curveInfo?.lifecycle && (
+        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] transition-all duration-500"
+            style={{ width: `${Math.min(fillPercent, 100)}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+===== hooks/useSwap.ts =====
+import { useCallback, useState } from "react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { Transaction } from "@solana/web3.js";
+import { useToast } from "@/app/components/ToastProvider";
+
+export function useSwap() {
+  const { connection } = useConnection();
+  const { publicKey, sendTransaction, connected } = useWallet();
+  const { showToast } = useToast();
+
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [error, setError] = useState("");
+
+  const swap = useCallback(
+    async (input: { mint: string; amount: string; isBuy: boolean }) => {
+      if (!connected || !publicKey) {
+        window.dispatchEvent(new CustomEvent("wallet-connect-requested"));
+        return false;
+      }
+
+      setIsSwapping(true);
+      setError("");
+
+      try {
+        const lamports = Math.floor(
+          Number(input.amount) * 1_000_000_000
+        ).toString();
+
+        const res = await fetch("/api/bonding-curve/swap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            genesisAccount: input.mint, // âœ… FIX: unified key
+            amount: lamports,
+            userPublicKey: publicKey.toString(),
+            isBuy: input.isBuy,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+          throw new Error(data.error);
+        }
+
+        const tx = Transaction.from(
+          Buffer.from(data.transaction, "base64")
+        );
+
+        const sig = await sendTransaction(tx, connection);
+
+        await connection.confirmTransaction(sig, "confirmed");
+
+        showToast(
+          input.isBuy ? "Buy success" : "Sell success",
+          "success"
+        );
+
+        return true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Swap failed";
+        setError(msg);
+        showToast(msg, "error");
+        return false;
+      } finally {
+        setIsSwapping(false);
+      }
+    },
+    [connected, publicKey, sendTransaction, connection, showToast]
+  );
+
+  return { swap, isSwapping, error, setError };
+}
+
+===== hooks/useBondingCurveInfo.ts =====
+import { useQuery } from "@tanstack/react-query";
+import { fetchJson } from "@/services/http";
+
+export type BondingCurveInfo = {
+  success: boolean;
+  lifecycle?: {
+    isSwappable: boolean;
+    isSoldOut: boolean;
+    isGraduated: boolean;
+    isFirstBuyPending: boolean;
+    fillPercent: number;
+  };
+  price?: {
+    tokensPerSol: string;
+    lamportsPerToken: string;
+  };
+  reserves?: {
+    quoteTokenDepositTotal: string;
+    baseTokenBalance: string;
+  };
+};
+
+export function useBondingCurveInfo(mint: string | null) {
+  return useQuery({
+    queryKey: ["dex", "curve", mint],
+    queryFn: () =>
+      fetchJson<BondingCurveInfo>(
+        `/api/bonding-curve/info?genesisAccount=${encodeURIComponent(mint!)}`,
+        { timeoutMs: 12_000 }
+      ),
+    enabled: Boolean(mint),
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  });
+}
+
+
+===== hooks/useDexTokens.ts =====
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getDexTokens } from "@/services/dex";
+import { sortTokensNewest } from "@/lib/dex/normalizeToken";
+import { useDexStore } from "@/store/dexStore";
+import type { DexToken } from "@/types/dex";
+import { useEffect, useMemo } from "react";
+
+export const DEX_TOKENS_QUERY_KEY = ["dex", "tokens"] as const;
+
+// ------------------------------
+// SAFE MERGE
+// ------------------------------
+function mergeTokens(
+  server: DexToken[],
+  optimistic: DexToken[]
+): DexToken[] {
+  const map = new Map<string, DexToken>();
+
+  // server first (source of truth)
+  for (const token of server) {
+    if (!token?.mint) continue;
+    map.set(token.mint, token);
+  }
+
+  // optimistic overlay
+  for (const token of optimistic) {
+    if (!token?.mint) continue;
+    map.set(token.mint, token);
+  }
+
+  return sortTokensNewest(Array.from(map.values()));
+}
+
+export function useDexTokens() {
+  const optimisticTokens = useDexStore((s) => s.optimisticTokens);
+  const clearOptimisticTokens = useDexStore((s) => s.clearOptimisticTokens);
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: DEX_TOKENS_QUERY_KEY,
+    queryFn: () => getDexTokens({ limit: 100 }),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+
+  const tokens = useMemo(() => {
+    const server = query.data?.tokens ?? [];
+    return mergeTokens(server, optimisticTokens);
+  }, [query.data?.tokens, optimisticTokens]);
+
+  useEffect(() => {
+    if (!query.data?.success || optimisticTokens.length === 0) return;
+
+    const serverMints = new Set(
+      (query.data.tokens ?? []).map((t) => t.mint)
+    );
+
+    const allSynced = optimisticTokens.every((t) =>
+      serverMints.has(t.mint)
+    );
+
+    if (allSynced) clearOptimisticTokens();
+  }, [query.data, optimisticTokens, clearOptimisticTokens]);
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: DEX_TOKENS_QUERY_KEY,
+    });
+    return query.refetch();
+  };
+
+  return {
+    tokens,
+    total: Math.max(query.data?.total ?? 0, tokens.length),
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error,
+    refresh,
+  };
+}
+
+===== lib/dex/tokenRegistry.ts =====
+import { redis } from "@/app/lib/redis";
+import { normalizeToken } from "@/lib/dex/normalizeToken";
+import type { DexToken } from "@/types/dex";
+
+const METADATA_TTL = 3600;
+
+async function fetchExternalMetadata(
+  mint: string
+): Promise<Partial<DexToken> | null> {
+  try {
+    const response = await fetch(
+      `https://public-api.solscan.io/token/meta?token=${mint}`,
+      {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "BluPrint/1.0",
+        },
+        signal: AbortSignal.timeout(8000),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("SOLSCAN_FETCH_FAILED", {
+        mint,
+        status: response.status,
+      });
+
+      return null;
+    }
+
+    const data = await response.json();
+
+    const metadata: Partial<DexToken> = {
+      name:
+        data.name ||
+        data.data?.name ||
+        "Unknown Token",
+
+      symbol:
+        data.symbol ||
+        data.data?.symbol ||
+        "UNKNOWN",
+
+      imageUrl:
+        data.icon ||
+        data.data?.icon ||
+        data.metadata?.image ||
+        "",
+
+      creator:
+        data.creator ||
+        data.data?.creator ||
+        "",
+
+      createdAt:
+        data.createdAt ||
+        data.data?.createdAt ||
+        Date.now(),
+    };
+
+    console.log("TOKEN_METADATA_RESULT", {
+      mint,
+      metadata,
+    });
+
+    return metadata;
+  } catch (error) {
+    console.error("SOLSCAN_METADATA_ERROR", {
+      mint,
+      error,
+    });
+
+    return null;
+  }
+}
+
+async function resolveTokenMetadata(
+  mint: string
+): Promise<DexToken> {
+  try {
+    const cacheKey = `token:metadata:${mint}`;
+
+    const cached = await redis.get(cacheKey);
+
+    if (cached && typeof cached === "string") {
+      return normalizeToken({
+        mint,
+        ...JSON.parse(cached),
+      });
+    }
+
+    const externalMetadata =
+      await fetchExternalMetadata(mint);
+
+    if (externalMetadata) {
+      const token = normalizeToken({
+        mint,
+        ...externalMetadata,
+      });
+
+      await redis.set(
+        cacheKey,
+        JSON.stringify(token),
+        {
+          ex: METADATA_TTL,
+        }
+      );
+
+      return token;
+    }
+  } catch (error) {
+    console.error(
+      `TOKEN_METADATA_RESOLVE_FAILED: ${mint}`,
+      error
+    );
+  }
+
+  return normalizeToken({ mint });
+}
+
+export async function getAllTokenMints(): Promise<
+  string[]
+> {
+  const tokenMints = await redis.smembers(
+    "bonding-curve:tokens"
+  );
+
+  if (!Array.isArray(tokenMints)) {
+    return [];
+  }
+
+  return [
+    ...new Set(
+      tokenMints.filter(
+        (mint): mint is string =>
+          typeof mint === "string"
+      )
+    ),
+  ];
+}
+
+export async function getDexTokenRegistry(options?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  tokens: DexToken[];
+  total: number;
+}> {
+  const limit = options?.limit ?? 100;
+  const offset = options?.offset ?? 0;
+
+  const allMints = await getAllTokenMints();
+
+  const paginatedMints = allMints.slice(
+    offset,
+    offset + limit
+  );
+
+  const tokens = await Promise.all(
+    paginatedMints.map((mint) =>
+      resolveTokenMetadata(mint)
+    )
+  );
+
+  return {
+    tokens: tokens.sort(
+      (a, b) =>
+        (b.createdAt ?? 0) -
+        (a.createdAt ?? 0)
+    ),
+
+    total: allMints.length,
+  };
+}
+
+===== lib/dex/normalizeToken.ts =====
+import type { DexToken } from "@/types/dex";
+
+export function normalizeToken(
+  raw: Partial<DexToken> & {
+    mint: string;
+  }
+): DexToken {
+  return {
+    mint: raw.mint,
+
+    genesisAccount:
+      raw.genesisAccount,
+
+    name:
+      raw.name?.trim() ||
+      "Unknown",
+
+    symbol:
+      raw.symbol?.trim() ||
+      "???",
+
+    imageUrl:
+      raw.imageUrl ||
+      (raw as { image?: string }).image ||
+      "",
+
+    creator:
+      raw.creator || "",
+
+    createdAt:
+      raw.createdAt ||
+      Date.now(),
+  };
+}
+
+export function filterTokens(
+  tokens: DexToken[],
+  query: string
+): DexToken[] {
+  const q =
+    query.trim().toLowerCase();
+
+  if (!q) {
+    return tokens;
+  }
+
+  return tokens.filter(
+    (t) =>
+      t.name
+        .toLowerCase()
+        .includes(q) ||
+      t.symbol
+        .toLowerCase()
+        .includes(q) ||
+      t.mint
+        .toLowerCase()
+        .includes(q)
+  );
+}
+
+export function sortTokensNewest(
+  tokens: DexToken[]
+): DexToken[] {
+  return [...tokens].sort(
+    (a, b) =>
+      (b.createdAt ?? 0) -
+      (a.createdAt ?? 0)
+  );
+}
+
+export function shortMint(
+  mint: string,
+  start = 6,
+  end = 4
+): string {
+  if (
+    mint.length <=
+    start + end
+  ) {
+    return mint;
+  }
+
+  return `${mint.slice(
+    0,
+    start
+  )}...${mint.slice(-end)}`;
+}
+
+===== app/api/bonding-curve/launch/route.ts =====
+import { NextRequest, NextResponse } from "next/server";
+
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+
+import {
+  genesis,
+  createAndRegisterLaunch,
+  isGenesisApiError,
+  isGenesisApiNetworkError,
+  isGenesisValidationError,
+} from "@metaplex-foundation/genesis";
+
+import { keypairIdentity } from "@metaplex-foundation/umi";
+import { redis } from "@/app/lib/redis";
+
+export const runtime = "nodejs";
+
+// -----------------------------
+// UMI INIT
+// -----------------------------
+function getPlatformUmi() {
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
+  if (!rpcUrl) throw new Error("NEXT_PUBLIC_RPC_URL missing");
+
+  const secretKeyRaw = process.env.PLATFORM_SECRET_KEY;
+  if (!secretKeyRaw) throw new Error("PLATFORM_SECRET_KEY missing");
+
+  const umi = createUmi(rpcUrl).use(genesis());
+
+  const secretKey = Uint8Array.from(JSON.parse(secretKeyRaw));
+  const keypair = umi.eddsa.createKeypairFromSecretKey(secretKey);
+
+  umi.use(keypairIdentity(keypair));
+  return umi;
+}
+
+// -----------------------------
+function safeError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+  return { message: String(error) };
+}
+
+// -----------------------------
+// ROUTE
+// -----------------------------
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    console.log("LAUNCH_REQUEST:", body);
+
+    const {
+      name,
+      symbol,
+      image,
+      description,
+      twitter,
+      telegram,
+      website,
+    } = body;
+
+    if (!name || !symbol || !image) {
+      return NextResponse.json(
+        { success: false, error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    const umi = getPlatformUmi();
+
+    const input = {
+      wallet: umi.identity.publicKey,
+
+      token: {
+        name,
+        symbol,
+        image,
+        description: description || "",
+        externalLinks: {
+          website: website || undefined,
+          twitter: twitter || undefined,
+          telegram: telegram || undefined,
+        },
+      },
+
+      launchType: "bondingCurve" as const,
+
+      launch: {
+        creatorFeeWallet: umi.identity.publicKey,
+        firstBuyAmount: 0,
+      },
+    };
+
+    console.log("CREATE_INPUT:", input);
+
+    const result = await createAndRegisterLaunch(umi, {}, input);
+
+    console.log("CREATE_RESULT:", result);
+
+    // ======================================================
+    // ğŸ”¥ REDIS FIX (DUAL WRITE + BACKWARD COMPATIBILITY)
+    // ======================================================
+
+    await redis.sadd(
+  "bonding-curve:tokens",
+  result.mintAddress
+);
+
+    // 2) LEGACY SUPPORT (optional fallback)
+    await redis.sadd("bonding-curve:tokens:legacy", result.mintAddress);
+
+    console.log("LAUNCH_ADDRESSES", {
+      mintAddress: result.mintAddress,
+      genesisAccount: result.genesisAccount,
+    });
+
+    // ======================================================
+    // METADATA (UNCHANGED - SAFE)
+    // ======================================================
+    await redis.set(
+      `token:metadata:${result.mintAddress}`,
+      JSON.stringify({
+        mint: result.mintAddress,
+        genesisAccount: result.genesisAccount,
+
+        name,
+        symbol,
+        imageUrl: image,
+
+        description: description || "",
+
+        creator: umi.identity.publicKey.toString(),
+
+        website: website || "",
+        twitter: twitter || "",
+        telegram: telegram || "",
+
+        createdAt: Date.now(),
+      })
+    );
+
+    console.log("REDIS_METADATA_SAVED:", result.mintAddress);
+
+    return NextResponse.json({
+      success: true,
+
+      mintAddress: result.mintAddress,
+      genesisAccount: result.genesisAccount,
+
+      launchId: result.launch.id,
+      launchLink: result.launch.link,
+
+      token: {
+        mint: result.mintAddress,
+        genesisAccount: result.genesisAccount,
+      },
+    });
+  } catch (err) {
+    console.error("LAUNCH_FATAL:", safeError(err));
+
+    if (isGenesisValidationError(err)) {
+      return NextResponse.json(
+        {
+          success: false,
+          type: "VALIDATION_ERROR",
+          field: err.field,
+          error: err.message,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (isGenesisApiError(err)) {
+      return NextResponse.json(
+        {
+          success: false,
+          type: "GENESIS_API_ERROR",
+          statusCode: err.statusCode,
+          details: err.responseBody,
+        },
+        { status: 502 }
+      );
+    }
+
+    if (isGenesisApiNetworkError(err)) {
+      return NextResponse.json(
+        {
+          success: false,
+          type: "NETWORK_ERROR",
+          error: err.cause.message,
+        },
+        { status: 503 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        type: "UNKNOWN_ERROR",
+        error: err instanceof Error ? err.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+===== app/api/bonding-curve/claim/route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
+import {
+  genesis,
+  findBondingCurveBucketV2Pda,
+  fetchBondingCurveBucketV2,
+  claimBondingCurveCreatorFeeV2,
+  isGraduated,
+} from '@metaplex-foundation/genesis';
+import { keypairIdentity, publicKey } from '@metaplex-foundation/umi';
+
+function getPlatformUmi() {
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
+  if (!rpcUrl) throw new Error('NEXT_PUBLIC_RPC_URL not configured');
+
+  const secretKeyRaw = process.env.PLATFORM_SECRET_KEY;
+  if (!secretKeyRaw) throw new Error('PLATFORM_SECRET_KEY not configured');
+
+  const umi = createUmi(rpcUrl).use(genesis());
+  const secretKey = Uint8Array.from(JSON.parse(secretKeyRaw));
+  const keypair = umi.eddsa.createKeypairFromSecretKey(secretKey);
+  umi.use(keypairIdentity(keypair));
+  return umi;
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { genesisAccount } = await req.json();
+    if (!genesisAccount) {
+      return NextResponse.json({ success: false, error: 'genesisAccount required' }, { status: 400 });
+    }
+
+    const umi = getPlatformUmi();
+    const genesisAccountPubkey = publicKey(genesisAccount);
+
+    const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
+      genesisAccount: genesisAccountPubkey,
+      bucketIndex: 0,
+    });
+
+    const bucket = await fetchBondingCurveBucketV2(umi, bucketPda);
+    if (Number(bucket.creatorFeeAccrued) === 0) {
+      return NextResponse.json({ success: false, error: 'No fees to claim' }, { status: 400 });
+    }
+
+    const graduated = await isGraduated(umi, bucket);
+    if (graduated) {
+      return NextResponse.json({ success: false, error: 'Token graduated, use Raydium claim' }, { status: 400 });
+    }
+
+    const baseMint = (bucket as any).baseMint;
+    const creatorFeeWallet = (bucket as any).creatorFeeWallet;
+    if (!baseMint || !creatorFeeWallet) {
+      return NextResponse.json({ success: false, error: 'Missing baseMint or creatorFeeWallet' }, { status: 500 });
+    }
+
+    const result = await claimBondingCurveCreatorFeeV2(umi, {
+      genesisAccount: genesisAccountPubkey,
+      bucket: bucketPda,
+      baseMint,
+      creatorFeeWallet,
+    }).sendAndConfirm(umi);
+
+    return NextResponse.json({
+      success: true,
+      signature: Buffer.from(result.signature).toString('base64'),
+      claimedAmount: bucket.creatorFeeAccrued.toString(),
+    });
+  } catch (err: any) {
+    console.error('Claim error:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+===== app/api/bonding-curve/tokens/route.ts =====
+import { NextResponse } from "next/server";
+import { getDexTokenRegistry } from "@/lib/dex/tokenRegistry";
+
+export const runtime = "nodejs";
+
+export async function GET() {
+  try {
+    const { tokens, total } = await getDexTokenRegistry({
+      limit: 200,
+    });
+
+    return NextResponse.json({
+      success: true,
+      tokens: tokens ?? [],
+      total: total ?? 0,
+    });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Unknown error";
+
+    console.error("TOKENS_ENDPOINT_ERROR:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        tokens: [],
+        total: 0,
+        error: message,
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
+
+===== app/api/bonding-curve/swap/execute/route.ts =====
+import { NextRequest, NextResponse } from "next/server";
+import { redis } from "@/app/lib/queue";
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    const { signature, userPublicKey, mintAddress } = body;
+
+    if (!signature || !userPublicKey || !mintAddress) {
+      return NextResponse.json(
+        { error: "Missing fields" },
+        { status: 400 }
+      );
+    }
+
+    const jobId = signature;
+
+    // ğŸ”´ 1. DUPLICATE CHECK (safe)
+    const existing = await redis.get(`job:${jobId}`);
+
+    if (existing) {
+      return NextResponse.json({
+        success: true,
+        state: "ALREADY_EXISTS",
+      });
+    }
+
+    // ğŸ”µ 2. QUEUE JOB
+    await redis.lpush(
+      "swap-queue",
+      JSON.stringify({
+        jobId,
+        signature,
+        userPublicKey,
+        mintAddress,
+        createdAt: Date.now(),
+      })
+    );
+
+    // ğŸ”´ 3. TTL SET (FIXED ioredis version issue)
+    await redis.setex(`job:${jobId}`, 3600, "queued");
+
+    return NextResponse.json({
+      success: true,
+      state: "QUEUED",
+      jobId,
+    });
+  } catch (err: any) {
+    console.error("swap execute error:", err);
+
+    return NextResponse.json(
+      { error: "Internal error" },
+      { status: 500 }
+    );
+  }
+}
+
+===== app/api/tokens/[mint]/route.ts =====
+NOT FOUND
+
+===== app/api/token/[mint]/route.ts =====
+NOT FOUND
+
+===== app/api/track-launch/route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { redis, KEYS } from '@/app/lib/redis';
+
+const REFERRAL_REWARD = 0.05; // SOL
+const FIRST_TOKEN_ONLY = true;
+
+export async function POST(req: NextRequest) {
+  try {
+    const { mintAddress, name, symbol, imageUrl, userPublicKey, signature } = await req.json();
+
+    if (!mintAddress || !userPublicKey || !signature) {
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    }
+
+    // ===============================
+    // RATE LIMIT
+    // ===============================
+    const rateKey = `rate-limit:${userPublicKey}`;
+    const rate = await redis.incr(rateKey);
+
+    if (rate === 1) await redis.expire(rateKey, 300);
+    if (rate > 3) {
+      return NextResponse.json({ error: 'Rate limit exceeded. Wait 5 minutes.' }, { status: 429 });
+    }
+
+    // ===============================
+    // DUPLICATE PROTECTION
+    // ===============================
+    const existing = await redis.get(`bonding-curve:creator:${mintAddress}`);
+    if (existing) {
+      return NextResponse.json({ error: 'Token already exists' }, { status: 400 });
+    }
+
+    // ===============================
+    // FIRST TOKEN CHECK (ANTI FARM)
+    // ===============================
+    const userTokenCountKey = `user:token-count:${userPublicKey}`;
+    const tokenCount = await redis.incr(userTokenCountKey);
+    if (tokenCount === 1) await redis.expire(userTokenCountKey, 86400 * 30);
+
+    // ===============================
+    // SAVE TOKEN
+    // ===============================
+    await redis.set(`bonding-curve:creator:${mintAddress}`, userPublicKey);
+    await redis.sadd('bonding-curve:tokens', mintAddress);
+
+    await redis.set(
+      `token:metadata:${mintAddress}`,
+      JSON.stringify({
+        name,
+        symbol,
+        imageUrl,
+        creator: userPublicKey,
+        createdAt: Date.now(),
+        signature,
+      })
+    );
+
+    // ===============================
+    // TRENDING
+    // ===============================
+    await redis.zincrby('trending:tokens', 1, mintAddress);
+    await redis.expire('trending:tokens', 86400);
+
+    // ===============================
+    // REFERRAL ENGINE (CORE ADDITION)
+    // ===============================
+
+    const referralKey = `referral:by:${userPublicKey}`;
+    const referrer = await redis.get(referralKey);
+
+    if (referrer && tokenCount === 1) {
+      // only first token reward
+
+      const earningsKey = `${KEYS.earnings}:${referrer}`;
+
+      const earningsRaw = await redis.get(earningsKey);
+
+      const earnings = earningsRaw
+        ? JSON.parse(earningsRaw as string)
+        : { pending: 0, claimed: 0, referrals: [] };
+
+      // prevent duplicate referral reward per user
+      if (!earnings.referrals.includes(userPublicKey)) {
+        earnings.pending += REFERRAL_REWARD;
+        earnings.referrals.push(userPublicKey);
+
+        await redis.set(earningsKey, JSON.stringify(earnings));
+
+        // optional leaderboard boost
+        await redis.zincrby(KEYS.boostLeaderboard, 1, referrer);
+      }
+    }
+
+    console.log('âœ… Token tracked + referral processed:', mintAddress);
+
+    return NextResponse.json({ success: true, mintAddress });
+
+  } catch (error: any) {
+    console.error('Track error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+===== app/api/track-token/route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { redis, KEYS } from '@/app/lib/redis';
+
+export async function GET() {
+  try {
+    const tokens = await redis.lrange(KEYS.tokens, 0, 49);
+    
+    // Redis'ten gelen verileri temizle
+    const cleanTokens = tokens.map((t: any) => {
+      if (typeof t === 'string') {
+        return JSON.parse(t);
+      }
+      return t;
+    });
+    
+    return NextResponse.json({
+      success: true,
+      tokens: cleanTokens,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const { mintAddress, name, symbol, twitter, telegram, website, createdBy } = await req.json();
+    
+    const tokenData = {
+      mint: mintAddress,
+      name,
+      symbol,
+      createdAt: new Date().toISOString(),
+      twitter: twitter || '',
+      telegram: telegram || '',
+      website: website || '',
+      createdBy: createdBy || '',
+    };
+    
+    // STRING olarak kaydet (JSON.stringify ile)
+    await redis.lpush(KEYS.tokens, JSON.stringify(tokenData));
+    await redis.ltrim(KEYS.tokens, 0, 49);
+    await redis.incr(KEYS.tokenCount);
+    
+    if (createdBy) {
+      await redis.sadd(KEYS.users, createdBy);
+    }
+    
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Token save error:', error);
+    return NextResponse.json({ success: false, error: error.message });
+  }
+}
+
+===== app/api/verify-token/route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { redis } from '@/app/lib/redis';
+import { Connection, PublicKey } from '@solana/web3.js';
+
+const RPC_URL = "https://solana-mainnet.g.alchemy.com/v2/HOfnwF22z5T8BCHNl_KIo";
+
+export async function POST(req: NextRequest) {
+  try {
+    const { wallet, mintAddress } = await req.json();
+
+    if (!wallet || !mintAddress) {
+      return NextResponse.json({ success: false, error: 'Wallet and mint address required' }, { status: 400 });
+    }
+
+    // Ã–nkayÄ±t kontrolÃ¼
+    const preregisterData = await redis.get(`preregister:${wallet}`);
+    if (!preregisterData) {
+      return NextResponse.json({ success: false, error: 'Not registered for preregister' }, { status: 400 });
+    }
+
+    const userData = JSON.parse(preregisterData as string);
+    if (userData.hasCreatedToken) {
+      return NextResponse.json({ success: false, error: 'Token already verified' }, { status: 400 });
+    }
+
+    // Token'Ä±n gerÃ§ekten bu wallet tarafÄ±ndan oluÅŸturulduÄŸunu kontrol et
+    const connection = new Connection(RPC_URL, 'confirmed');
+    const mint = new PublicKey(mintAddress);
+    const tokenSupply = await connection.getTokenSupply(mint);
+    
+    if (!tokenSupply.value) {
+      return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 400 });
+    }
+
+    // Token oluÅŸturulmuÅŸ, kullanÄ±cÄ±yÄ± aktif et
+    userData.hasCreatedToken = true;
+    userData.tokenCreatedAt = new Date().toISOString();
+    userData.mintAddress = mintAddress;
+    
+    await redis.set(`preregister:${wallet}`, JSON.stringify(userData));
+    await redis.sadd('preregister:active', wallet);
+    await redis.sadd(`preregister:active:${userData.tier}`, wallet);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Token verified! Your perks are now active.',
+      tier: userData.tier,
+    });
+  } catch (error: any) {
+    console.error('Verify token error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+===== app/api/worker/swapWorker.ts =====
+import { redis } from "@/app/lib/queue";
+
+const QUEUE_KEY = "swap-queue";
+
+async function processJob(job: any) {
+  try {
+    console.log("âš™ï¸ Processing job:", job.jobId);
+
+    // ğŸ”µ burada ileride:
+    // - tx verify
+    // - bonding curve swap
+    // - confirmation tracking
+
+    await redis.setex(
+      `job:${job.jobId}:status`,
+      3600,
+      "completed"
+    );
+
+    console.log("âœ… Job completed:", job.jobId);
+  } catch (err) {
+    console.error("âŒ Job failed:", job.jobId, err);
+
+    await redis.setex(
+      `job:${job.jobId}:status`,
+      3600,
+      "failed"
+    );
+  }
+}
+
+export async function startWorker() {
+  console.log("ğŸš€ Swap worker started");
+
+  while (true) {
+    try {
+      const jobRaw = await redis.rpop(QUEUE_KEY);
+
+      if (!jobRaw) {
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
+
+      const job = JSON.parse(jobRaw);
+
+      await processJob(job);
+    } catch (err) {
+      console.error("âš ï¸ Worker loop error:", err);
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+}
+
+// EÄŸer direkt run edilirse
+startWorker();
+
+===== app/dex/page.tsx =====
+"use client";
+
+import { Suspense } from "react";
+import DexPageContent from "@/components/dex/DexPageContent";
+import LoadingSkeleton from "@/components/dex/LoadingSkeleton";
+
+export default function DexPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <LoadingSkeleton />
+        </div>
+      }
+    >
+      <DexPageContent />
+    </Suspense>
+  );
+}
+
+
+

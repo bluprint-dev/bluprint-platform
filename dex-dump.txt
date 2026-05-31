@@ -1,0 +1,44 @@
+﻿===== app/dex/page.tsx =====
+"use client";
+
+import { Suspense } from "react";
+import DexPageContent from "@/components/dex/DexPageContent";
+import LoadingSkeleton from "@/components/dex/LoadingSkeleton";
+
+export default function DexPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <LoadingSkeleton />
+        </div>
+      }
+    >
+      <DexPageContent />
+    </Suspense>
+  );
+}
+
+
+===== app/dex/[mint]/page.tsx =====
+[FILE NOT FOUND]
+
+===== app/api/buy-token/route.ts =====
+[FILE NOT FOUND]
+
+===== app/api/sell-token/route.ts =====
+[FILE NOT FOUND]
+
+===== app/api/token-info/route.ts =====
+[FILE NOT FOUND]
+
+===== app/api/trades/route.ts =====
+[FILE NOT FOUND]
+
+===== app/api/chart/route.ts =====
+[FILE NOT FOUND]
+
+===== app/api/swap/route.ts =====
+[FILE NOT FOUND]
+
+

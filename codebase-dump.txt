@@ -1,0 +1,1173 @@
+﻿===== app/create/page.tsx =====
+"use client";
+
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { useRouter } from "next/navigation";
+import { Transaction, VersionedTransaction } from "@solana/web3.js";
+
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+type CreateTokenResult = {
+  success: boolean;
+  error?: string;
+  signature?: string;
+  transaction?: string;
+  mint?: string;
+  genesisAccount?: string;
+};
+
+type PromoValidation = {
+  valid: boolean;
+  owner?: string;
+  error?: string;
+};
+
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function slugify(s: string) {
+  return s.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+}
+
+// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export default function CreatePage() {
+  const { publicKey, connected, sendTransaction } = useWallet();
+  const { connection } = useConnection();
+  const router = useRouter();
+
+  // Form state
+  const [name, setName] = useState("");
+  const [symbol, setSymbol] = useState("");
+  const [desc, setDesc] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+
+  // Promo validation state
+  const [promoStatus, setPromoStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+  const promoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Submit state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStep, setSubmitStep] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  // â”€â”€â”€ Promo code validation (debounced 500ms) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const validatePromo = useCallback(async (code: string) => {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed || trimmed.length < 4) {
+      setPromoStatus("idle");
+      return;
+    }
+    setPromoStatus("checking");
+    try {
+      const res = await fetch(`/api/promo/code?code=${encodeURIComponent(trimmed)}`);
+      const data: PromoValidation = await res.json();
+      setPromoStatus(data.valid ? "valid" : "invalid");
+    } catch {
+      setPromoStatus("idle");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (promoDebounceRef.current) clearTimeout(promoDebounceRef.current);
+    promoDebounceRef.current = setTimeout(() => validatePromo(promoCode), 500);
+    return () => {
+      if (promoDebounceRef.current) clearTimeout(promoDebounceRef.current);
+    };
+  }, [promoCode, validatePromo]);
+
+  // â”€â”€â”€ Image handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const handleImage = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be under 5MB");
+      return;
+    }
+    setError(null);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  }, []);
+
+  // â”€â”€â”€ Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const handleSubmit = useCallback(async () => {
+    if (!connected || !publicKey) {
+      window.dispatchEvent(new CustomEvent("wallet-connect-requested"));
+      return;
+    }
+    if (!name.trim() || !symbol.trim()) {
+      setError("Name and symbol are required");
+      return;
+    }
+    if (!imageFile) {
+      setError("Image is required");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Step 1: Upload image
+      setSubmitStep("Uploading imageâ€¦");
+      const formData = new FormData();
+      formData.append("file", imageFile);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadData.success || !uploadData.url) throw new Error(uploadData.error ?? "Image upload failed");
+      const imageUrl: string = uploadData.url;
+
+      // Step 2: Build token transaction
+      setSubmitStep("Building transactionâ€¦");
+      const createRes = await fetch("/api/create-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          symbol: slugify(symbol),
+          description: desc.trim(),
+          imageUrl,
+          creatorWallet: publicKey.toString(),
+          promoCode: promoCode.trim().toUpperCase() || undefined,
+        }),
+      });
+      const createData: CreateTokenResult = await createRes.json();
+      if (!createData.success) throw new Error(createData.error ?? "Token creation failed");
+
+      const rawTx = createData.transaction ?? createData.signature;
+      if (!rawTx) throw new Error("No transaction returned from server");
+      const { mint, genesisAccount } = createData;
+
+      // Step 3: Sign & send
+      setSubmitStep("Awaiting wallet signatureâ€¦");
+      const txBytes = Buffer.from(rawTx, "base64");
+      let tx: VersionedTransaction | Transaction;
+      try {
+        tx = VersionedTransaction.deserialize(txBytes);
+      } catch {
+        tx = Transaction.from(txBytes);
+      }
+
+      let sig: string;
+      try {
+        sig = await sendTransaction(tx as VersionedTransaction, connection);
+      } catch (walletErr) {
+        const msg = walletErr instanceof Error ? walletErr.message : "Wallet rejected";
+        throw new Error(msg);
+      }
+
+      setSubmitStep("Confirmingâ€¦");
+      const { value: status } = await connection.confirmTransaction(sig, "confirmed");
+      if (status.err) throw new Error("Transaction failed on-chain");
+
+      // Step 4: Track launch â†’ DEX listing (non-fatal)
+      if (genesisAccount && mint) {
+        setSubmitStep("Listing on DEXâ€¦");
+        fetch("/api/track-launch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            genesisAccount,
+            mint,
+            name: name.trim(),
+            symbol: slugify(symbol),
+            imageUrl,
+            creatorWallet: publicKey.toString(),
+            signature: sig,
+          }),
+        }).catch(() => console.warn("track-launch failed â€” DEX listing may be delayed"));
+      }
+
+      // Step 5: Unlock referral code for creator (non-fatal)
+      fetch("/api/generate-promocode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: publicKey.toString() }),
+      }).catch(() => console.warn("generate-promocode failed"));
+
+      // Done
+      setSuccess(true);
+      setSubmitStep("");
+      setTimeout(() => {
+        router.push(genesisAccount ? `/dex?token=${genesisAccount}` : "/dex");
+      }, 1500);
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unexpected error";
+      setError(msg);
+      setSubmitStep("");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [connected, publicKey, sendTransaction, connection, router, name, symbol, desc, imageFile, promoCode]);
+
+  // â”€â”€â”€ Promo indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const promoIndicator = useMemo(() => {
+    if (!promoCode.trim()) return null;
+    if (promoStatus === "checking") return <span className="text-yellow-400 text-xs">Checkingâ€¦</span>;
+    if (promoStatus === "valid")    return <span className="text-green-400 text-xs">âœ“ Valid â€” referrer earns 0.05 SOL</span>;
+    if (promoStatus === "invalid")  return <span className="text-red-400 text-xs">âœ— Invalid code</span>;
+    return null;
+  }, [promoCode, promoStatus]);
+
+  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-lg space-y-5">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Create Token</h1>
+          <p className="text-gray-500 text-sm mt-1">Launch fee: 0.15 SOL</p>
+        </div>
+
+        {/* Image upload */}
+        <div
+          className="border-2 border-dashed border-gray-700 rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-gray-500 transition-colors"
+          onClick={() => document.getElementById("img-input")?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleImage(f); }}
+        >
+          {imagePreview
+            ? <img src={imagePreview} alt="preview" className="w-24 h-24 rounded-xl object-cover" />
+            : <div className="w-24 h-24 rounded-xl bg-gray-800 flex items-center justify-center text-gray-600 text-3xl">ğŸ–¼</div>
+          }
+          <span className="text-gray-500 text-sm">Click or drag image (max 5MB)</span>
+          <input
+            id="img-input"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImage(f); }}
+          />
+        </div>
+
+        {/* Name */}
+        <div>
+          <label className="block text-sm text-gray-300 mb-1">Name</label>
+          <input
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors"
+            placeholder="My Coin"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={32}
+          />
+        </div>
+
+        {/* Symbol */}
+        <div>
+          <label className="block text-sm text-gray-300 mb-1">Symbol</label>
+          <input
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors uppercase"
+            placeholder="MYCOIN"
+            value={symbol}
+            onChange={(e) => setSymbol(slugify(e.target.value))}
+            maxLength={8}
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm text-gray-300 mb-1">
+            Description <span className="text-gray-600">(optional)</span>
+          </label>
+          <textarea
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors resize-none"
+            placeholder="Tell the world about your tokenâ€¦"
+            rows={3}
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            maxLength={280}
+          />
+        </div>
+
+        {/* Promo code */}
+        <div>
+          <label className="block text-sm text-gray-300 mb-1">
+            Referral Code <span className="text-gray-600">(optional)</span>
+          </label>
+          <input
+            className={`w-full bg-gray-800 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none uppercase transition-colors ${
+              promoStatus === "valid"   ? "border-green-600 focus:border-green-500" :
+              promoStatus === "invalid" ? "border-red-700 focus:border-red-600" :
+                                         "border-gray-700 focus:border-gray-500"
+            }`}
+            placeholder="ENTER CODE"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+            maxLength={12}
+          />
+          <div className="mt-1.5 h-4">{promoIndicator}</div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-950/60 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Success */}
+        {success && (
+          <div className="bg-green-950/60 border border-green-800 rounded-lg px-4 py-3 text-green-300 text-sm">
+            ğŸ‰ Token created! Heading to DEXâ€¦
+          </div>
+        )}
+
+        {/* Submit */}
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting || success}
+          className="w-full bg-white text-black font-semibold rounded-xl py-4 text-base hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isSubmitting
+            ? (submitStep || "Processingâ€¦")
+            : "Launch Token â€” 0.15 SOL"
+          }
+        </button>
+
+        {!connected && (
+          <p className="text-center text-gray-600 text-sm">Connect your wallet to continue</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+===== app/api/promo/route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { redis } from '@/app/lib/redis';
+import { randomBytes } from 'crypto';
+
+// RASTGELE 7 haneli promo code Ã¼ret (tamamen random)
+function generatePromoCode(): string {
+  // 7 haneli hexadecimal (0-9, A-F) 
+  // daha karÄ±ÅŸÄ±k iÃ§in harf+rakam karÄ±ÅŸÄ±mÄ±
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 7; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const wallet = searchParams.get('wallet');
+  const code = searchParams.get('code');
+  
+  // EÄŸer code ile sorgulanÄ±yorsa (referrer bulmak iÃ§in)
+  if (code) {
+    try {
+      const referrerWallet = await redis.get(`promocode:wallet:${code.toUpperCase()}`);
+      if (referrerWallet) {
+        return NextResponse.json({
+          success: true,
+          wallet: referrerWallet,
+        });
+      } else {
+        return NextResponse.json({
+          success: false,
+          error: 'Invalid promo code',
+        });
+      }
+    } catch (error: any) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+  }
+  
+  // Wallet iÃ§in promo code sorgulama
+  if (!wallet) {
+    return NextResponse.json({ success: false, error: 'Wallet required' }, { status: 400 });
+  }
+  
+  try {
+    let promoCode = await redis.get(`promocode:${wallet}`);
+    
+    // EÄŸer promo code yoksa YENÄ° RASTGELE oluÅŸtur
+    if (!promoCode) {
+      promoCode = generatePromoCode();
+      await redis.set(`promocode:${wallet}`, promoCode);
+      await redis.set(`promocode:wallet:${promoCode}`, wallet);
+      console.log(`âœ… New promo code generated for ${wallet}: ${promoCode}`);
+    }
+    
+    const hasCreatedToken = await redis.sismember('users', wallet);
+    
+    return NextResponse.json({
+      success: true,
+      promoCode,
+      hasCreatedToken,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const { wallet } = await req.json();
+  
+  if (!wallet) {
+    return NextResponse.json({ success: false, error: 'Wallet required' }, { status: 400 });
+  }
+  
+  try {
+    // Her POST'ta YENÄ° RASTGELE KOD ÃœRET
+    const newPromoCode = generatePromoCode();
+    
+    // Eski kodu sil
+    const oldCode = await redis.get(`promocode:${wallet}`);
+    if (oldCode) {
+      await redis.del(`promocode:wallet:${oldCode}`);
+    }
+    
+    // Yeni kodu kaydet
+    await redis.set(`promocode:${wallet}`, newPromoCode);
+    await redis.set(`promocode:wallet:${newPromoCode}`, wallet);
+    
+    console.log(`ğŸ”„ Promo code regenerated for ${wallet}: ${oldCode} â†’ ${newPromoCode}`);
+    
+    return NextResponse.json({
+      success: true,
+      promoCode: newPromoCode,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+===== app/api/promo/code/route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { redis } from '@/app/lib/redis';
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const code = searchParams.get('code');
+  
+  if (!code) {
+    return NextResponse.json({ success: false, error: 'Code required' }, { status: 400 });
+  }
+  
+  try {
+    const wallet = await redis.get(`promocode:wallet:${code.toUpperCase()}`);
+    
+    if (wallet) {
+      return NextResponse.json({
+        success: true,
+        wallet,
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid promo code',
+      });
+    }
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+===== app/api/user-promocode/route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { redis, KEYS } from '@/app/lib/redis';
+
+// Rastgele 7 haneli promo code Ã¼ret
+function generatePromoCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 7; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const wallet = searchParams.get('wallet');
+  
+  if (!wallet) {
+    return NextResponse.json({ success: false, error: 'Wallet required' });
+  }
+  
+  const promoKey = `promocode:${wallet}`;
+  const promoCode = await redis.get(promoKey);
+  const hasToken = await redis.sismember(KEYS.users, wallet);
+  
+  return NextResponse.json({
+    success: true,
+    hasPromoCode: !!promoCode,
+    promoCode,
+    hasToken,
+  });
+}
+
+export async function POST(req: NextRequest) {
+  const { wallet, hasToken } = await req.json();
+  
+  if (!wallet) {
+    return NextResponse.json({ success: false, error: 'Wallet required' });
+  }
+  
+  const promoKey = `promocode:${wallet}`;
+  let promoCode = await redis.get(promoKey);
+  
+  if (!promoCode) {
+    promoCode = generatePromoCode();
+    await redis.set(promoKey, promoCode);
+  }
+  
+  if (hasToken === true) {
+    await redis.sadd(KEYS.users, wallet);
+  }
+  
+  return NextResponse.json({
+    success: true,
+    promoCode,
+    hasToken: hasToken === true,
+  });
+}
+
+===== app/api/generate-promocode/route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { redis } from '@/app/lib/redis';
+
+const CODE_LENGTH = 7;
+
+function generateCode(): string {
+  const chars =
+    'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+
+  let code = '';
+
+  for (let i = 0; i < CODE_LENGTH; i++) {
+    code += chars[
+      Math.floor(Math.random() * chars.length)
+    ];
+  }
+
+  return code;
+}
+
+async function generateUniqueCode(): Promise<string> {
+  while (true) {
+    const code = generateCode();
+
+    const exists = await redis.exists(
+      `ref:code:${code}`
+    );
+
+    if (!exists) {
+      return code;
+    }
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+
+    const wallet =
+      searchParams.get('wallet');
+
+    if (!wallet) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Wallet required',
+        },
+        { status: 400 }
+      );
+    }
+
+    // wallet -> code
+    const existingCode =
+      await redis.get(
+        `ref:user:${wallet}`
+      );
+
+    return NextResponse.json({
+      success: true,
+      hasCode: !!existingCode,
+      code: existingCode || null,
+    });
+  } catch (error: any) {
+    console.error(
+      'GET_PROMOCODE_ERROR:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error.message ||
+          'Internal server error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    const wallet =
+      body.walletAddress;
+
+    if (!wallet) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Wallet required',
+        },
+        { status: 400 }
+      );
+    }
+
+    // =========================
+    // EXISTING CODE CHECK
+    // =========================
+
+    const existingCode =
+      await redis.get(
+        `ref:user:${wallet}`
+      );
+
+    if (existingCode) {
+      return NextResponse.json({
+        success: true,
+        code: existingCode,
+        isNew: false,
+      });
+    }
+
+    // =========================
+    // GENERATE UNIQUE CODE
+    // =========================
+
+    const newCode =
+      await generateUniqueCode();
+
+    // =========================
+    // SAVE MAPPINGS
+    // =========================
+
+    // wallet -> code
+    await redis.set(
+      `ref:user:${wallet}`,
+      newCode
+    );
+
+    // code -> wallet
+    await redis.set(
+      `ref:code:${newCode}`,
+      wallet
+    );
+
+    // optional metadata
+    await redis.set(
+      `ref:meta:${wallet}`,
+      JSON.stringify({
+        code: newCode,
+        createdAt: Date.now(),
+      })
+    );
+
+    console.log(
+      'PROMOCODE_CREATED:',
+      wallet,
+      newCode
+    );
+
+    return NextResponse.json({
+      success: true,
+      code: newCode,
+      isNew: true,
+    });
+  } catch (error: any) {
+    console.error(
+      'CREATE_PROMOCODE_ERROR:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error.message ||
+          'Internal server error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+===== app/api/claim-referral/route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { Connection, Keypair, PublicKey, SystemProgram, LAMPORTS_PER_SOL, Transaction } from '@solana/web3.js';
+import { redis } from '@/app/lib/redis';
+
+const WALLET_FILE = process.env.WALLET_SECRET; // Ã¶neri: file yerine env
+
+function getTreasuryWallet(): Keypair {
+  const secretKey = JSON.parse(WALLET_FILE!);
+  return Keypair.fromSecretKey(new Uint8Array(secretKey));
+}
+
+function getKey(wallet: string) {
+  return {
+    earnings: `earnings:${wallet}`,
+    lock: `lock:claim:${wallet}`,
+  };
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { wallet, amount } = await req.json();
+
+    if (!wallet || !amount) {
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    }
+
+    if (amount <= 0) {
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+
+    const keys = getKey(wallet);
+
+    // ğŸ”’ LOCK (anti double claim)
+    const lock = await redis.set(keys.lock, '1', { nx: true, ex: 10 });
+    if (!lock) {
+      return NextResponse.json({ error: 'Claim in progress' }, { status: 429 });
+    }
+
+    try {
+      // ğŸ§  ATOMIC DATA READ
+      const raw = await redis.get(keys.earnings);
+
+      const data = raw
+        ? typeof raw === 'string'
+          ? JSON.parse(raw)
+          : raw
+        : { pending: 0, claimed: 0, referrals: [] };
+
+      if ((data.pending || 0) < amount) {
+        return NextResponse.json({ error: 'Insufficient earnings' }, { status: 400 });
+      }
+
+      // ğŸ’° SOLANA TRANSFER
+      const connection = new Connection(
+        process.env.NEXT_PUBLIC_RPC_URL!,
+        'confirmed'
+      );
+
+      const treasury = getTreasuryWallet();
+      const to = new PublicKey(wallet);
+
+      const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
+
+      const tx = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: treasury.publicKey,
+          toPubkey: to,
+          lamports,
+        })
+      );
+
+      const { blockhash } = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = treasury.publicKey;
+
+      tx.sign(treasury);
+
+      const sig = await connection.sendRawTransaction(tx.serialize());
+      await connection.confirmTransaction(sig, 'confirmed');
+
+      // ğŸ§¾ STATE UPDATE (ONLY AFTER SUCCESS)
+      data.pending -= amount;
+      data.claimed += amount;
+
+      await redis.set(keys.earnings, JSON.stringify(data));
+
+      return NextResponse.json({
+        success: true,
+        amount,
+        signature: sig,
+      });
+
+    } finally {
+      // ğŸ”“ ALWAYS RELEASE LOCK
+      await redis.del(keys.lock);
+    }
+
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || 'Server error' },
+      { status: 500 }
+    );
+  }
+}
+
+===== app/api/referral-earnings/route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { redis } from '@/app/lib/redis';
+
+const MILESTONES = [
+  { count: 10, bonus: 0.1 },
+  { count: 25, bonus: 0.25 },
+  { count: 50, bonus: 0.5 },
+  { count: 100, bonus: 1.0 },
+];
+
+// =========================
+// GET (READ ONLY VIEW)
+// =========================
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const wallet = searchParams.get('wallet');
+
+    if (!wallet) {
+      return NextResponse.json(
+        { success: false, error: 'Wallet required' },
+        { status: 400 }
+      );
+    }
+
+    // =========================
+    // LOAD STATE (single source)
+    // =========================
+    const raw = await redis.get(`ref:state:${wallet}`);
+
+    const state = raw
+      ? typeof raw === 'string'
+        ? JSON.parse(raw)
+        : raw
+      : {
+          pending: 0,
+          claimed: 0,
+          referrals: [],
+          milestonesClaimed: [],
+        };
+
+    const totalReferrals = state.referrals.length;
+
+    // =========================
+    // MILESTONES CALC
+    // =========================
+    const milestones = MILESTONES.map((m) => ({
+      count: m.count,
+      bonus: m.bonus,
+      reached: totalReferrals >= m.count,
+      claimed: state.milestonesClaimed.includes(m.count),
+    }));
+
+    const nextMilestone =
+      MILESTONES.find((m) => totalReferrals < m.count) || null;
+
+    return NextResponse.json({
+      success: true,
+      earnings: state.pending,
+      claimed: state.claimed,
+      totalReferrals,
+      referrals: state.referrals,
+      milestones,
+      nextMilestone: nextMilestone?.count || null,
+    });
+
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// =========================
+// POST (CLAIM SAFE)
+// =========================
+export async function POST(req: NextRequest) {
+  try {
+    const { wallet, amount } = await req.json();
+
+    if (!wallet || typeof amount !== 'number') {
+      return NextResponse.json(
+        { success: false, error: 'Wallet and amount required' },
+        { status: 400 }
+      );
+    }
+
+    if (amount <= 0) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid amount' },
+        { status: 400 }
+      );
+    }
+
+    const lockKey = `lock:claim:${wallet}`;
+
+    // =========================
+    // ATOMIC LOCK (SAFE)
+    // =========================
+    const lock = await redis.set(lockKey, '1', {
+      nx: true,
+      ex: 10,
+    });
+
+    if (!lock) {
+      return NextResponse.json(
+        { success: false, error: 'Claim already processing' },
+        { status: 429 }
+      );
+    }
+
+    try {
+      const key = `ref:state:${wallet}`;
+
+      const raw = await redis.get(key);
+
+      const state = raw
+        ? typeof raw === 'string'
+          ? JSON.parse(raw)
+          : raw
+        : {
+            pending: 0,
+            claimed: 0,
+            referrals: [],
+            milestonesClaimed: [],
+          };
+
+      if (state.pending < amount) {
+        return NextResponse.json(
+          { success: false, error: 'Insufficient earnings' },
+          { status: 400 }
+        );
+      }
+
+      // =========================
+      // UPDATE STATE SAFELY
+      // =========================
+      state.pending -= amount;
+      state.claimed += amount;
+
+      await redis.set(key, JSON.stringify(state));
+
+      return NextResponse.json({
+        success: true,
+        claimedAmount: amount,
+        remainingPending: state.pending,
+      });
+
+    } finally {
+      await redis.del(lockKey);
+    }
+
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+===== app/api/referral-leaderboard/route.ts =====
+import { NextResponse } from 'next/server';
+import { redis, KEYS } from '@/app/lib/redis';
+
+export async function GET() {
+  try {
+    const allEarningsKeys = await redis.keys(`${KEYS.earnings}:*`);
+    const leaderboard: { wallet: string; referrals: number; earnings: number }[] = [];
+    
+    for (const key of allEarningsKeys) {
+      const wallet = key.replace(`${KEYS.earnings}:`, '');
+      const claimed = Number(await redis.hget(key, 'claimed') || 0);
+      const pending = Number(await redis.hget(key, 'pending') || 0);
+      const referralsCount = await redis.scard(`${key}:referrals`);
+      
+      leaderboard.push({
+        wallet,
+        referrals: referralsCount,
+        earnings: claimed + pending,
+      });
+    }
+    
+    // Referans sayÄ±sÄ±na gÃ¶re sÄ±rala
+    leaderboard.sort((a, b) => b.referrals - a.referrals);
+    
+    return NextResponse.json({
+      success: true,
+      leaderboard: leaderboard.slice(0, 20),
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message });
+  }
+}
+
+===== app/referral/page.tsx =====
+"use client";
+
+import { motion, AnimatePresence } from "framer-motion";
+import Footer from "../components/Footer";
+import PageTransition from "../components/PageTransition";
+
+export default function ReferralPage() {
+  return (
+    <PageTransition>
+      <div className="min-h-screen flex flex-col relative">
+
+        {/* TAM BLUR + YAKINDA */}
+        <div className="flex-1 flex items-center justify-center px-6 py-16">
+          <div className="relative w-full max-w-xl">
+            <div className="absolute -inset-6 rounded-[32px] bg-[#ff2d95]/10 blur-[60px]" />
+            <div className="relative rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl p-10 text-center shadow-[0_0_60px_rgba(255,45,149,0.12)]">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <div className="text-6xl mb-5">ğŸ”’</div>
+              </motion.div>
+
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-400">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff2d95]/70" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#ff2d95]" />
+                </span>
+                YakÄ±nda
+              </div>
+
+              <h1 className="mt-4 text-3xl md:text-4xl font-black tracking-tight text-white">
+                Referral Program
+              </h1>
+              <p className="mt-2 text-sm text-gray-400 leading-relaxed">
+                Referral sistemi ÅŸu anda bakÄ±mdadÄ±r. YakÄ±nda Ã§ok daha gÃ¼Ã§lÃ¼ bir Ã¶dÃ¼l altyapÄ±sÄ±yla aktif edeceÄŸiz.
+              </p>
+
+              <div className="mt-6">
+                <a
+                  href="/create"
+                  className="inline-flex items-center justify-center h-11 px-5 rounded-2xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white text-sm font-semibold shadow-[0_0_35px_rgba(255,45,149,0.22)] hover:shadow-[0_0_55px_rgba(255,45,149,0.32)] transition"
+                >
+                  Token oluÅŸtur
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>{false && <motion.div />}</AnimatePresence>
+
+        <Footer />
+      </div>
+    </PageTransition>
+  );
+}
+
+===== app/lib/redis.ts =====
+import { Redis } from '@upstash/redis';
+import type { NextRequest } from 'next/server';
+
+export const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
+export const KEYS = {
+  tokens: 'tokens',
+  tokenCount: 'token:count',
+  referrals: 'referrals',
+  earnings: 'earnings',
+  users: 'users',
+  boostLeaderboard: 'boost:leaderboard',  // YENÄ° EKLE
+};
+
+// ==================== SLIDING WINDOW RATE LIMITER ====================
+export interface RateLimitResult {
+  success: boolean;
+  limit: number;
+  remaining: number;
+  retryAfter?: number;
+  resetTime?: number;
+}
+
+export async function rateLimitByIP(
+  ip: string, 
+  limit: number = 20, 
+  windowMs: number = 60 * 1000
+): Promise<RateLimitResult> {
+  const now = Date.now();
+  const windowStart = now - windowMs;
+  const key = `ratelimit:${ip}`;
+  
+  try {
+    // 1. Window dÄ±ÅŸÄ±ndaki eski kayÄ±tlarÄ± temizle
+    await redis.zremrangebyscore(key, 0, windowStart);
+    
+    // 2. Mevcut istek sayÄ±sÄ±nÄ± al
+    const count = await redis.zcard(key);
+    
+    // 3. Limit kontrolÃ¼
+    if (count >= limit) {
+      // En eski kaydÄ±n zamanÄ±nÄ± al (retryAfter iÃ§in)
+      const oldest = await redis.zrange(key, 0, 0, { withScores: true });
+      const oldestTimestamp = oldest[0] && typeof oldest[0] === 'object' && 'score' in oldest[0] 
+        ? (oldest[0] as { score: string }).score 
+        : now;
+      const retryAfter = Math.ceil((parseInt(String(oldestTimestamp)) + windowMs - now) / 1000);
+      
+      return { 
+        success: false, 
+        limit, 
+        remaining: 0, 
+        retryAfter: Math.max(1, retryAfter),
+        resetTime: parseInt(String(oldestTimestamp)) + windowMs
+      };
+    }
+    
+    // 4. Yeni isteÄŸi ekle
+    await redis.zadd(key, { score: now, member: `${now}:${Math.random().toString(36).slice(2)}` });
+    
+    // 5. Key'in Ã¶mrÃ¼nÃ¼ ayarla (window sÃ¼resi + buffer)
+    await redis.expire(key, Math.ceil(windowMs / 1000) + 60);
+    
+    return { 
+      success: true, 
+      limit, 
+      remaining: limit - (count + 1),
+      resetTime: now + windowMs
+    };
+    
+  } catch (error) {
+    console.error('Rate limit error:', error);
+    // Fail-open: hata durumunda rate limit uygulama
+    return { success: true, limit, remaining: 0 };
+  }
+}
+
+// ==================== GÃœVENLÄ° IP DETECTION ====================
+export function getClientIp(req: NextRequest): string {
+  return (
+    // Vercel Forwarded-For (EN GÃœVENÄ°LÄ°R)
+    req.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ||
+    
+    // Cloudflare Real IP
+    req.headers.get('cf-connecting-ip') ||
+    req.headers.get('x-real-ip') ||
+    
+    // Standart Forwarded-For (gÃ¼venilmez, fallback)
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    
+    // Local dev fallback
+    (process.env.NODE_ENV === 'development' ? '127.0.0.1' : 'unknown')
+  ) || 'unknown';
+}
+
+
