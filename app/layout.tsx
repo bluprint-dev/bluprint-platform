@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Outfit, Space_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import Sidebar from "./components/Sidebar";
@@ -7,20 +7,15 @@ import Background from "./components/Background";
 import MarqueeBanner from "./components/MarqueeBanner";
 import ChatbaseEmbed from "./components/ChatbaseEmbed";
 
-const inter = Inter({ 
-  subsets: ["latin"], 
-  variable: "--font-inter",
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
   display: "swap",
 });
 
-const space = Space_Grotesk({ 
-  subsets: ["latin"], 
-  variable: "--font-space",
-  display: "swap",
-});
-
-const mono = JetBrains_Mono({ 
-  subsets: ["latin"], 
+const mono = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
   variable: "--font-mono",
   display: "swap",
 });
@@ -40,7 +35,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${space.variable} ${mono.variable} antialiased bg-[#0A0A0F] text-white`}>
+      <body className={`${outfit.variable} ${mono.variable} antialiased bg-[#0A0A0F] text-white`}
+        style={{ fontFamily: "var(--font-outfit), system-ui, sans-serif" }}>
         <Providers>
           <Background />
           
