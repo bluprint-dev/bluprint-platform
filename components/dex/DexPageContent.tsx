@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowUpDown, Sparkles, TrendingUp } from "lucide-react";
 import Footer from "@/app/components/Footer";
 import DexHeader from "@/components/dex/Header";
 import StatsBar from "@/components/dex/StatsBar";
@@ -29,7 +28,7 @@ export default function DexPageContent() {
   const {
     search,
     selectedMint,
-    selectedGenesisAccount, // ✅ store'dan direkt al — hesaplama yok
+    selectedGenesisAccount,
     isBuy,
     amount,
     setSearch,
@@ -47,11 +46,8 @@ export default function DexPageContent() {
   const filteredTokens = useMemo(() => {
     const base = filterTokens(tokens, search);
     const copy = [...base];
-    if (sortMode === "newest") {
-      copy.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-    } else if (sortMode === "name") {
-      copy.sort((a, b) => (a.symbol ?? "").localeCompare(b.symbol ?? ""));
-    }
+    if (sortMode === "newest") copy.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    else copy.sort((a, b) => (a.symbol ?? "").localeCompare(b.symbol ?? ""));
     return copy;
   }, [tokens, search, sortMode]);
 
@@ -60,29 +56,20 @@ export default function DexPageContent() {
     [tokens, selectedMint]
   );
 
-  // ✅ store'dan gelen selectedGenesisAccount direkt kullanılıyor
-  // Fallback: token yüklendiyse ama store henüz güncellenmemişse token'dan al
   const genesisAccountForCurve =
     selectedGenesisAccount ??
     selectedToken?.genesisAccount ??
     selectedToken?.mint ??
     null;
 
-  const { data: curveInfo, isLoading: isLoadingCurve } = useBondingCurveInfo(
-    genesisAccountForCurve // ✅ genesisAccount ile info endpoint çağrılıyor
-  );
+  const { data: curveInfo, isLoading: isLoadingCurve } = useBondingCurveInfo(genesisAccountForCurve);
 
-  // URL'den mint geldiğinde token seç
   useEffect(() => {
     const match = tokens.find((t) => t.mint === mintFromUrl);
-    if (match) {
-      // ✅ FIX: selectToken'a hem mint hem genesisAccount geçiliyor
-      selectToken(match.mint, match.genesisAccount ?? null);
-    }
+    if (match) selectToken(match.mint, match.genesisAccount ?? null);
   }, [mintFromUrl, tokens, selectToken]);
 
   const handleSelectToken = (token: typeof tokens[0]) => {
-    // ✅ FIX: selectToken(mint, genesisAccount) — store her ikisini birden set ediyor
     selectToken(token.mint, token.genesisAccount ?? null);
     setSwapError("");
     if (window.innerWidth < 1024) setMobileTradeOpen(true);
@@ -90,31 +77,20 @@ export default function DexPageContent() {
 
   const handleSwap = async () => {
     if (!selectedToken || !amount) return;
-
     const ok = await swap({
-      // ✅ FIX: store'dan gelen selectedGenesisAccount öncelikli
-      // token objesinden fallback, en son mint
-      genesisAccount:
-        selectedGenesisAccount ??
-        selectedToken.genesisAccount ??
-        selectedToken.mint,
-      mint: selectedToken.mint, // SPL token mint — ATA için
+      genesisAccount: selectedGenesisAccount ?? selectedToken.genesisAccount ?? selectedToken.mint,
+      mint: selectedToken.mint,
       amount,
       isBuy,
     });
-
-    if (ok) {
-      resetTrade();
-      setMobileTradeOpen(false);
-    }
+    if (ok) { resetTrade(); setMobileTradeOpen(false); }
   };
+
+  const fillPercent = curveInfo?.lifecycle?.fillPercent ?? 0;
 
   const tradePanelProps = {
     token: selectedToken,
-    isBuy,
-    amount,
-    isSwapping,
-    swapError,
+    isBuy, amount, isSwapping, swapError,
     curveInfo: curveInfo ?? null,
     isLoadingCurve,
     onToggleBuy: setIsBuy,
@@ -123,114 +99,334 @@ export default function DexPageContent() {
   };
 
   return (
-    <div className="min-h-screen relative">
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-24 left-10 h-[520px] w-[520px] rounded-full bg-[#ff2d95]/10 blur-[140px]" />
-        <div className="absolute top-[20%] right-10 h-[460px] w-[460px] rounded-full bg-[#7c3aed]/10 blur-[160px]" />
-        <div className="absolute bottom-[-10%] left-[25%] h-[420px] w-[420px] rounded-full bg-[#ff6bcb]/10 blur-[150px]" />
-        <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(circle_at_1px_1px,rgba(255,45,149,0.7)_1px,transparent_1px)] [background-size:28px_28px]" />
+    <div style={{ minHeight: "100vh", position: "relative", background: "linear-gradient(160deg, #07070f 0%, #0d0617 50%, #070b0f 100%)" }}>
+
+      {/* ── AMBIENT BACKGROUND ── */}
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
+        <div style={{
+          position: "absolute", top: "-20%", left: "-10%",
+          width: 700, height: 700, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(153,69,255,0.08) 0%, transparent 70%)",
+          animation: "drift1 20s ease-in-out infinite",
+        }} />
+        <div style={{
+          position: "absolute", top: "30%", right: "-15%",
+          width: 600, height: 600, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(20,241,149,0.05) 0%, transparent 70%)",
+          animation: "drift2 25s ease-in-out infinite",
+        }} />
+        <div style={{
+          position: "absolute", bottom: "-10%", left: "30%",
+          width: 500, height: 500, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(153,69,255,0.06) 0%, transparent 70%)",
+          animation: "drift3 18s ease-in-out infinite",
+        }} />
+        {/* grid */}
+        <div style={{
+          position: "absolute", inset: 0,
+          backgroundImage: "linear-gradient(rgba(153,69,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(153,69,255,0.03) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }} />
       </div>
 
-      <DexHeader onRefresh={() => refresh()} isRefreshing={isFetching} />
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <DexHeader onRefresh={() => refresh()} isRefreshing={isFetching} />
 
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Hero */}
-        <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur-sm p-6">
-          <div className="pointer-events-none absolute inset-0 opacity-[0.5] bg-[radial-gradient(circle_at_20%_10%,rgba(255,45,149,0.18),transparent_45%),radial-gradient(circle_at_80%_20%,rgba(124,58,237,0.16),transparent_45%)]" />
-          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* ── HERO BANNER ── */}
+          <div style={{
+            borderRadius: 20,
+            border: "1px solid rgba(153,69,255,0.15)",
+            background: "linear-gradient(135deg, rgba(153,69,255,0.08) 0%, rgba(20,241,149,0.03) 100%)",
+            padding: "20px 24px",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            flexWrap: "wrap", gap: 16,
+            position: "relative", overflow: "hidden",
+          }}>
+            {/* scan line accent */}
+            <div style={{
+              position: "absolute", top: 0, left: 0, right: 0, height: 1,
+              background: "linear-gradient(90deg, transparent, #9945FF 30%, #14F195 70%, transparent)",
+              opacity: 0.5,
+            }} />
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-400">
-                <Sparkles className="w-3.5 h-3.5 text-[#ff2d95]" />
-                Pump-style bonding curve trading
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <div style={{
+                  padding: "3px 10px", borderRadius: 20,
+                  background: "rgba(153,69,255,0.1)", border: "1px solid rgba(153,69,255,0.2)",
+                  color: "rgba(153,69,255,0.8)", fontFamily: "monospace", fontSize: 9,
+                  letterSpacing: "0.14em",
+                }}>⬡ BONDING CURVE DEX</div>
               </div>
-              <h2 className="mt-3 text-3xl md:text-4xl font-black tracking-tight text-white">
-                Trade the <span className="text-[#ff2d95]">newest</span> launches on BluPrint
-              </h2>
-              <p className="mt-2 text-sm text-gray-400 max-w-2xl">
-                Instant swaps, live curve info, and a clean terminal-grade UI that matches BluPrint&apos;s pink-whale theme.
+              <h1 style={{
+                margin: 0, color: "#fff", fontWeight: 900, fontSize: "clamp(20px, 3vw, 28px)",
+                letterSpacing: "-0.01em",
+              }}>
+                Trade on <span style={{ color: "#14F195", textShadow: "0 0 20px rgba(20,241,149,0.4)" }}>BluPrint</span>
+              </h1>
+              <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.3)", fontSize: 12, fontFamily: "monospace" }}>
+                pump-style bonding curve → raydium migration
               </p>
             </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/create"
-                className="inline-flex items-center justify-center h-11 px-5 rounded-2xl bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] text-white text-sm font-semibold shadow-[0_0_35px_rgba(255,45,149,0.22)] hover:shadow-[0_0_55px_rgba(255,45,149,0.32)] transition"
-              >
-                Launch token
-              </Link>
-              <a
-                href="#market"
-                className="inline-flex items-center justify-center h-11 px-5 rounded-2xl border border-white/10 bg-white/5 text-gray-200 text-sm hover:border-[#ff2d95]/40 hover:text-white transition"
-              >
-                View market
-              </a>
-            </div>
+            <Link href="/create" style={{
+              padding: "10px 20px", borderRadius: 12,
+              background: "linear-gradient(135deg, #9945FF, #6d28d9)",
+              color: "#fff", textDecoration: "none",
+              fontSize: 13, fontWeight: 700, letterSpacing: "0.06em",
+              boxShadow: "0 0 25px rgba(153,69,255,0.35)",
+              whiteSpace: "nowrap",
+            }}>⬡ LAUNCH TOKEN</Link>
           </div>
-        </div>
 
-        <StatsBar totalTokens={total} isLoading={isLoading} />
+          <StatsBar totalTokens={total} isLoading={isLoading} />
 
-        <div id="market" className="grid lg:grid-cols-3 gap-6 scroll-mt-28">
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="flex-1">
-                <SearchBar value={search} onChange={setSearch} />
-              </div>
+          {/* ── 3-COLUMN LAYOUT ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: 16, alignItems: "start" }}>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSortMode((m) => (m === "newest" ? "name" : "newest"))}
-                  className="inline-flex items-center gap-2 h-12 px-4 rounded-2xl bg-white/5 border border-white/10 text-gray-200 hover:border-[#ff2d95]/40 hover:text-white transition"
-                >
-                  <ArrowUpDown className="w-4 h-4 text-[#ff2d95]" />
-                  <span className="text-sm font-medium">
-                    {sortMode === "newest" ? "Newest" : "Name"}
+            {/* ═══ LEFT: Token List ═══ */}
+            <div style={{
+              display: "flex", flexDirection: "column", gap: 12,
+            }}>
+              {/* panel header */}
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "10px 14px",
+                background: "rgba(153,69,255,0.05)",
+                border: "1px solid rgba(153,69,255,0.12)",
+                borderRadius: 12,
+              }}>
+                <span style={{ color: "rgba(153,69,255,0.7)", fontFamily: "monospace", fontSize: 10, letterSpacing: "0.12em" }}>
+                  TOKEN_LIST
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: isFetching ? "#f59e0b" : "#14F195",
+                    boxShadow: `0 0 6px ${isFetching ? "#f59e0b" : "#14F195"}`,
+                    animation: "pulse 2s infinite",
+                  }} />
+                  <span style={{ color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 9 }}>
+                    {isFetching ? "SYNCING" : `${filteredTokens.length} TOKENS`}
                   </span>
-                </button>
-
-                <div className="hidden sm:flex items-center gap-2 h-12 px-4 rounded-2xl bg-white/5 border border-white/10 text-gray-400">
-                  <TrendingUp className="w-4 h-4 text-green-400" />
-                  <span className="text-xs font-mono">{isFetching ? "syncing" : "live"}</span>
                 </div>
               </div>
+
+              <SearchBar value={search} onChange={setSearch} />
+
+              {/* sort toggle */}
+              <div style={{ display: "flex", gap: 6 }}>
+                {(["newest", "name"] as SortMode[]).map((mode) => (
+                  <button key={mode} onClick={() => setSortMode(mode)} style={{
+                    flex: 1, padding: "7px 0",
+                    borderRadius: 8,
+                    background: sortMode === mode ? "rgba(153,69,255,0.15)" : "rgba(153,69,255,0.04)",
+                    border: `1px solid ${sortMode === mode ? "rgba(153,69,255,0.4)" : "rgba(153,69,255,0.1)"}`,
+                    color: sortMode === mode ? "rgba(153,69,255,0.9)" : "rgba(255,255,255,0.25)",
+                    fontFamily: "monospace", fontSize: 9, fontWeight: 700,
+                    letterSpacing: "0.1em", cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}>{mode.toUpperCase()}</button>
+                ))}
+              </div>
+
+              {/* list */}
+              <div style={{
+                background: "rgba(7,7,15,0.6)",
+                border: "1px solid rgba(153,69,255,0.1)",
+                borderRadius: 16, padding: 8,
+                maxHeight: "calc(100vh - 280px)", overflowY: "auto",
+              }}>
+                {isLoading ? (
+                  <LoadingSkeleton />
+                ) : isError ? (
+                  <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refresh()} />
+                ) : filteredTokens.length === 0 ? (
+                  <EmptyState hasSearch={Boolean(search.trim())} />
+                ) : (
+                  <TokenList tokens={filteredTokens} selectedToken={selectedToken} onSelect={handleSelectToken} />
+                )}
+              </div>
             </div>
 
-            <div className="rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur-sm p-3 sm:p-4">
-              <div className="flex items-center justify-between mb-3 px-1">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-                  <p className="text-xs text-gray-500">
-                    {isLoading ? "Loading market..." : `${filteredTokens.length} tokens`}
+            {/* ═══ MIDDLE: Chart + Info ═══ */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+              {selectedToken ? (
+                <>
+                  {/* Token header */}
+                  <div style={{
+                    background: "rgba(7,7,15,0.8)",
+                    border: "1px solid rgba(153,69,255,0.15)",
+                    borderRadius: 16, padding: "16px 20px",
+                    display: "flex", alignItems: "center", gap: 14,
+                  }}>
+                    {selectedToken.imageUrl ? (
+                      <img src={selectedToken.imageUrl} alt={selectedToken.symbol}
+                        style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover",
+                          border: "2px solid rgba(153,69,255,0.3)" }} />
+                    ) : (
+                      <div style={{
+                        width: 52, height: 52, borderRadius: "50%",
+                        background: "linear-gradient(135deg, #9945FF, #14F195)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 22, fontWeight: 900, color: "#fff",
+                      }}>{selectedToken.symbol[0]}</div>
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <h2 style={{ margin: 0, color: "#fff", fontWeight: 900, fontSize: 22 }}>{selectedToken.name}</h2>
+                        <span style={{
+                          color: "#14F195", fontFamily: "monospace", fontSize: 13, fontWeight: 700,
+                          background: "rgba(20,241,149,0.08)", border: "1px solid rgba(20,241,149,0.2)",
+                          padding: "2px 8px", borderRadius: 6,
+                        }}>${selectedToken.symbol}</span>
+                      </div>
+                      {curveInfo?.price?.tokensPerSol && (
+                        <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.35)", fontFamily: "monospace", fontSize: 11 }}>
+                          {Number(curveInfo.price.tokensPerSol).toLocaleString(undefined, { maximumFractionDigits: 2 })} {selectedToken.symbol} / SOL
+                        </p>
+                      )}
+                    </div>
+                    {/* Curve fill badge */}
+                    <div style={{
+                      padding: "8px 14px",
+                      background: fillPercent > 80 ? "rgba(20,241,149,0.1)" : "rgba(153,69,255,0.08)",
+                      border: `1px solid ${fillPercent > 80 ? "rgba(20,241,149,0.3)" : "rgba(153,69,255,0.2)"}`,
+                      borderRadius: 12, textAlign: "center",
+                    }}>
+                      <p style={{ margin: 0, fontFamily: "monospace", fontSize: 18, fontWeight: 900,
+                        color: fillPercent > 80 ? "#14F195" : "rgba(153,69,255,0.9)" }}>
+                        {isLoadingCurve ? "···" : `${fillPercent.toFixed(0)}%`}
+                      </p>
+                      <p style={{ margin: 0, fontFamily: "monospace", fontSize: 9, letterSpacing: "0.1em",
+                        color: "rgba(255,255,255,0.3)" }}>CURVE</p>
+                    </div>
+                  </div>
+
+                  {/* Chart placeholder */}
+                  <div style={{
+                    background: "rgba(7,7,15,0.9)",
+                    border: `1px solid ${isBuy ? "rgba(20,241,149,0.2)" : "rgba(255,45,149,0.2)"}`,
+                    borderRadius: 16, padding: 20,
+                    minHeight: 320,
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    position: "relative", overflow: "hidden",
+                    boxShadow: isBuy
+                      ? "inset 0 0 60px rgba(20,241,149,0.03)"
+                      : "inset 0 0 60px rgba(255,45,149,0.03)",
+                    transition: "border-color 0.4s, box-shadow 0.4s",
+                  }}>
+                    {/* fake grid lines */}
+                    <div style={{
+                      position: "absolute", inset: 0,
+                      backgroundImage: "linear-gradient(rgba(153,69,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(153,69,255,0.04) 1px, transparent 1px)",
+                      backgroundSize: "40px 40px",
+                    }} />
+                    <div style={{ position: "relative", textAlign: "center" }}>
+                      <div style={{ fontSize: 32, marginBottom: 12, filter: "drop-shadow(0 0 12px rgba(153,69,255,0.5))" }}>◈</div>
+                      <p style={{ color: "rgba(153,69,255,0.5)", fontFamily: "monospace", fontSize: 11, letterSpacing: "0.1em" }}>
+                        TRADINGVIEW_CHART
+                      </p>
+                      <p style={{ color: "rgba(255,255,255,0.15)", fontFamily: "monospace", fontSize: 9, marginTop: 4 }}>
+                        integrate TradingView widget here
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Live trades terminal */}
+                  <div style={{
+                    background: "rgba(7,7,15,0.9)",
+                    border: "1px solid rgba(153,69,255,0.12)",
+                    borderRadius: 16, overflow: "hidden",
+                  }}>
+                    <div style={{
+                      padding: "10px 16px",
+                      borderBottom: "1px solid rgba(153,69,255,0.1)",
+                      display: "flex", alignItems: "center", gap: 8,
+                      background: "rgba(153,69,255,0.04)",
+                    }}>
+                      <div style={{
+                        width: 6, height: 6, borderRadius: "50%",
+                        background: "#14F195", boxShadow: "0 0 6px #14F195",
+                        animation: "pulse 1.5s infinite",
+                      }} />
+                      <span style={{ color: "rgba(153,69,255,0.7)", fontFamily: "monospace", fontSize: 10, letterSpacing: "0.12em" }}>
+                        LIVE_TRADES
+                      </span>
+                    </div>
+                    {/* table header */}
+                    <div style={{
+                      display: "grid", gridTemplateColumns: "60px 1fr 1fr 80px 100px",
+                      padding: "8px 16px",
+                      borderBottom: "1px solid rgba(153,69,255,0.06)",
+                    }}>
+                      {["TYPE", "SOL", "TOKENS", "TIME", "MAKER"].map((h) => (
+                        <span key={h} style={{ color: "rgba(153,69,255,0.35)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.1em" }}>{h}</span>
+                      ))}
+                    </div>
+                    {/* empty state */}
+                    <div style={{ padding: "24px 16px", textAlign: "center" }}>
+                      <p style={{ color: "rgba(255,255,255,0.1)", fontFamily: "monospace", fontSize: 10, letterSpacing: "0.08em" }}>
+                        AWAITING_TRANSACTIONS...
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{
+                  background: "rgba(7,7,15,0.6)",
+                  border: "1px solid rgba(153,69,255,0.1)",
+                  borderRadius: 16, padding: 60,
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center",
+                  minHeight: 400, gap: 16,
+                }}>
+                  <div style={{ fontSize: 40, filter: "drop-shadow(0 0 16px rgba(153,69,255,0.4))" }}>◈</div>
+                  <p style={{ color: "rgba(153,69,255,0.4)", fontFamily: "monospace", fontSize: 12, letterSpacing: "0.1em", textAlign: "center" }}>
+                    SELECT_TOKEN_FROM_LIST<br />
+                    <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 10 }}>chart & live trades will appear here</span>
                   </p>
                 </div>
-                <p className="text-[10px] text-gray-600 font-mono">
-                  {isFetching ? "syncing..." : "synced"}
-                </p>
-              </div>
-
-              {isLoading ? (
-                <LoadingSkeleton />
-              ) : isError ? (
-                <ErrorState
-                  message={error instanceof Error ? error.message : undefined}
-                  onRetry={() => refresh()}
-                />
-              ) : filteredTokens.length === 0 ? (
-                <EmptyState hasSearch={Boolean(search.trim())} />
-              ) : (
-                <TokenList
-                  tokens={filteredTokens}
-                  selectedToken={selectedToken}
-                  onSelect={handleSelectToken}
-                />
               )}
+            </div>
+
+            {/* ═══ RIGHT: Trade Terminal ═══ */}
+            <div>
+              <TradePanel {...tradePanelProps} />
             </div>
           </div>
 
-          <div className="hidden lg:block">
-            <TradePanel {...tradePanelProps} />
+          {/* Mobile: bottom bar to open trade */}
+          <div style={{
+            display: "none",
+            position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40,
+            padding: "12px 16px",
+            background: "rgba(7,7,15,0.95)",
+            borderTop: "1px solid rgba(153,69,255,0.15)",
+          }} className="mobile-trade-bar">
+            {selectedToken && (
+              <button
+                onClick={() => setMobileTradeOpen(true)}
+                style={{
+                  width: "100%", height: 50, borderRadius: 14,
+                  background: isBuy
+                    ? "linear-gradient(135deg, #14F195, #0fa96a)"
+                    : "linear-gradient(135deg, #ff2d95, #c4006b)",
+                  border: "none", color: "#fff",
+                  fontWeight: 900, fontSize: 14, letterSpacing: "0.08em",
+                  fontFamily: "monospace", cursor: "pointer",
+                  boxShadow: isBuy
+                    ? "0 0 25px rgba(20,241,149,0.3)"
+                    : "0 0 25px rgba(255,45,149,0.3)",
+                }}>
+                TRADE {selectedToken.symbol}
+              </button>
+            )}
           </div>
         </div>
+
+        <Footer />
       </div>
 
       <TokenModal
@@ -243,7 +439,15 @@ export default function DexPageContent() {
         <TradePanel {...tradePanelProps} showDetail={false} compact />
       </TokenModal>
 
-      <Footer />
+      <style>{`
+        @keyframes drift1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(60px,40px)} }
+        @keyframes drift2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-40px,60px)} }
+        @keyframes drift3 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,-50px)} }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        @media (max-width: 1024px) {
+          .mobile-trade-bar { display: block !important; }
+        }
+      `}</style>
     </div>
   );
 }

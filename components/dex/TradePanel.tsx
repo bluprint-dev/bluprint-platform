@@ -1,9 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { DexToken } from "@/types/dex";
-import TokenDetailPanel from "./TokenDetailPanel";
 import type { BondingCurveInfo } from "@/hooks/useBondingCurveInfo";
 
 type TradePanelProps = {
@@ -21,6 +19,9 @@ type TradePanelProps = {
   onSwap: () => void;
 };
 
+const QUICK_BUY = ["0.1", "0.5", "1", "MAX"];
+const QUICK_SELL = ["25%", "50%", "75%", "100%"];
+
 export default function TradePanel({
   token,
   isBuy,
@@ -37,127 +38,292 @@ export default function TradePanel({
 }: TradePanelProps) {
   const { connected } = useWallet();
 
+  const lifecycle = curveInfo?.lifecycle;
+  const canTrade = lifecycle?.isSwappable !== false;
+  const fillPercent = Math.max(0, Math.min(lifecycle?.fillPercent ?? 0, 100));
+  const priceRaw = curveInfo?.price?.tokensPerSol ? Number(curveInfo.price.tokensPerSol) : null;
+  const priceText = priceRaw && Number.isFinite(priceRaw)
+    ? priceRaw.toLocaleString(undefined, { maximumFractionDigits: 2 })
+    : null;
+
   if (!token) {
     return (
-      <div className="rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur-sm p-6 sticky top-24">
-        <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#ff2d95]/20 to-[#ff6bcb]/20 flex items-center justify-center">
-            <span className="text-2xl">⚡</span>
-          </div>
-          <p className="text-gray-400">Select a token to start trading</p>
-        </div>
+      <div style={{
+        background: "linear-gradient(160deg, #0d0d1a 0%, #12061f 100%)",
+        border: "1px solid rgba(153,69,255,0.15)",
+        borderRadius: 20,
+        padding: 32,
+        position: compact ? "relative" : "sticky",
+        top: compact ? undefined : 96,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: 280,
+        gap: 16,
+      }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: "50%",
+          background: "rgba(153,69,255,0.1)",
+          border: "1px solid rgba(153,69,255,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 28,
+        }}>⚡</div>
+        <p style={{ color: "rgba(255,255,255,0.3)", fontFamily: "monospace", fontSize: 13, letterSpacing: "0.08em" }}>
+          SELECT_TOKEN_TO_TRADE
+        </p>
       </div>
     );
   }
 
-  const lifecycle = curveInfo?.lifecycle;
-  const canTrade = lifecycle?.isSwappable !== false;
-  const fillPercent = lifecycle?.fillPercent ?? 0;
-  const priceTokensPerSol = curveInfo?.price?.tokensPerSol ? Number(curveInfo.price.tokensPerSol) : null;
-  const priceText =
-    priceTokensPerSol && Number.isFinite(priceTokensPerSol)
-      ? `${priceTokensPerSol.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token.symbol} / SOL`
-      : "—";
+  const quickAmounts = isBuy ? QUICK_BUY : QUICK_SELL;
 
   return (
-    <div
-      className={`rounded-3xl border border-white/5 bg-[#12121A]/80 backdrop-blur-xl p-6 shadow-[0_0_40px_rgba(255,45,149,0.08)] ${
-        compact ? "" : "sticky top-24"
-      }`}
-    >
+    <div style={{
+      background: "linear-gradient(160deg, #0d0d1a 0%, #12061f 100%)",
+      border: `1px solid ${isBuy ? "rgba(20,241,149,0.2)" : "rgba(255,45,149,0.2)"}`,
+      borderRadius: 20,
+      padding: 24,
+      position: compact ? "relative" : "sticky",
+      top: compact ? undefined : 96,
+      boxShadow: isBuy
+        ? "0 0 40px rgba(20,241,149,0.06), inset 0 1px 0 rgba(20,241,149,0.08)"
+        : "0 0 40px rgba(255,45,149,0.06), inset 0 1px 0 rgba(255,45,149,0.08)",
+      transition: "border-color 0.3s, box-shadow 0.3s",
+    }}>
+
+      {/* ── HEADER ── */}
       {showDetail && (
-        <TokenDetailPanel token={token} curveInfo={curveInfo} isLoadingCurve={isLoadingCurve} />
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            {token.imageUrl ? (
+              <img src={token.imageUrl} alt={token.symbol}
+                style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover",
+                  border: "2px solid rgba(153,69,255,0.3)" }} />
+            ) : (
+              <div style={{
+                width: 44, height: 44, borderRadius: "50%",
+                background: "linear-gradient(135deg, #9945FF, #14F195)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 18, fontWeight: 700, color: "#fff",
+              }}>{token.symbol[0]}</div>
+            )}
+            <div>
+              <p style={{ color: "#fff", fontWeight: 700, fontSize: 16, margin: 0 }}>{token.name}</p>
+              <p style={{ color: "rgba(153,69,255,0.8)", fontFamily: "monospace", fontSize: 12, margin: 0 }}>
+                ${token.symbol}
+              </p>
+            </div>
+            {/* live dot */}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{
+                width: 8, height: 8, borderRadius: "50%",
+                background: canTrade ? "#14F195" : "#ff4444",
+                boxShadow: canTrade ? "0 0 8px #14F195" : "0 0 8px #ff4444",
+                animation: "pulse 2s infinite",
+              }} />
+              <span style={{ color: "rgba(255,255,255,0.3)", fontFamily: "monospace", fontSize: 10 }}>
+                {canTrade ? "LIVE" : "PAUSED"}
+              </span>
+            </div>
+          </div>
+
+          {/* Bonding curve bar */}
+          <div style={{ marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "rgba(255,255,255,0.4)", fontFamily: "monospace", fontSize: 10, letterSpacing: "0.08em" }}>
+              BONDING CURVE
+            </span>
+            <span style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700,
+              color: fillPercent > 80 ? "#14F195" : "rgba(255,255,255,0.6)" }}>
+              {isLoadingCurve ? "···" : `${fillPercent.toFixed(1)}%`}
+              {fillPercent > 80 && !isLoadingCurve && " → RAYDIUM SOON"}
+            </span>
+          </div>
+          <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
+            <div style={{
+              height: "100%", borderRadius: 3,
+              width: `${fillPercent}%`,
+              background: fillPercent > 80
+                ? "linear-gradient(90deg, #9945FF, #14F195)"
+                : "linear-gradient(90deg, #9945FF80, #14F195)",
+              boxShadow: fillPercent > 80 ? "0 0 12px rgba(20,241,149,0.6)" : "none",
+              transition: "width 0.8s ease",
+            }} />
+          </div>
+
+          {/* Price */}
+          {priceText && (
+            <div style={{
+              marginTop: 10,
+              padding: "6px 10px",
+              background: "rgba(153,69,255,0.06)",
+              border: "1px solid rgba(153,69,255,0.12)",
+              borderRadius: 8,
+              display: "flex", justifyContent: "space-between",
+            }}>
+              <span style={{ color: "rgba(255,255,255,0.3)", fontFamily: "monospace", fontSize: 10 }}>PRICE</span>
+              <span style={{ color: "#14F195", fontFamily: "monospace", fontSize: 11, fontWeight: 700 }}>
+                {priceText} {token.symbol}/SOL
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Pump-like quick stats */}
-      <div className="grid grid-cols-2 gap-3 mb-5">
-        <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Price</p>
-          <p className="text-white font-bold text-sm truncate">{isLoadingCurve ? "..." : priceText}</p>
-        </div>
-        <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Curve Fill</p>
-          <p className="text-white font-bold text-sm">
-            {isLoadingCurve ? "..." : `${Math.max(0, Math.min(fillPercent, 100)).toFixed(1)}%`}
-          </p>
-          <div className="mt-2 h-1.5 rounded-full bg-white/5 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#ff2d95] to-[#ff6bcb] transition-all duration-500"
-              style={{ width: `${Math.min(fillPercent, 100)}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-2 p-1 rounded-xl bg-white/5 mb-5">
-        <button
-          onClick={() => onToggleBuy(true)}
-          className={`flex-1 py-2.5 rounded-lg font-bold transition ${
-            isBuy ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "text-gray-400 hover:text-white"
-          }`}
-        >
-          Buy
-        </button>
-        <button
-          onClick={() => onToggleBuy(false)}
-          className={`flex-1 py-2.5 rounded-lg font-bold transition ${
-            !isBuy ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-gray-400 hover:text-white"
-          }`}
-        >
-          Sell
-        </button>
-      </div>
-
-      <div className="mb-4">
-        <label className="text-sm text-gray-400 mb-2 block">
-          {isBuy ? "You pay (SOL)" : "You sell (tokens)"}
-        </label>
-        <input
-          type="number"
-          min="0"
-          step="any"
-          value={amount}
-          onChange={(e) => onAmountChange(e.target.value)}
-          placeholder="0.00"
-          className="w-full h-12 px-4 rounded-xl bg-[#0A0A0F] border border-white/10 text-white text-lg focus:outline-none focus:border-[#ff2d95]/50 transition"
-        />
-      </div>
-
-      <div className="flex gap-2 mb-4">
-        {(isBuy ? ["0.1", "0.5", "1"] : ["25", "50", "100"]).map((preset) => (
-          <button
-            key={preset}
-            onClick={() => onAmountChange(preset)}
-            className="flex-1 py-2 rounded-lg text-xs font-medium bg-white/5 border border-white/5 text-gray-300 hover:border-[#ff2d95]/30 hover:text-white transition"
-          >
-            {preset}{isBuy ? " SOL" : "%"}
+      {/* ── BUY / SELL TOGGLE ── */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "1fr 1fr",
+        gap: 4, padding: 4,
+        background: "rgba(255,255,255,0.03)",
+        borderRadius: 12, marginBottom: 16,
+      }}>
+        {[true, false].map((buy) => (
+          <button key={String(buy)} onClick={() => onToggleBuy(buy)} style={{
+            padding: "10px 0",
+            borderRadius: 10,
+            border: "none",
+            cursor: "pointer",
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: "0.06em",
+            transition: "all 0.2s",
+            background: isBuy === buy
+              ? buy
+                ? "linear-gradient(135deg, #14F195, #0fa96a)"
+                : "linear-gradient(135deg, #ff2d95, #c4006b)"
+              : "transparent",
+            color: isBuy === buy ? "#fff" : "rgba(255,255,255,0.3)",
+            boxShadow: isBuy === buy
+              ? buy ? "0 0 20px rgba(20,241,149,0.3)" : "0 0 20px rgba(255,45,149,0.3)"
+              : "none",
+          }}>
+            {buy ? "◆ BUY" : "◆ SELL"}
           </button>
         ))}
       </div>
 
+      {/* ── AMOUNT INPUT ── */}
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ display: "block", color: "rgba(255,255,255,0.3)", fontFamily: "monospace",
+          fontSize: 10, letterSpacing: "0.1em", marginBottom: 6 }}>
+          {isBuy ? "AMOUNT_IN (SOL)" : "AMOUNT_IN (TOKENS)"}
+        </label>
+        <div style={{ position: "relative" }}>
+          <input
+            type="number" min="0" step="any"
+            value={amount}
+            onChange={(e) => onAmountChange(e.target.value)}
+            placeholder="0.00"
+            style={{
+              width: "100%", height: 52,
+              paddingLeft: 16, paddingRight: 60,
+              background: "#07070f",
+              border: `1px solid ${amount ? (isBuy ? "rgba(20,241,149,0.3)" : "rgba(255,45,149,0.3)") : "rgba(153,69,255,0.15)"}`,
+              borderRadius: 12,
+              color: "#fff",
+              fontSize: 20,
+              fontFamily: "monospace",
+              fontWeight: 700,
+              outline: "none",
+              boxSizing: "border-box",
+              transition: "border-color 0.2s",
+            }}
+          />
+          <div style={{
+            position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
+            color: isBuy ? "#14F195" : "#ff2d95",
+            fontFamily: "monospace", fontSize: 12, fontWeight: 700, pointerEvents: "none",
+          }}>
+            {isBuy ? "SOL" : token.symbol}
+          </div>
+        </div>
+      </div>
+
+      {/* ── QUICK AMOUNTS ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, marginBottom: 18 }}>
+        {quickAmounts.map((preset) => (
+          <button key={preset} onClick={() => onAmountChange(preset.replace("%", ""))} style={{
+            padding: "7px 0",
+            background: "rgba(153,69,255,0.06)",
+            border: "1px solid rgba(153,69,255,0.15)",
+            borderRadius: 8,
+            color: "rgba(255,255,255,0.5)",
+            fontSize: 11,
+            fontFamily: "monospace",
+            fontWeight: 700,
+            cursor: "pointer",
+            transition: "all 0.15s",
+            letterSpacing: "0.04em",
+          }}
+          onMouseEnter={e => {
+            (e.target as HTMLButtonElement).style.borderColor = isBuy ? "rgba(20,241,149,0.4)" : "rgba(255,45,149,0.4)";
+            (e.target as HTMLButtonElement).style.color = "#fff";
+            (e.target as HTMLButtonElement).style.background = isBuy ? "rgba(20,241,149,0.08)" : "rgba(255,45,149,0.08)";
+          }}
+          onMouseLeave={e => {
+            (e.target as HTMLButtonElement).style.borderColor = "rgba(153,69,255,0.15)";
+            (e.target as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)";
+            (e.target as HTMLButtonElement).style.background = "rgba(153,69,255,0.06)";
+          }}>
+            {preset}
+          </button>
+        ))}
+      </div>
+
+      {/* ── EXECUTE BUTTON ── */}
       <button
         onClick={onSwap}
         disabled={isSwapping || !amount || !connected || !canTrade}
-        className={`w-full h-12 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed ${
-          isBuy
-            ? "bg-gradient-to-r from-green-500 to-emerald-400 hover:shadow-lg hover:shadow-green-500/20"
-            : "bg-gradient-to-r from-red-500 to-rose-400 hover:shadow-lg hover:shadow-red-500/20"
-        }`}
+        style={{
+          width: "100%", height: 54,
+          borderRadius: 14,
+          border: "none",
+          cursor: isSwapping || !amount || !connected || !canTrade ? "not-allowed" : "pointer",
+          opacity: isSwapping || !amount || !connected || !canTrade ? 0.4 : 1,
+          background: isBuy
+            ? "linear-gradient(135deg, #14F195 0%, #0fa96a 100%)"
+            : "linear-gradient(135deg, #ff2d95 0%, #c4006b 100%)",
+          boxShadow: isSwapping || !amount ? "none" : isBuy
+            ? "0 0 30px rgba(20,241,149,0.4), 0 4px 20px rgba(20,241,149,0.2)"
+            : "0 0 30px rgba(255,45,149,0.4), 0 4px 20px rgba(255,45,149,0.2)",
+          color: "#fff",
+          fontWeight: 900,
+          fontSize: 15,
+          letterSpacing: "0.12em",
+          fontFamily: "monospace",
+          transition: "all 0.2s",
+          position: "relative",
+          overflow: "hidden",
+        }}
       >
         {isSwapping ? (
-          <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-        ) : !canTrade ? (
-          "Trading unavailable"
-        ) : (
-          `${isBuy ? "Buy" : "Sell"} ${token.symbol}`
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <span style={{ display: "inline-block", animation: "spin 0.8s linear infinite" }}>◈</span>
+            EXECUTING...
+          </span>
+        ) : !canTrade ? "CURVE_INACTIVE" : (
+          `${isBuy ? "▲ BUY" : "▼ SELL"} ${token.symbol}`
         )}
       </button>
 
-      {swapError && <p className="text-red-400 text-sm mt-3 text-center">{swapError}</p>}
-
-      {!connected && (
-        <p className="text-gray-500 text-sm mt-3 text-center">Connect wallet to trade</p>
+      {/* errors / warnings */}
+      {swapError && (
+        <p style={{ color: "#ff4444", fontFamily: "monospace", fontSize: 11,
+          textAlign: "center", marginTop: 10, letterSpacing: "0.04em" }}>
+          ⚠ {swapError}
+        </p>
       )}
+      {!connected && (
+        <p style={{ color: "rgba(153,69,255,0.5)", fontFamily: "monospace", fontSize: 11,
+          textAlign: "center", marginTop: 8, letterSpacing: "0.06em" }}>
+          CONNECT_WALLET_TO_TRADE
+        </p>
+      )}
+
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+      `}</style>
     </div>
   );
 }

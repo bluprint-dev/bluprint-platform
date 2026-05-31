@@ -1,7 +1,5 @@
 "use client";
 
-import { Search, X } from "lucide-react";
-
 type SearchBarProps = {
   value: string;
   onChange: (value: string) => void;
@@ -9,25 +7,67 @@ type SearchBarProps = {
 
 export default function SearchBar({ value, onChange }: SearchBarProps) {
   return (
-    <div className="relative group">
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#ff2d95]/20 to-[#ff6bcb]/20 blur-xl opacity-0 group-focus-within:opacity-100 transition" />
-      <div className="relative flex items-center">
-        <Search className="absolute left-4 w-4 h-4 text-gray-500" />
+    <div style={{ position: "relative" }}>
+      {/* Glow behind focused input */}
+      <div style={{
+        position: "absolute", inset: -1,
+        borderRadius: 13,
+        background: "linear-gradient(90deg, rgba(153,69,255,0.3), rgba(20,241,149,0.15))",
+        opacity: value ? 1 : 0,
+        transition: "opacity 0.3s",
+        pointerEvents: "none",
+        zIndex: 0,
+        filter: "blur(8px)",
+      }} />
+
+      <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center" }}>
+        {/* Terminal prompt */}
+        <span style={{
+          position: "absolute", left: 14,
+          color: "rgba(153,69,255,0.5)",
+          fontFamily: "monospace", fontSize: 14, fontWeight: 700,
+          userSelect: "none", pointerEvents: "none",
+        }}>›_</span>
+
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Search by name, symbol, or mint..."
-          className="w-full h-12 pl-11 pr-11 rounded-2xl bg-[#12121A] border border-white/10 text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#ff2d95]/50 transition"
+          placeholder="search token, symbol, mint..."
+          style={{
+            width: "100%", height: 48,
+            paddingLeft: 40, paddingRight: value ? 40 : 16,
+            background: "#07070f",
+            border: `1px solid ${value ? "rgba(153,69,255,0.35)" : "rgba(153,69,255,0.12)"}`,
+            borderRadius: 12,
+            color: "#fff",
+            fontSize: 13,
+            fontFamily: "monospace",
+            outline: "none",
+            transition: "border-color 0.2s",
+            letterSpacing: "0.02em",
+            boxSizing: "border-box",
+          }}
+          onFocus={e => { e.target.style.borderColor = "rgba(153,69,255,0.5)"; }}
+          onBlur={e => { e.target.style.borderColor = value ? "rgba(153,69,255,0.35)" : "rgba(153,69,255,0.12)"; }}
         />
+
         {value && (
           <button
             onClick={() => onChange("")}
-            className="absolute right-3 p-1 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition"
             aria-label="Clear search"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            style={{
+              position: "absolute", right: 12,
+              background: "rgba(153,69,255,0.1)",
+              border: "1px solid rgba(153,69,255,0.2)",
+              borderRadius: 6,
+              color: "rgba(153,69,255,0.7)",
+              width: 24, height: 24,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", fontSize: 12,
+              transition: "all 0.15s",
+            }}
+          >✕</button>
         )}
       </div>
     </div>

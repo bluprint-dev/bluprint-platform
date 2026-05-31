@@ -1,8 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import { motion } from "framer-motion";
-import { ChevronRight } from "lucide-react";
 import type { DexToken } from "@/types/dex";
 import { shortMint } from "@/lib/dex/normalizeToken";
 
@@ -16,86 +14,106 @@ type TokenCardProps = {
 function TokenAvatar({ token }: { token: DexToken }) {
   if (token.imageUrl) {
     return (
-      <img
-        src={token.imageUrl}
-        alt={token.symbol}
-        className="w-11 h-11 rounded-full object-cover ring-2 ring-white/5"
-        loading="lazy"
-      />
+      <img src={token.imageUrl} alt={token.symbol} style={{
+        width: 42, height: 42, borderRadius: "50%", objectFit: "cover",
+        border: "1.5px solid rgba(153,69,255,0.25)",
+        flexShrink: 0,
+      }} loading="lazy" />
     );
   }
-
+  const colors = ["#9945FF,#14F195", "#ff2d95,#9945FF", "#14F195,#0fa96a", "#ff6bcb,#ff2d95"];
+  const grad = colors[(token.symbol.charCodeAt(0) ?? 0) % colors.length];
   return (
-    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#ff2d95] to-[#7c3aed] flex items-center justify-center ring-2 ring-white/5">
-      <span className="text-white font-bold text-lg">
-        {token.symbol.charAt(0) || "?"}
-      </span>
+    <div style={{
+      width: 42, height: 42, borderRadius: "50%", flexShrink: 0,
+      background: `linear-gradient(135deg, ${grad})`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 17, fontWeight: 900, color: "#fff",
+      border: "1.5px solid rgba(153,69,255,0.2)",
+    }}>
+      {token.symbol.charAt(0)}
     </div>
   );
 }
 
-function TokenCardComponent({
-  token,
-  selected,
-  index = 0,
-  onSelect,
-}: TokenCardProps) {
+function TokenCardComponent({ token, selected, index = 0, onSelect }: TokenCardProps) {
+  const age = token.createdAt
+    ? Math.floor((Date.now() - token.createdAt) / 60000)
+    : null;
+  const ageText = age === null ? "" : age < 60 ? `${age}m` : `${Math.floor(age / 60)}h`;
+
   return (
-    <motion.button
+    <button
       type="button"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.02, 0.3) }}
-      whileHover={{ scale: 1.01, x: 2 }}
-      whileTap={{ scale: 0.99 }}
       onClick={() => onSelect(token)}
-      className={`group relative w-full text-left flex items-center justify-between p-3 sm:p-4 rounded-2xl border transition-all dex-card-hover ${
-        selected
-          ? "bg-[#ff2d95]/10 border-[#ff2d95]/40 shadow-[0_0_30px_rgba(255,45,149,0.15)]"
-          : "bg-white/[0.02] border-white/5 hover:border-[#ff2d95]/25 hover:bg-white/[0.04]"
-      }`}
+      style={{
+        width: "100%", textAlign: "left",
+        display: "flex", alignItems: "center", gap: 12,
+        padding: "10px 12px",
+        borderRadius: 12,
+        border: selected
+          ? "1px solid rgba(153,69,255,0.5)"
+          : "1px solid rgba(255,255,255,0.04)",
+        background: selected
+          ? "linear-gradient(135deg, rgba(153,69,255,0.12), rgba(20,241,149,0.04))"
+          : "rgba(255,255,255,0.02)",
+        cursor: "pointer",
+        transition: "all 0.15s",
+        boxShadow: selected ? "0 0 20px rgba(153,69,255,0.12)" : "none",
+        animationDelay: `${Math.min(index * 20, 300)}ms`,
+      }}
+      onMouseEnter={e => {
+        if (!selected) {
+          (e.currentTarget as HTMLButtonElement).style.background = "rgba(153,69,255,0.06)";
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(153,69,255,0.25)";
+        }
+      }}
+      onMouseLeave={e => {
+        if (!selected) {
+          (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.02)";
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.04)";
+        }
+      }}
     >
-      {/* glow */}
-      <div
-        className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition pointer-events-none ${
-          selected ? "opacity-100" : ""
-        }`}
-        style={{
-          background:
-            "radial-gradient(700px circle at 10% 0%, rgba(255,45,149,0.12), transparent 45%)",
-        }}
-      />
+      {/* Avatar */}
+      <TokenAvatar token={token} />
 
-      {/* left */}
-      <div className="relative flex items-center gap-3 min-w-0">
-        <TokenAvatar token={token} />
-
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-white font-bold">
-              {token.symbol}
-            </span>
-            <span className="text-xs text-gray-500 truncate">
-              {token.name}
-            </span>
-          </div>
-
-          {/* ⚠️ still mint display ONLY (UI safe) */}
-          <p className="text-xs text-gray-600 font-mono truncate">
-            {shortMint(token.mint)}
-          </p>
+      {/* Name + mint */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+          <span style={{
+            color: "#fff", fontWeight: 700, fontSize: 14,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>{token.name}</span>
+          <span style={{
+            color: selected ? "#14F195" : "rgba(153,69,255,0.7)",
+            fontFamily: "monospace", fontSize: 11, fontWeight: 700,
+            background: selected ? "rgba(20,241,149,0.08)" : "rgba(153,69,255,0.08)",
+            padding: "1px 6px", borderRadius: 4,
+            flexShrink: 0,
+          }}>${token.symbol}</span>
         </div>
+        <span style={{
+          color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 10,
+        }}>
+          {shortMint(token.mint)}
+        </span>
       </div>
 
-      {/* right */}
-      <ChevronRight
-        className={`relative w-4 h-4 shrink-0 transition ${
-          selected
-            ? "text-[#ff2d95]"
-            : "text-gray-600 group-hover:text-gray-300"
-        }`}
-      />
-    </motion.button>
+      {/* Age + arrow */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+        {ageText && (
+          <span style={{
+            color: "rgba(255,255,255,0.25)", fontFamily: "monospace", fontSize: 10,
+          }}>{ageText} ago</span>
+        )}
+        <span style={{
+          color: selected ? "#14F195" : "rgba(153,69,255,0.4)",
+          fontSize: 14, fontWeight: 700,
+          transition: "color 0.15s",
+        }}>›</span>
+      </div>
+    </button>
   );
 }
 
