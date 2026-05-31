@@ -68,10 +68,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (
-      tokenData.description &&
-      tokenData.description.length > 500
-    ) {
+    if (tokenData.description && tokenData.description.length > 500) {
       return NextResponse.json(
         { error: 'Description too long' },
         { status: 400 }
@@ -82,11 +79,8 @@ export async function POST(req: NextRequest) {
     // RATE LIMIT
     // =========================
 
-    const ip =
-      req.headers.get('x-forwarded-for') || 'unknown';
-
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
     const rateKey = `rate:create:${ip}:${userPublicKey}`;
-
     const rateCount = await redis.incr(rateKey);
 
     if (rateCount === 1) {
@@ -105,9 +99,7 @@ export async function POST(req: NextRequest) {
     // =========================
 
     const walletRateKey = `rate:wallet:${userPublicKey}`;
-
-    const walletRateCount =
-      await redis.incr(walletRateKey);
+    const walletRateCount = await redis.incr(walletRateKey);
 
     if (walletRateCount === 1) {
       await redis.expire(walletRateKey, 86400);
@@ -125,18 +117,11 @@ export async function POST(req: NextRequest) {
     // =========================
 
     const lockKey = `lock:create:${userPublicKey}`;
-
-    const locked = await redis.setnx(
-      lockKey,
-      'locked'
-    );
+    const locked = await redis.setnx(lockKey, 'locked');
 
     if (!locked) {
       return NextResponse.json(
-        {
-          error:
-            'Previous request still processing',
-        },
+        { error: 'Previous request still processing' },
         { status: 429 }
       );
     }
@@ -148,19 +133,11 @@ export async function POST(req: NextRequest) {
       // VERIFY PAYMENT
       // =========================
 
-      const verifyResult =
-        await verifyPayment(
-          signature,
-          userPublicKey
-        );
+      const verifyResult = await verifyPayment(signature, userPublicKey);
 
       if (!verifyResult.verified) {
         return NextResponse.json(
-          {
-            error:
-              verifyResult.error ||
-              'Payment verification failed',
-          },
+          { error: verifyResult.error || 'Payment verification failed' },
           { status: 400 }
         );
       }
@@ -172,45 +149,32 @@ export async function POST(req: NextRequest) {
       let referralApplied = false;
       let inviterWallet: string | null = null;
 
-      if (
-        promoCode &&
-        typeof promoCode === 'string'
-      ) {
-        const normalizedCode =
-          promoCode.trim().toUpperCase();
+      if (promoCode && typeof promoCode === 'string') {
+        const normalizedCode = promoCode.trim().toUpperCase();
 
         // code -> wallet
-        inviterWallet = await redis.get(
-          `ref:code:${normalizedCode}`
-        );
+        inviterWallet = await redis.get(`ref:code:${normalizedCode}`) as string | null;
 
-        // valid code
-        if (
-          inviterWallet &&
-          inviterWallet !== userPublicKey
-        ) {
-          // reward add
+        // valid code — kendi kodunu kullanamazsın
+        if (inviterWallet && inviterWallet !== userPublicKey) {
+          // Reward
           await redis.incrbyfloat(
             `ref:earnings:${inviterWallet}:pending`,
             REFERRAL_REWARD
           );
 
-          // referral count
-          await redis.incr(
-            `ref:count:${inviterWallet}`
-          );
+          // Referral count + leaderboard (sorted set, O(log N))
+          const newCount = await redis.incr(`ref:count:${inviterWallet}`);
+          await redis.zadd('ref:leaderboard', {
+            score: newCount,
+            member: inviterWallet,
+          });
 
-          // referral history
-          await redis.sadd(
-            `ref:list:${inviterWallet}`,
-            userPublicKey
-          );
+          // Referral history
+          await redis.sadd(`ref:list:${inviterWallet}`, userPublicKey);
 
-          // track creator referrals
-          await redis.sadd(
-            `ref:used-by:${userPublicKey}`,
-            normalizedCode
-          );
+          // Track which codes this user has used
+          await redis.sadd(`ref:used-by:${userPublicKey}`, normalizedCode);
 
           referralApplied = true;
         }
@@ -220,10 +184,7 @@ export async function POST(req: NextRequest) {
       // USER TOKEN TRACKING
       // =========================
 
-      await redis.sadd(
-        'users',
-        userPublicKey
-      );
+      await redis.sadd('users', userPublicKey);
 
       // =========================
       // SUCCESS
@@ -232,41 +193,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         verified: true,
-
         referralApplied,
-
-        inviterWallet:
-          referralApplied
-            ? inviterWallet
-            : null,
-
-        rewardAmount:
-          referralApplied
-            ? REFERRAL_REWARD
-            : 0,
-
-        message:
-          'Payment verified, ready to launch',
+        inviterWallet: referralApplied ? inviterWallet : null,
+        rewardAmount: referralApplied ? REFERRAL_REWARD : 0,
+        message: 'Payment verified, ready to launch',
       });
+
     } finally {
       // =========================
       // RELEASE LOCK
       // =========================
-
       await redis.del(lockKey);
     }
-  } catch (error: any) {
-    console.error(
-      'Create token error:',
-      error
-    );
 
+  } catch (error: any) {
+    console.error('Create token error:', error);
     return NextResponse.json(
-      {
-        error:
-          error.message ||
-          'Internal server error',
-      },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }

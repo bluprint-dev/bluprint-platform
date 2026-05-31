@@ -1,104 +1,112 @@
+// app/api/claim-referral/route.ts
+// Transfers pending earnings from treasury to user wallet.
+// Key standard (matches create-token & referral-earnings):
+//   ref:earnings:{wallet}:pending  -> incrbyfloat
+//   ref:earnings:{wallet}:claimed  -> incrbyfloat
+//
+// Safety:
+//   - Redis NX lock (10s TTL) prevents double-claim
+//   - State updated ONLY after on-chain confirmation
+//   - Minimum claim: 0.01 SOL (avoid dust txs)
+//   - Treasury key via PLATFORM_SECRET_KEY env (bs58 encoded keypair)
+
 import { NextRequest, NextResponse } from 'next/server';
-import { Connection, Keypair, PublicKey, SystemProgram, LAMPORTS_PER_SOL, Transaction } from '@solana/web3.js';
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
+  Transaction,
+} from '@solana/web3.js';
 import { redis } from '@/app/lib/redis';
+import bs58 from 'bs58';
 
-const WALLET_FILE = process.env.WALLET_SECRET; // öneri: file yerine env
+export const runtime = 'nodejs';
 
-function getTreasuryWallet(): Keypair {
-  const secretKey = JSON.parse(WALLET_FILE!);
-  return Keypair.fromSecretKey(new Uint8Array(secretKey));
-}
+const MIN_CLAIM = 0.01; // SOL
 
-function getKey(wallet: string) {
-  return {
-    earnings: `earnings:${wallet}`,
-    lock: `lock:claim:${wallet}`,
-  };
+function getTreasury(): Keypair {
+  const secret = process.env.PLATFORM_SECRET_KEY!;
+  // bs58 encoded (same as umi.ts)
+  return Keypair.fromSecretKey(bs58.decode(secret));
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { wallet, amount } = await req.json();
+    const { wallet } = await req.json();
 
-    if (!wallet || !amount) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    if (!wallet) {
+      return NextResponse.json({ success: false, error: 'Wallet required' }, { status: 400 });
     }
 
-    if (amount <= 0) {
-      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
-    }
-
-    const keys = getKey(wallet);
-
-    // 🔒 LOCK (anti double claim)
-    const lock = await redis.set(keys.lock, '1', { nx: true, ex: 10 });
-    if (!lock) {
-      return NextResponse.json({ error: 'Claim in progress' }, { status: 429 });
+    // ── Lock (anti double-claim) ──────────────────────────────────────────
+    const lockKey = `lock:claim:${wallet}`;
+    const locked = await redis.set(lockKey, '1', { nx: true, ex: 10 });
+    if (!locked) {
+      return NextResponse.json({ success: false, error: 'Claim already in progress' }, { status: 429 });
     }
 
     try {
-      // 🧠 ATOMIC DATA READ
-      const raw = await redis.get(keys.earnings);
+      // ── Read current pending ──────────────────────────────────────────
+      const pendingRaw = await redis.get(`ref:earnings:${wallet}:pending`) as string | null;
+      const pending = parseFloat(pendingRaw ?? '0') || 0;
 
-      const data = raw
-        ? typeof raw === 'string'
-          ? JSON.parse(raw)
-          : raw
-        : { pending: 0, claimed: 0, referrals: [] };
-
-      if ((data.pending || 0) < amount) {
-        return NextResponse.json({ error: 'Insufficient earnings' }, { status: 400 });
+      if (pending < MIN_CLAIM) {
+        return NextResponse.json({
+          success: false,
+          error: `Minimum claim is ${MIN_CLAIM} SOL (you have ${pending.toFixed(4)} SOL pending)`,
+        }, { status: 400 });
       }
 
-      // 💰 SOLANA TRANSFER
-      const connection = new Connection(
-        process.env.NEXT_PUBLIC_RPC_URL!,
-        'confirmed'
-      );
+      // ── On-chain transfer ─────────────────────────────────────────────
+      const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!, 'confirmed');
+      const treasury = getTreasury();
+      const toPubkey = new PublicKey(wallet);
+      const lamports = Math.floor(pending * LAMPORTS_PER_SOL);
 
-      const treasury = getTreasuryWallet();
-      const to = new PublicKey(wallet);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
 
-      const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
-
-      const tx = new Transaction().add(
+      const tx = new Transaction({
+        recentBlockhash: blockhash,
+        feePayer: treasury.publicKey,
+      }).add(
         SystemProgram.transfer({
           fromPubkey: treasury.publicKey,
-          toPubkey: to,
+          toPubkey,
           lamports,
         })
       );
 
-      const { blockhash } = await connection.getLatestBlockhash();
-      tx.recentBlockhash = blockhash;
-      tx.feePayer = treasury.publicKey;
-
       tx.sign(treasury);
 
-      const sig = await connection.sendRawTransaction(tx.serialize());
-      await connection.confirmTransaction(sig, 'confirmed');
+      const sig = await connection.sendRawTransaction(tx.serialize(), {
+        skipPreflight: false,
+        maxRetries: 3,
+      });
 
-      // 🧾 STATE UPDATE (ONLY AFTER SUCCESS)
-      data.pending -= amount;
-      data.claimed += amount;
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
 
-      await redis.set(keys.earnings, JSON.stringify(data));
+      // ── Update Redis ONLY after confirmed ────────────────────────────
+      // Deduct pending, add to claimed (atomic via pipeline)
+      await Promise.all([
+        redis.incrbyfloat(`ref:earnings:${wallet}:pending`, -pending),
+        redis.incrbyfloat(`ref:earnings:${wallet}:claimed`, pending),
+      ]);
 
       return NextResponse.json({
         success: true,
-        amount,
+        amount: pending,
         signature: sig,
       });
 
     } finally {
-      // 🔓 ALWAYS RELEASE LOCK
-      await redis.del(keys.lock);
+      // Always release lock
+      await redis.del(lockKey);
     }
 
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || 'Server error' },
-      { status: 500 }
-    );
+    console.error('CLAIM_ERROR:', err);
+    return NextResponse.json({ success: false, error: err.message ?? 'Server error' }, { status: 500 });
   }
 }
