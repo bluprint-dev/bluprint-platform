@@ -1,338 +1,912 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { useConnection } from "@solana/wallet-adapter-react";
-import { useRouter } from "next/navigation";
-import { Transaction, VersionedTransaction } from "@solana/web3.js";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { Transaction, VersionedTransaction, SystemProgram, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type CreateTokenResult = {
-  success: boolean;
-  error?: string;
-  signature?: string;
-  transaction?: string;
-  mint?: string;
-  genesisAccount?: string;
-};
-
-type PromoValidation = {
-  valid: boolean;
-  owner?: string;
-  error?: string;
-};
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function slugify(s: string) {
-  return s.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+/* ─── Types ──────────────────────────────────────────────────────────────── */
+interface FormState {
+  name: string;
+  symbol: string;
+  description: string;
+  website: string;
+  twitter: string;
+  telegram: string;
+  promoCode: string;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+type PromoStatus = "idle" | "checking" | "valid" | "invalid";
+type LaunchStatus = "idle" | "uploading" | "creating" | "signing" | "confirming" | "done" | "error";
+// TS needs explicit union — all 7 values declared above
 
+const CREATION_FEE_SOL = 0.02;
+
+/* ─── Rotating Globe SVG (subtle background accent) ─────────────────────── */
+function RotatingGlobe() {
+  return (
+    <div style={{
+      position: "absolute", inset: 0, display: "flex",
+      alignItems: "center", justifyContent: "center",
+      pointerEvents: "none", overflow: "hidden",
+    }}>
+      <div style={{
+        width: 500, height: 500, borderRadius: "50%",
+        border: "1px solid rgba(153,69,255,0.08)",
+        position: "relative",
+        animation: "globe-spin 30s linear infinite",
+        opacity: 0.4,
+      }}>
+        {[0, 30, 60, 90, 120, 150].map((deg, i) => (
+          <div key={i} style={{
+            position: "absolute", inset: 0, borderRadius: "50%",
+            border: "1px solid rgba(153,69,255,0.15)",
+            transform: `rotateY(${deg}deg)`,
+          }} />
+        ))}
+        {[20, 40, 60, 80].map((pct, i) => (
+          <div key={i} style={{
+            position: "absolute",
+            left: 0, right: 0,
+            top: `${pct}%`,
+            height: "1px",
+            background: "rgba(153,69,255,0.12)",
+            borderRadius: 1,
+          }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Bonding Curve Bar ──────────────────────────────────────────────────── */
+function BondingCurveBar({ pct }: { pct: number }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600, letterSpacing: "0.08em" }}>
+          BONDING CURVE
+        </span>
+        <span style={{ fontSize: 11, color: "#14F195", fontWeight: 700 }}>{pct}%</span>
+      </div>
+      <div style={{ height: 6, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" }}>
+        <div style={{
+          height: "100%",
+          width: `${pct}%`,
+          background: "linear-gradient(90deg, #9945FF, #14F195)",
+          borderRadius: 99,
+          transition: "width 0.6s ease",
+          boxShadow: "0 0 12px rgba(20,241,149,0.6)",
+        }} />
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Component ─────────────────────────────────────────────────────── */
 export default function CreatePage() {
-  const { publicKey, connected, sendTransaction } = useWallet();
+  const { publicKey, signTransaction, connected } = useWallet();
   const { connection } = useConnection();
-  const router = useRouter();
 
-  // Form state
-  const [name, setName] = useState("");
-  const [symbol, setSymbol] = useState("");
-  const [desc, setDesc] = useState("");
+  const [form, setForm] = useState<FormState>({
+    name: "", symbol: "", description: "",
+    website: "", twitter: "", telegram: "", promoCode: "",
+  });
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [promoCode, setPromoCode] = useState("");
-
-  // Promo validation state
-  const [promoStatus, setPromoStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [socialOpen, setSocialOpen] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoStatus, setPromoStatus] = useState<PromoStatus>("idle");
+  const [launchStatus, setLaunchStatus] = useState<LaunchStatus>("idle");
+  const [launchError, setLaunchError] = useState("");
+  const [txSig, setTxSig] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const promoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Submit state
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStep, setSubmitStep] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  /* ── form helpers ── */
+  const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [k]: e.target.value }));
 
-  // ─── Promo code validation (debounced 500ms) ──────────────────────────────
-
-  const validatePromo = useCallback(async (code: string) => {
-    const trimmed = code.trim().toUpperCase();
-    if (!trimmed || trimmed.length < 4) {
-      setPromoStatus("idle");
-      return;
-    }
-    setPromoStatus("checking");
-    try {
-      const res = await fetch(`/api/promo/code?code=${encodeURIComponent(trimmed)}`);
-      const data: PromoValidation = await res.json();
-      setPromoStatus(data.valid ? "valid" : "invalid");
-    } catch {
-      setPromoStatus("idle");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (promoDebounceRef.current) clearTimeout(promoDebounceRef.current);
-    promoDebounceRef.current = setTimeout(() => validatePromo(promoCode), 500);
-    return () => {
-      if (promoDebounceRef.current) clearTimeout(promoDebounceRef.current);
-    };
-  }, [promoCode, validatePromo]);
-
-  // ─── Image handling ───────────────────────────────────────────────────────
-
+  /* ── image ── */
   const handleImage = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image must be under 5MB");
-      return;
-    }
-    setError(null);
     setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onload = e => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
   }, []);
 
-  // ─── Submit ───────────────────────────────────────────────────────────────
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleImage(file);
+  }, [handleImage]);
 
-  const handleSubmit = useCallback(async () => {
-    if (!connected || !publicKey) {
-      window.dispatchEvent(new CustomEvent("wallet-connect-requested"));
+  /* ── promo code validation ── */
+  useEffect(() => {
+    if (!form.promoCode || form.promoCode.length < 4) {
+      setPromoStatus("idle");
       return;
     }
-    if (!name.trim() || !symbol.trim()) {
-      setError("Name and symbol are required");
-      return;
-    }
-    if (!imageFile) {
-      setError("Image is required");
-      return;
-    }
+    if (promoDebounceRef.current) clearTimeout(promoDebounceRef.current);
+    setPromoStatus("checking");
+    promoDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/promo/code?code=${form.promoCode.toUpperCase()}`);
+        const json = await res.json();
+        setPromoStatus(json.valid ? "valid" : "invalid");
+      } catch {
+        setPromoStatus("invalid");
+      }
+    }, 500);
+  }, [form.promoCode]);
 
-    setIsSubmitting(true);
-    setError(null);
+  /* ── launch ── */
+  const handleLaunch = async () => {
+    if (!connected || !publicKey || !signTransaction) return;
+    if (!form.name.trim() || !form.symbol.trim()) return;
+
+    setLaunchStatus("uploading");
+    setLaunchError("");
+    setTxSig("");
 
     try {
-      // Step 1: Upload image
-      setSubmitStep("Uploading image…");
-      const formData = new FormData();
-      formData.append("file", imageFile);
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      const uploadData = await uploadRes.json();
-      if (!uploadData.success || !uploadData.url) throw new Error(uploadData.error ?? "Image upload failed");
-      const imageUrl: string = uploadData.url;
+      // 1. Upload image
+      let imageUrl = "";
+      if (imageFile) {
+        const fd = new FormData();
+        fd.append("file", imageFile);
+        const upRes = await fetch("/api/upload", { method: "POST", body: fd });
+        const upJson = await upRes.json();
+        if (!upJson.url) throw new Error("Image upload failed");
+        imageUrl = upJson.url;
+      }
 
-      // Step 2: Build token transaction
-      setSubmitStep("Building transaction…");
-      const createRes = await fetch("/api/create-token", {
+      setLaunchStatus("creating");
+
+      // 2. Create token transaction
+      const body = {
+        name: form.name.trim(),
+        symbol: form.symbol.trim().toUpperCase(),
+        description: form.description.trim(),
+        imageUrl,
+        website: form.website.trim(),
+        twitter: form.twitter.trim(),
+        telegram: form.telegram.trim(),
+        wallet: publicKey.toBase58(),
+        promoCode: promoStatus === "valid" ? form.promoCode.toUpperCase() : undefined,
+      };
+
+      const res = await fetch("/api/create-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          symbol: slugify(symbol),
-          description: desc.trim(),
-          imageUrl,
-          creatorWallet: publicKey.toString(),
-          promoCode: promoCode.trim().toUpperCase() || undefined,
-        }),
+        body: JSON.stringify(body),
       });
-      const createData: CreateTokenResult = await createRes.json();
-      if (!createData.success) throw new Error(createData.error ?? "Token creation failed");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Token creation failed");
 
-      const rawTx = createData.transaction ?? createData.signature;
-      if (!rawTx) throw new Error("No transaction returned from server");
-      const { mint, genesisAccount } = createData;
+      setLaunchStatus("signing");
 
-      // Step 3: Sign & send
-      setSubmitStep("Awaiting wallet signature…");
-      const txBytes = Buffer.from(rawTx, "base64");
-      let tx: VersionedTransaction | Transaction;
+      // 3. Sign & send transaction
+      let tx: Transaction | VersionedTransaction;
+      const txBuf = Buffer.from(json.transaction, "base64");
       try {
-        tx = VersionedTransaction.deserialize(txBytes);
+        tx = VersionedTransaction.deserialize(txBuf);
       } catch {
-        tx = Transaction.from(txBytes);
+        tx = Transaction.from(txBuf);
       }
 
-      let sig: string;
-      try {
-        sig = await sendTransaction(tx as VersionedTransaction, connection);
-      } catch (walletErr) {
-        const msg = walletErr instanceof Error ? walletErr.message : "Wallet rejected";
-        throw new Error(msg);
-      }
+      const signed = await signTransaction(tx as any);
+      setLaunchStatus("confirming");
 
-      setSubmitStep("Confirming…");
-      const { value: status } = await connection.confirmTransaction(sig, "confirmed");
-      if (status.err) throw new Error("Transaction failed on-chain");
+      const raw = signed instanceof VersionedTransaction
+        ? signed.serialize()
+        : (signed as Transaction).serialize();
 
-      // Step 4: Track launch → DEX listing (non-fatal)
-      if (genesisAccount && mint) {
-        setSubmitStep("Listing on DEX…");
+      const sig = await connection.sendRawTransaction(raw, {
+        skipPreflight: false,
+        preflightCommitment: "confirmed",
+      });
+
+      await connection.confirmTransaction(sig, "confirmed");
+
+      // 4. Post-launch hooks (fire & forget)
+      const genesisAccount = json.genesisAccount;
+      if (genesisAccount) {
         fetch("/api/track-launch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            genesisAccount,
-            mint,
-            name: name.trim(),
-            symbol: slugify(symbol),
-            imageUrl,
-            creatorWallet: publicKey.toString(),
-            signature: sig,
-          }),
-        }).catch(() => console.warn("track-launch failed — DEX listing may be delayed"));
+          body: JSON.stringify({ genesisAccount, wallet: publicKey.toBase58() }),
+        }).catch(() => {});
       }
-
-      // Step 5: Unlock referral code for creator (non-fatal)
       fetch("/api/generate-promocode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: publicKey.toString() }),
-      }).catch(() => console.warn("generate-promocode failed"));
+        body: JSON.stringify({ wallet: publicKey.toBase58() }),
+      }).catch(() => {});
 
-      // Done
-      setSuccess(true);
-      setSubmitStep("");
-      setTimeout(() => {
-        router.push(genesisAccount ? `/dex?token=${genesisAccount}` : "/dex");
-      }, 1500);
-
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unexpected error";
-      setError(msg);
-      setSubmitStep("");
-    } finally {
-      setIsSubmitting(false);
+      setTxSig(sig);
+      setLaunchStatus("done");
+    } catch (err: any) {
+      setLaunchError(err?.message || "Unknown error");
+      setLaunchStatus("error");
     }
-  }, [connected, publicKey, sendTransaction, connection, router, name, symbol, desc, imageFile, promoCode]);
+  };
 
-  // ─── Promo indicator ─────────────────────────────────────────────────────
+  const isLaunching = (["uploading", "creating", "signing", "confirming"] as LaunchStatus[]).includes(launchStatus);
+  const isDone = launchStatus === "done";
+  const launchLabel: Record<LaunchStatus, string> = {
+    idle: "LAUNCH TOKEN",
+    uploading: "UPLOADING IMAGE...",
+    creating: "PREPARING TX...",
+    signing: "WAITING FOR SIGNATURE...",
+    confirming: "CONFIRMING ON-CHAIN...",
+    done: "🚀 LAUNCHED!",
+    error: "TRY AGAIN",
+  };
 
-  const promoIndicator = useMemo(() => {
-    if (!promoCode.trim()) return null;
-    if (promoStatus === "checking") return <span className="text-yellow-400 text-xs">Checking…</span>;
-    if (promoStatus === "valid")    return <span className="text-green-400 text-xs">✓ Valid — referrer earns 0.05 SOL</span>;
-    if (promoStatus === "invalid")  return <span className="text-red-400 text-xs">✗ Invalid code</span>;
-    return null;
-  }, [promoCode, promoStatus]);
+  const promoIndicator = {
+    idle: null,
+    checking: <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>checking...</span>,
+    valid: <span style={{ color: "#14F195", fontSize: 12, fontWeight: 600 }}>✓ Valid code</span>,
+    invalid: <span style={{ color: "#ff6b6b", fontSize: 12 }}>✗ Invalid code</span>,
+  }[promoStatus];
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-
+  /* ─── Render ─────────────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-lg space-y-5">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Create Token</h1>
-          <p className="text-gray-500 text-sm mt-1">Launch fee: 0.15 SOL</p>
-        </div>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0F0817 0%, #1a0b2e 50%, #2d124d 100%)", fontFamily: "'Space Grotesk', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Orbitron:wght@700;900&display=swap');
 
-        {/* Image upload */}
-        <div
-          className="border-2 border-dashed border-gray-700 rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-gray-500 transition-colors"
-          onClick={() => document.getElementById("img-input")?.click()}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleImage(f); }}
-        >
-          {imagePreview
-            ? <img src={imagePreview} alt="preview" className="w-24 h-24 rounded-xl object-cover" />
-            : <div className="w-24 h-24 rounded-xl bg-gray-800 flex items-center justify-center text-gray-600 text-3xl">🖼</div>
-          }
-          <span className="text-gray-500 text-sm">Click or drag image (max 5MB)</span>
-          <input
-            id="img-input"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImage(f); }}
-          />
-        </div>
+        * { box-sizing: border-box; }
 
-        {/* Name */}
-        <div>
-          <label className="block text-sm text-gray-300 mb-1">Name</label>
-          <input
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors"
-            placeholder="My Coin"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={32}
-          />
-        </div>
+        .gl-input {
+          width: 100%;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(153,69,255,0.2);
+          border-radius: 12px;
+          color: #fff;
+          font-family: 'Space Grotesk', sans-serif;
+          font-size: 15px;
+          padding: 14px 18px;
+          outline: none;
+          transition: border-color 0.2s, box-shadow 0.2s;
+          resize: none;
+        }
+        .gl-input::placeholder { color: rgba(255,255,255,0.2); }
+        .gl-input:focus {
+          border-color: rgba(153,69,255,0.7);
+          box-shadow: 0 0 0 3px rgba(153,69,255,0.12), 0 0 20px rgba(153,69,255,0.08);
+        }
+        .gl-input.valid:focus {
+          border-color: rgba(20,241,149,0.6);
+          box-shadow: 0 0 0 3px rgba(20,241,149,0.1);
+        }
+        .gl-label {
+          display: block;
+          color: rgba(255,255,255,0.5);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          margin-bottom: 8px;
+        }
 
-        {/* Symbol */}
-        <div>
-          <label className="block text-sm text-gray-300 mb-1">Symbol</label>
-          <input
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors uppercase"
-            placeholder="MYCOIN"
-            value={symbol}
-            onChange={(e) => setSymbol(slugify(e.target.value))}
-            maxLength={8}
-          />
-        </div>
+        .glass-card {
+          background: rgba(255,255,255,0.03);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(153,69,255,0.18);
+          border-radius: 20px;
+        }
 
-        {/* Description */}
-        <div>
-          <label className="block text-sm text-gray-300 mb-1">
-            Description <span className="text-gray-600">(optional)</span>
-          </label>
-          <textarea
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors resize-none"
-            placeholder="Tell the world about your token…"
-            rows={3}
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            maxLength={280}
-          />
-        </div>
+        .drop-zone {
+          border: 1.5px dashed rgba(153,69,255,0.35);
+          border-radius: 14px;
+          padding: 32px 20px;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.25s;
+          background: rgba(153,69,255,0.04);
+          position: relative;
+          overflow: hidden;
+        }
+        .drop-zone:hover, .drop-zone.dragging {
+          border-color: rgba(153,69,255,0.7);
+          background: rgba(153,69,255,0.08);
+          box-shadow: 0 0 24px rgba(153,69,255,0.12);
+        }
 
-        {/* Promo code */}
-        <div>
-          <label className="block text-sm text-gray-300 mb-1">
-            Referral Code <span className="text-gray-600">(optional)</span>
-          </label>
-          <input
-            className={`w-full bg-gray-800 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none uppercase transition-colors ${
-              promoStatus === "valid"   ? "border-green-600 focus:border-green-500" :
-              promoStatus === "invalid" ? "border-red-700 focus:border-red-600" :
-                                         "border-gray-700 focus:border-gray-500"
-            }`}
-            placeholder="ENTER CODE"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-            maxLength={12}
-          />
-          <div className="mt-1.5 h-4">{promoIndicator}</div>
-        </div>
+        .launch-btn {
+          width: 100%;
+          padding: 18px;
+          border: none;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #14F195 0%, #0ea06a 100%);
+          color: #0F0817;
+          font-family: 'Orbitron', monospace;
+          font-size: 16px;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+          cursor: pointer;
+          transition: all 0.25s;
+          position: relative;
+          overflow: hidden;
+        }
+        .launch-btn::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+        .launch-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(20,241,149,0.4), 0 0 60px rgba(20,241,149,0.15); }
+        .launch-btn:hover::before { opacity: 1; }
+        .launch-btn:active { transform: translateY(0) scale(0.99); }
+        .launch-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+        .launch-btn.done { background: linear-gradient(135deg, #9945FF, #14F195); }
+        .launch-btn.error { background: linear-gradient(135deg, #ff6b6b, #cc3333); }
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-950/60 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
-            {error}
+        .preview-card {
+          background: rgba(15,8,23,0.85);
+          backdrop-filter: blur(30px);
+          -webkit-backdrop-filter: blur(30px);
+          border-radius: 24px;
+          position: relative;
+          overflow: hidden;
+          padding: 2px;
+        }
+        .preview-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 24px;
+          padding: 2px;
+          background: linear-gradient(135deg, #9945FF, #14F195, #9945FF);
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          background-size: 200% 200%;
+          animation: border-flow 4s linear infinite;
+        }
+        @keyframes border-flow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        .preview-inner {
+          background: rgba(15,8,23,0.95);
+          border-radius: 22px;
+          padding: 28px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .ticker-badge {
+          display: inline-block;
+          background: rgba(153,69,255,0.15);
+          border: 1px solid rgba(153,69,255,0.35);
+          border-radius: 20px;
+          padding: 4px 14px;
+          font-family: 'Orbitron', monospace;
+          font-size: 12px;
+          font-weight: 700;
+          color: #9945FF;
+          letter-spacing: 0.1em;
+        }
+
+        .placeholder-anim {
+          width: 100%;
+          aspect-ratio: 1;
+          border-radius: 16px;
+          background: rgba(153,69,255,0.08);
+          border: 1px solid rgba(153,69,255,0.15);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          overflow: hidden;
+        }
+        .placeholder-anim::before {
+          content: '';
+          position: absolute;
+          width: 200%;
+          height: 200%;
+          background: conic-gradient(transparent 0deg, rgba(153,69,255,0.15) 60deg, rgba(20,241,149,0.1) 120deg, transparent 180deg);
+          animation: spin-slow 8s linear infinite;
+        }
+        @keyframes spin-slow { to { transform: rotate(360deg); } }
+
+        .matrix-text {
+          font-family: 'Orbitron', monospace;
+          font-size: 11px;
+          color: rgba(153,69,255,0.5);
+          letter-spacing: 0.15em;
+          animation: matrix-flicker 3s ease-in-out infinite;
+        }
+        @keyframes matrix-flicker {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; color: rgba(20,241,149,0.7); }
+        }
+
+        @keyframes globe-spin { to { transform: rotate(360deg); } }
+
+        .accordion-trigger {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          cursor: pointer;
+          padding: 12px 0;
+          color: rgba(255,255,255,0.5);
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          user-select: none;
+          border-top: 1px solid rgba(153,69,255,0.1);
+          transition: color 0.2s;
+        }
+        .accordion-trigger:hover { color: rgba(255,255,255,0.8); }
+        .accordion-chevron { transition: transform 0.3s; font-size: 16px; }
+        .accordion-chevron.open { transform: rotate(180deg); }
+
+        .fee-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(20,241,149,0.06);
+          border: 1px solid rgba(20,241,149,0.2);
+          border-radius: 10px;
+          padding: 8px 16px;
+          font-size: 13px;
+          color: rgba(20,241,149,0.8);
+          font-weight: 600;
+        }
+
+        .mesh-bg {
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+          overflow: hidden;
+        }
+        .mesh-blob {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(100px);
+          opacity: 0.08;
+        }
+
+        .glow-text-green { text-shadow: 0 0 24px rgba(20,241,149,0.5); }
+        .glow-text-purple { text-shadow: 0 0 24px rgba(153,69,255,0.6); }
+
+        /* success screen */
+        @keyframes success-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        .success-icon { animation: success-pulse 1.5s ease-in-out infinite; }
+
+        @media (max-width: 768px) {
+          .layout-grid { grid-template-columns: 1fr !important; }
+          .right-col { position: static !important; }
+        }
+      `}</style>
+
+      {/* Background blobs */}
+      <div className="mesh-bg">
+        <div className="mesh-blob" style={{ width: 700, height: 700, background: "#9945FF", top: -200, left: -200 }} />
+        <div className="mesh-blob" style={{ width: 500, height: 500, background: "#14F195", bottom: -100, right: -100 }} />
+        <div className="mesh-blob" style={{ width: 400, height: 400, background: "#9945FF", top: "40%", right: "20%" }} />
+      </div>
+
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 1200, margin: "0 auto", padding: "40px 20px 80px" }}>
+
+        {/* Nav */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 48, flexWrap: "wrap", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: "linear-gradient(135deg, #9945FF, #14F195)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontFamily: "'Orbitron', monospace", fontSize: 14, fontWeight: 900, color: "#0F0817",
+            }}>B</div>
+            <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 18, fontWeight: 900, color: "#fff" }}>BluPrint</span>
           </div>
-        )}
+          <WalletMultiButton style={{
+            background: "rgba(153,69,255,0.12)",
+            border: "1px solid rgba(153,69,255,0.35)",
+            borderRadius: 12,
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontWeight: 600,
+            fontSize: 14,
+          }} />
+        </div>
 
-        {/* Success */}
-        {success && (
-          <div className="bg-green-950/60 border border-green-800 rounded-lg px-4 py-3 text-green-300 text-sm">
-            🎉 Token created! Heading to DEX…
+        {/* Success screen */}
+        {launchStatus === "done" ? (
+          <div style={{ maxWidth: 540, margin: "0 auto", textAlign: "center", padding: "60px 20px" }}>
+            <div className="success-icon" style={{ fontSize: 64, marginBottom: 24 }}>🚀</div>
+            <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: 32, fontWeight: 900, color: "#14F195", margin: "0 0 16px" }} className="glow-text-green">
+              Token Launched!
+            </h1>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, margin: "0 0 8px" }}>
+              <strong style={{ color: "#fff" }}>{form.name}</strong> (${form.symbol.toUpperCase()}) is live on the bonding curve.
+            </p>
+            {txSig && (
+              <a
+                href={`https://solscan.io/tx/${txSig}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#9945FF", fontSize: 13, display: "block", margin: "16px 0 32px", wordBreak: "break-all" }}
+              >
+                View on Solscan ↗
+              </a>
+            )}
+            <button
+              className="launch-btn"
+              style={{ maxWidth: 280, margin: "0 auto" }}
+              onClick={() => {
+                setLaunchStatus("idle");
+                setForm({ name:"", symbol:"", description:"", website:"", twitter:"", telegram:"", promoCode:"" });
+                setImageFile(null);
+                setImagePreview("");
+                setTxSig("");
+              }}
+            >
+              LAUNCH ANOTHER
+            </button>
           </div>
-        )}
+        ) : (
+          /* Main Layout */
+          <div className="layout-grid" style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 32, alignItems: "start" }}>
 
-        {/* Submit */}
-        <button
-          onClick={handleSubmit}
-          disabled={isSubmitting || success}
-          className="w-full bg-white text-black font-semibold rounded-xl py-4 text-base hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {isSubmitting
-            ? (submitStep || "Processing…")
-            : "Launch Token — 0.15 SOL"
-          }
-        </button>
+            {/* ── LEFT COLUMN ──────────────────────────────────────────── */}
+            <div>
+              {/* Header */}
+              <div style={{ marginBottom: 36 }}>
+                <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", lineHeight: 1.1 }}>
+                  Launch Your <span style={{ color: "#14F195" }} className="glow-text-green">Blueprint</span>
+                </h1>
+                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 15, margin: 0, maxWidth: 460, lineHeight: 1.6 }}>
+                  Fill in the details to deploy your token onto the bonding curve instantly.
+                </p>
+              </div>
 
-        {!connected && (
-          <p className="text-center text-gray-600 text-sm">Connect your wallet to continue</p>
+              <div className="glass-card" style={{ padding: 32 }}>
+
+                {/* Token Name */}
+                <div style={{ marginBottom: 20 }}>
+                  <label className="gl-label">Token Name</label>
+                  <input
+                    className="gl-input"
+                    placeholder='e.g. "Solana Doge"'
+                    value={form.name}
+                    onChange={set("name")}
+                    maxLength={32}
+                  />
+                </div>
+
+                {/* Symbol */}
+                <div style={{ marginBottom: 20 }}>
+                  <label className="gl-label">Ticker / Symbol</label>
+                  <input
+                    className="gl-input"
+                    placeholder='e.g. "SDOGE"'
+                    value={form.symbol}
+                    onChange={e => setForm(f => ({ ...f, symbol: e.target.value.toUpperCase().slice(0, 10) }))}
+                    maxLength={10}
+                  />
+                </div>
+
+                {/* Description */}
+                <div style={{ marginBottom: 24 }}>
+                  <label className="gl-label">Description</label>
+                  <textarea
+                    className="gl-input"
+                    placeholder="The meme lore, the story, the vision..."
+                    value={form.description}
+                    onChange={set("description")}
+                    rows={4}
+                    maxLength={500}
+                    style={{ resize: "vertical" }}
+                  />
+                </div>
+
+                {/* Image Upload */}
+                <div style={{ marginBottom: 24 }}>
+                  <label className="gl-label">Token Image / Logo</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    onChange={e => e.target.files?.[0] && handleImage(e.target.files[0])}
+                  />
+                  {imagePreview ? (
+                    <div
+                      style={{ position: "relative", borderRadius: 14, overflow: "hidden", cursor: "pointer" }}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <img src={imagePreview} alt="preview" style={{ width: "100%", maxHeight: 200, objectFit: "cover", display: "block", borderRadius: 14 }} />
+                      <div style={{
+                        position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        opacity: 0, transition: "opacity 0.2s",
+                        borderRadius: 14,
+                      }}
+                        onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                        onMouseLeave={e => (e.currentTarget.style.opacity = "0")}
+                      >
+                        <span style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>Change Image</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={`drop-zone${isDragging ? " dragging" : ""}`}
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={onDrop}
+                    >
+                      <div style={{ marginBottom: 12 }}>
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9945FF" strokeWidth={1.5} style={{ opacity: 0.7 }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                      </div>
+                      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, margin: "0 0 4px" }}>
+                        Drag & drop or <span style={{ color: "#9945FF", fontWeight: 600 }}>browse</span>
+                      </p>
+                      <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12, margin: 0 }}>PNG, JPG, GIF, WebP — recommended 500×500</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Social Links Accordion */}
+                <div style={{ marginBottom: 20 }}>
+                  <div className="accordion-trigger" onClick={() => setSocialOpen(o => !o)}>
+                    <span>Social Links (Optional)</span>
+                    <span className={`accordion-chevron${socialOpen ? " open" : ""}`}>▾</span>
+                  </div>
+                  {socialOpen && (
+                    <div style={{ paddingTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+                      {[
+                        { key: "website", placeholder: "https://yourtoken.xyz", label: "Website" },
+                        { key: "twitter", placeholder: "https://x.com/yourtoken", label: "X / Twitter" },
+                        { key: "telegram", placeholder: "https://t.me/yourtoken", label: "Telegram" },
+                      ].map(({ key, placeholder, label }) => (
+                        <div key={key}>
+                          <label className="gl-label">{label}</label>
+                          <input
+                            className="gl-input"
+                            placeholder={placeholder}
+                            value={form[key as keyof FormState]}
+                            onChange={set(key as keyof FormState)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Promo Code Accordion */}
+                <div style={{ marginBottom: 28 }}>
+                  <div className="accordion-trigger" onClick={() => setPromoOpen(o => !o)}>
+                    <span>Promo / Referral Code (Optional)</span>
+                    <span className={`accordion-chevron${promoOpen ? " open" : ""}`}>▾</span>
+                  </div>
+                  {promoOpen && (
+                    <div style={{ paddingTop: 16 }}>
+                      <div style={{ position: "relative" }}>
+                        <input
+                          className={`gl-input${promoStatus === "valid" ? " valid" : ""}`}
+                          placeholder="Enter code (e.g. ABC1234)"
+                          value={form.promoCode}
+                          onChange={e => setForm(f => ({ ...f, promoCode: e.target.value.toUpperCase().slice(0, 12) }))}
+                          style={{ paddingRight: 120 }}
+                        />
+                        <div style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)" }}>
+                          {promoIndicator}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Fee + Launch */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+                  <div className="fee-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+                    </svg>
+                    Creation Fee: ~{CREATION_FEE_SOL} SOL
+                  </div>
+                  {!connected && (
+                    <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12 }}>Connect wallet to launch</span>
+                  )}
+                </div>
+
+                <button
+                  className={`launch-btn${isDone ? " done" : ""}${launchStatus === "error" ? " error" : ""}`}
+                  onClick={handleLaunch}
+                  disabled={isLaunching || !connected || !form.name.trim() || !form.symbol.trim()}
+                >
+                  {isLaunching && (
+                    <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(0,0,0,0.3)", borderTopColor: "#0F0817", borderRadius: "50%", animation: "spin-slow 0.8s linear infinite", marginRight: 10, verticalAlign: "middle" }} />
+                  )}
+                  {launchLabel[launchStatus]}
+                </button>
+
+                {launchStatus === "error" && launchError && (
+                  <p style={{ color: "#ff6b6b", fontSize: 13, margin: "12px 0 0", textAlign: "center" }}>
+                    {launchError}
+                  </p>
+                )}
+
+                {!connected && (
+                  <div style={{ marginTop: 14, textAlign: "center" }}>
+                    <WalletMultiButton style={{
+                      background: "rgba(153,69,255,0.12)",
+                      border: "1px solid rgba(153,69,255,0.35)",
+                      borderRadius: 12,
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontWeight: 600,
+                      fontSize: 14,
+                      width: "100%",
+                      justifyContent: "center",
+                    }} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── RIGHT COLUMN — Live Preview ────────────────────────── */}
+            <div className="right-col" style={{ position: "sticky", top: 32 }}>
+
+              {/* Label */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 8px #14F195", animation: "matrix-flicker 1.5s ease-in-out infinite" }} />
+                <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase" }}>
+                  Live Preview
+                </span>
+              </div>
+
+              {/* Globe accent */}
+              <div style={{ position: "relative" }}>
+                <div style={{ position: "absolute", inset: -60, zIndex: 0, opacity: 0.5 }}>
+                  <RotatingGlobe />
+                </div>
+
+                {/* Preview Card */}
+                <div className="preview-card" style={{ position: "relative", zIndex: 1 }}>
+                  <div className="preview-inner">
+
+                    {/* Image Area */}
+                    <div style={{ marginBottom: 20 }}>
+                      {imagePreview ? (
+                        <img
+                          src={imagePreview}
+                          alt="token"
+                          style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 16, display: "block" }}
+                        />
+                      ) : (
+                        <div className="placeholder-anim">
+                          <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
+                            <div style={{ fontFamily: "'Orbitron', monospace", fontSize: 28, fontWeight: 900, color: "rgba(153,69,255,0.4)", marginBottom: 8 }}>BP</div>
+                            <div className="matrix-text">AWAITING IMAGE</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Name & Ticker */}
+                    <div style={{ marginBottom: 16 }}>
+                      <h2 style={{
+                        fontFamily: "'Orbitron', monospace",
+                        fontSize: form.name ? 22 : 18,
+                        fontWeight: 900,
+                        color: form.name ? "#fff" : "rgba(255,255,255,0.2)",
+                        margin: "0 0 8px",
+                        lineHeight: 1.2,
+                        transition: "all 0.2s",
+                        minHeight: 32,
+                      }}>
+                        {form.name || "Token Name"}
+                      </h2>
+                      <span className="ticker-badge">
+                        ${form.symbol || "TICKER"}
+                      </span>
+                    </div>
+
+                    {/* Description */}
+                    {form.description && (
+                      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, lineHeight: 1.6, margin: "0 0 16px", borderTop: "1px solid rgba(153,69,255,0.1)", paddingTop: 14 }}>
+                        {form.description.slice(0, 120)}{form.description.length > 120 ? "..." : ""}
+                      </p>
+                    )}
+
+                    {/* Social links preview */}
+                    {(form.website || form.twitter || form.telegram) && (
+                      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+                        {form.website && (
+                          <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
+                            🌐 Web
+                          </div>
+                        )}
+                        {form.twitter && (
+                          <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
+                            𝕏 Twitter
+                          </div>
+                        )}
+                        {form.telegram && (
+                          <div style={{ background: "rgba(29,155,240,0.1)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(41,182,246,0.7)", fontWeight: 600 }}>
+                            ✈ Telegram
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Divider */}
+                    <div style={{ borderTop: "1px solid rgba(153,69,255,0.12)", paddingTop: 16 }}>
+                      <BondingCurveBar pct={0} />
+                      <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontWeight: 500 }}>
+                          Market cap
+                        </span>
+                        <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", fontFamily: "'Orbitron', monospace", fontWeight: 700 }}>
+                          $0
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card glow */}
+                <div style={{
+                  position: "absolute",
+                  bottom: -30,
+                  left: "10%",
+                  right: "10%",
+                  height: 60,
+                  background: "rgba(153,69,255,0.25)",
+                  filter: "blur(30px)",
+                  borderRadius: "50%",
+                  zIndex: 0,
+                }} />
+              </div>
+
+              {/* Hints */}
+              <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+                {[
+                  { done: !!form.name, text: "Token name" },
+                  { done: !!form.symbol, text: "Ticker symbol" },
+                  { done: !!imageFile, text: "Logo uploaded" },
+                  { done: connected, text: "Wallet connected" },
+                ].map(({ done, text }) => (
+                  <div key={text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: "50%",
+                      background: done ? "rgba(20,241,149,0.15)" : "rgba(255,255,255,0.04)",
+                      border: `1px solid ${done ? "rgba(20,241,149,0.5)" : "rgba(255,255,255,0.1)"}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 10, color: done ? "#14F195" : "rgba(255,255,255,0.2)",
+                      transition: "all 0.3s",
+                    }}>
+                      {done ? "✓" : ""}
+                    </div>
+                    <span style={{ fontSize: 13, color: done ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.25)", transition: "color 0.3s" }}>
+                      {text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
         )}
       </div>
     </div>
