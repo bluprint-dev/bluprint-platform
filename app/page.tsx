@@ -1,283 +1,250 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import {
-  motion,
-  useScroll,
-  useTransform,
-} from "framer-motion";
+import { motion } from "framer-motion";
 
 const MOCK_TOKENS = [
-  { id: 1, name: "SolCat",     symbol: "SOLCAT",   cap: "$68.5K",  fill: 92, desc: "The internet's most degenerate feline, now living rent-free on Solana's fastest chain.", time: "2m",  replies: 312 },
-  { id: 2, name: "PumpWhale",  symbol: "PMPWHL",   cap: "$41.2K",  fill: 74, desc: "Coordinated mass accumulation via bonding curve mechanics. Not financial advice.", time: "7m",  replies: 88  },
-  { id: 3, name: "DegenMage",  symbol: "DGMAGE",   cap: "$29.8K",  fill: 55, desc: "On-chain wizard token. Spells are smart contracts. Your portfolio is the sacrifice.", time: "14m", replies: 54  },
-  { id: 4, name: "RoboSol",    symbol: "RSOL",     cap: "$14.2K",  fill: 33, desc: "AI-piloted accumulation engine turned community governance token. The machine awakens.", time: "21m", replies: 27  },
-  { id: 5, name: "NeonFrog",   symbol: "NFRG",     cap: "$9.1K",   fill: 21, desc: "Pepe's neon-drenched Solana cousin. Faster, cheaper, brighter.", time: "33m", replies: 19  },
-  { id: 6, name: "VoidOracle", symbol: "VORACLE",  cap: "$4.4K",   fill: 9,  desc: "Sees the market before the market sees itself. On-chain divination for degen rituals.", time: "51m", replies: 8   },
+  { id: 1,  name: "SolCat",     symbol: "SOLCAT",  cap: "$68.5K", fill: 92, desc: "The internet's most degenerate feline, now living rent-free on Solana.", time: "2m",  replies: 312, hot: true  },
+  { id: 2,  name: "PumpWhale",  symbol: "PMPWHL",  cap: "$41.2K", fill: 74, desc: "Coordinated mass accumulation via bonding curve mechanics.", time: "7m",  replies: 88,  hot: true  },
+  { id: 3,  name: "DegenMage",  symbol: "DGMAGE",  cap: "$29.8K", fill: 55, desc: "On-chain wizard token. Spells are smart contracts.", time: "14m", replies: 54,  hot: false },
+  { id: 4,  name: "RoboSol",    symbol: "RSOL",    cap: "$14.2K", fill: 33, desc: "AI-piloted accumulation engine turned community governance.", time: "21m", replies: 27,  hot: false },
+  { id: 5,  name: "NeonFrog",   symbol: "NFRG",    cap: "$9.1K",  fill: 21, desc: "Pepe's neon-drenched Solana cousin. Faster. Cheaper.", time: "33m", replies: 19,  hot: false },
+  { id: 6,  name: "SharkDAO",   symbol: "SHARK",   cap: "$7.4K",  fill: 17, desc: "Deep water liquidity predator. Hunts inefficiencies on-chain.", time: "41m", replies: 14,  hot: false },
+  { id: 7,  name: "VoidOracle", symbol: "VORACLE", cap: "$4.4K",  fill: 9,  desc: "Sees the market before the market sees itself.", time: "51m", replies: 8,   hot: false },
+  { id: 8,  name: "CyberYak",   symbol: "CYAK",    cap: "$2.1K",  fill: 5,  desc: "High-altitude degenerate stamina token. Never stop pumping.", time: "1h",  replies: 3,   hot: false },
 ];
 
 const SPECS = [
   {
-    tag: "COMPONENT 01",
-    title: "Immutable Mint Engine",
-    body: "Direct SPL token deployment via Metaplex token program. Fully permissionless, on-chain in under 10 seconds with immutable authority revocation.",
+    tag: "01 / Virtual Pools",
+    title: "Algorithmic Bonding Curves",
+    body: "Constant-product (x·y=k) virtual reserve calculations establish programmatic floor pricing and protect initial purchasers from coordinated manipulation.",
     accent: "#9945FF",
-    metric: [["< 10s", "DEPLOY"], ["100%", "ON-CHAIN"], ["0", "ADMIN KEYS"]],
   },
   {
-    tag: "COMPONENT 02",
-    title: "Constant Product Curve",
-    body: "Dynamic virtual liquidity reserves establish programmatic floor pricing. Mathematical invariant protects initial buyers from coordinated manipulation.",
+    tag: "02 / Token Integrity",
+    title: "Immutable SPL Standards",
+    body: "Direct deployment via Metaplex token program with immutable authority revocation. Fully verified, fully permissionless, on-chain in under 10 seconds.",
     accent: "#14F195",
-    metric: [["x·y=k", "FORMULA"], ["∞", "DEPTH"], ["0%", "SLIPPAGE CAP"]],
   },
   {
-    tag: "COMPONENT 03",
+    tag: "03 / Autonomous Migrations",
     title: "Automated LP Burn Router",
-    body: "At 100% curve capacity, all collected SOL migrates atomically to Raydium. Liquidity is permanently locked and LP tokens burned on-chain.",
+    body: "At 100% curve capacity, all collected SOL migrates atomically to Raydium. LP tokens are permanently burned on-chain. No human intervention required.",
     accent: "#9945FF",
-    metric: [["AUTO", "MIGRATE"], ["BURN", "LP LOCK"], ["100%", "PERMLESS"]],
   },
 ];
 
+const FILTERS = ["Latest Launches", "Market Cap", "24h Volume", "Curve Progress"];
+
 export default function HomePage() {
-  const heroRef = useRef<HTMLDivElement>(null);
+  const [activeFilter, setActiveFilter] = useState(0);
+  const [search, setSearch] = useState("");
 
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-
-  // Layer 1 — Titanium Outer Hull (purple armor) → drifts top-right, fades
-  const l1x     = useTransform(scrollYProgress, [0, 0.6], [0, 160]);
-  const l1y     = useTransform(scrollYProgress, [0, 0.6], [0, -120]);
-  const l1scale = useTransform(scrollYProgress, [0, 0.6], [1, 1.2]);
-  const l1op    = useTransform(scrollYProgress, [0, 0.5, 0.65], [1, 0.4, 0.08]);
-
-  // Layer 2 — Cybernetic Sub-Systems (circuit arrays) → rotates, drifts bottom-left, neon glow
-  const l2x      = useTransform(scrollYProgress, [0, 0.6], [0, -140]);
-  const l2y      = useTransform(scrollYProgress, [0, 0.6], [0, 130]);
-  const l2rot    = useTransform(scrollYProgress, [0, 0.6], [0, 15]);
-  const l2op     = useTransform(scrollYProgress, [0, 0.15, 0.6, 0.7], [0.95, 1, 1, 0]);
-  const l2filter = useTransform(scrollYProgress, [0, 0.4], ["drop-shadow(0 0 0px rgba(20,241,149,0))", "drop-shadow(0 0 40px rgba(20,241,149,0.8))"]);
-
-  // Layer 3 — Quantum Core → stays center, scales down, brightens
-  const l3scale  = useTransform(scrollYProgress, [0, 0.6], [1, 0.85]);
-  const l3bright = useTransform(scrollYProgress, [0, 0.5], [1, 1.7]);
-  const l3op     = useTransform(scrollYProgress, [0, 0.1, 0.65, 0.75], [0.7, 1, 1, 0]);
-
-  // Badge fade-ins
-  const badge1op = useTransform(scrollYProgress, [0.1, 0.25], [0, 1]);
-  const badge1y  = useTransform(scrollYProgress, [0.1, 0.25], [24, 0]);
-  const badge2op = useTransform(scrollYProgress, [0.25, 0.4], [0, 1]);
-  const badge2y  = useTransform(scrollYProgress, [0.25, 0.4], [24, 0]);
-  const badge3op = useTransform(scrollYProgress, [0.4, 0.55], [0, 1]);
-  const badge3y  = useTransform(scrollYProgress, [0.4, 0.55], [24, 0]);
-
-  // Headline fade
-  const headlineOp = useTransform(scrollYProgress, [0, 0.05, 0.6, 0.72], [0, 1, 1, 0]);
-
-  // Arena slides up
-  const arenaOp = useTransform(scrollYProgress, [0.58, 0.75], [0, 1]);
-  const arenaY  = useTransform(scrollYProgress, [0.58, 0.75], [60, 0]);
+  const filtered = MOCK_TOKENS.filter(
+    (t) =>
+      t.name.toLowerCase().includes(search.toLowerCase()) ||
+      t.symbol.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div style={{
-      background: "linear-gradient(180deg, #07070f 0%, #0d0720 40%, #070714 100%)",
-      overflowX: "hidden",
-      fontFamily: "'Space Mono', 'Courier New', monospace",
-    }}>
+    <div className="min-h-screen bg-gradient-to-b from-[#0F0817] via-[#140C22] to-[#0A0410] text-white overflow-x-hidden"
+      style={{ fontFamily: "'Space Mono', 'Courier New', monospace" }}>
 
-      {/* ── AMBIENT BLOBS ── */}
-      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-        <div style={{
-          position: "absolute", top: "8%", left: "12%",
-          width: 700, height: 700, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(153,69,255,0.08) 0%, transparent 65%)",
+      {/* ── GRID TEXTURE ── */}
+      <div className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          backgroundImage: "linear-gradient(rgba(153,69,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(153,69,255,0.025) 1px, transparent 1px)",
+          backgroundSize: "52px 52px",
         }} />
-        <div style={{
-          position: "absolute", bottom: "10%", right: "8%",
-          width: 500, height: 500, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(20,241,149,0.06) 0%, transparent 65%)",
-        }} />
-        {/* scanline grid */}
-        <div style={{
-          position: "absolute", inset: 0,
-          backgroundImage: "linear-gradient(rgba(153,69,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(153,69,255,0.02) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }} />
-      </div>
 
-      {/* ════════════════════════════════════════════
-          SECTION 1 — HERO + SCROLL TEARDOWN
-      ════════════════════════════════════════════ */}
-      <section ref={heroRef} style={{ position: "relative", zIndex: 1, height: "280vh" }}>
-        <div style={{ position: "sticky", top: 0, height: "100vh", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+      {/* ══════════════════════════════════════════
+          SECTION 1 — HERO
+      ══════════════════════════════════════════ */}
+      <section className="relative z-10 min-h-screen flex items-center">
+        <div className="max-w-7xl mx-auto px-6 py-20 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
-          {/* scan line */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, #9945FF 30%, #14F195 70%, transparent)", opacity: 0.6 }} />
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, #9945FF 30%, #14F195 70%, transparent)", opacity: 0.3 }} />
-
-          {/* ── HEADLINE ── */}
-          <motion.div style={{ opacity: headlineOp, textAlign: "center", marginBottom: 48, position: "relative", zIndex: 10 }}>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "5px 16px", borderRadius: 20, marginBottom: 20,
-              background: "rgba(20,241,149,0.06)", border: "1px solid rgba(20,241,149,0.2)",
-            }}>
-              <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 8px #14F195", animation: "pulse 1.5s ease-in-out infinite" }} />
-              <span style={{ color: "#14F195", fontSize: 10, fontWeight: 700, letterSpacing: "0.14em" }}>SOLANA MAINNET LIVE</span>
+          {/* LEFT */}
+          <motion.div
+            initial={{ opacity: 0, x: -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="flex flex-col gap-7"
+          >
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2.5 w-fit px-4 py-1.5 rounded-full border"
+              style={{ background: "rgba(20,241,149,0.06)", borderColor: "rgba(20,241,149,0.2)" }}>
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full animate-ping"
+                  style={{ background: "rgba(20,241,149,0.6)" }} />
+                <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: "#14F195" }} />
+              </span>
+              <span className="text-[10px] font-bold tracking-[0.14em]" style={{ color: "#14F195" }}>
+                WELCOME TO THE NEWEST SOLANA ECOSYSTEM
+              </span>
             </div>
 
-            <h1 style={{
-              margin: 0, fontSize: "clamp(18px, 3vw, 26px)",
-              fontWeight: 700, letterSpacing: "0.18em",
-              background: "linear-gradient(90deg, #9945FF 0%, #c084fc 40%, #14F195 100%)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-              textTransform: "uppercase",
-            }}>
-              Welcome to the Newest Solana Ecosystem
-            </h1>
+            {/* Headline */}
+            <div>
+              <h1 className="text-5xl lg:text-6xl font-black tracking-tight leading-[1.08] text-white">
+                Launch Fast.<br />
+                <span style={{
+                  background: "linear-gradient(90deg, #9945FF, #14F195)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}>Trade Globally.</span>
+              </h1>
+              <p className="mt-5 text-sm leading-relaxed max-w-md"
+                style={{ color: "rgba(255,255,255,0.42)", fontSize: 14 }}>
+                The premium algorithmic bonding curve infrastructure on Solana. Built for pure transaction speed and automated Raydium pool migration.
+              </p>
+            </div>
 
-            <div style={{ marginTop: 32, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-              <Link href="/create" style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "12px 28px", borderRadius: 12,
-                background: "linear-gradient(135deg, #14F195, #0fa96a)",
-                color: "#07070f", textDecoration: "none",
-                fontSize: 12, fontWeight: 900, letterSpacing: "0.1em",
-                boxShadow: "0 0 28px rgba(20,241,149,0.4)",
-              }}>⬡ LAUNCH TOKEN · 0.15 SOL</Link>
-              <Link href="/dex" style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "12px 28px", borderRadius: 12,
-                background: "rgba(153,69,255,0.08)", border: "1px solid rgba(153,69,255,0.35)",
-                color: "rgba(153,69,255,0.9)", textDecoration: "none",
-                fontSize: 12, fontWeight: 700, letterSpacing: "0.08em",
-              }}>EXPLORE MARKETBOARD →</Link>
+            {/* CTAs */}
+            <div className="flex gap-3 flex-wrap">
+              <Link href="/create"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-[#07070f] text-sm font-black tracking-wider transition-all duration-200"
+                style={{
+                  background: "linear-gradient(135deg, #14F195, #0fa96a)",
+                  boxShadow: "0 0 32px rgba(20,241,149,0.4), 0 4px 16px rgba(20,241,149,0.2)",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 50px rgba(20,241,149,0.6), 0 4px 24px rgba(20,241,149,0.3)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 32px rgba(20,241,149,0.4), 0 4px 16px rgba(20,241,149,0.2)"; }}
+              >
+                ⬡ LAUNCH TOKEN
+              </Link>
+              <Link href="/dex"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold tracking-wider transition-all duration-200 backdrop-blur-sm"
+                style={{
+                  background: "rgba(153,69,255,0.08)",
+                  border: "1px solid rgba(153,69,255,0.35)",
+                  color: "rgba(153,69,255,0.9)",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(153,69,255,0.65)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(153,69,255,0.35)"; }}
+              >
+                VIEW TERMINAL →
+              </Link>
+            </div>
+
+            {/* Stats row */}
+            <div className="flex gap-8 pt-2">
+              {[["1,240+", "TOKENS LAUNCHED"], ["$4.2M+", "TOTAL VOLUME"], ["< 10s", "DEPLOY TIME"]].map(([v, l]) => (
+                <div key={l}>
+                  <p className="text-xl font-black text-white">{v}</p>
+                  <p className="text-[9px] tracking-[0.12em] mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>{l}</p>
+                </div>
+              ))}
             </div>
           </motion.div>
 
-          {/* ── ORCA TEARDOWN ── */}
-          <div style={{ position: "relative", width: 380, height: 340 }}>
+          {/* RIGHT — floating logo */}
+          <div className="relative flex items-center justify-center">
+            {/* ambient orbs */}
+            <div className="absolute rounded-full pointer-events-none"
+              style={{ width: 420, height: 420, background: "radial-gradient(circle, rgba(153,69,255,0.22) 0%, transparent 70%)", filter: "blur(50px)" }} />
+            <div className="absolute rounded-full pointer-events-none"
+              style={{ width: 280, height: 280, background: "radial-gradient(circle, rgba(20,241,149,0.15) 0%, transparent 70%)", filter: "blur(40px)", transform: "translate(60px, 40px)" }} />
 
-            {/* LAYER 1 — Titanium Hull */}
-            <motion.div style={{
-              position: "absolute", inset: 0,
-              x: l1x, y: l1y, scale: l1scale, opacity: l1op,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              mixBlendMode: "screen",
-            }}>
-              <Image src="/cyber-orca.png" alt="Hull" width={380} height={340} style={{ filter: "hue-rotate(0deg) saturate(1.4)" }} />
-            </motion.div>
-
-            {/* LAYER 2 — Cybernetic Sub-Systems */}
-            <motion.div style={{
-              position: "absolute", inset: 0,
-              x: l2x, y: l2y, rotate: l2rot, opacity: l2op,
-              filter: l2filter as any,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              mixBlendMode: "screen",
-            }}>
-              <Image src="/cyber-orca.png" alt="Circuits" width={380} height={340} style={{ filter: "hue-rotate(120deg) saturate(2) brightness(1.3)" }} />
-            </motion.div>
-
-            {/* LAYER 3 — Quantum Core */}
-            <motion.div style={{
-              position: "absolute", inset: 0,
-              scale: l3scale, opacity: l3op,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <motion.div style={{ filter: useTransform(l3bright, (v) => `brightness(${v})`) as any }}>
-                <Image src="/cyber-orca.png" alt="Core" width={380} height={340} priority />
-              </motion.div>
-            </motion.div>
-          </div>
-
-          {/* ── TECH SPEC BADGES ── */}
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-            {/* Badge 1 — top left */}
-            <motion.div style={{ position: "absolute", top: "18%", left: "6%", opacity: badge1op, y: badge1y }}>
-              <SpecBadge label="COMPONENT 01" value="IMMUTABLE MINT ENGINE" accent="#9945FF" />
-            </motion.div>
-            {/* Badge 2 — bottom left */}
-            <motion.div style={{ position: "absolute", bottom: "20%", left: "4%", opacity: badge2op, y: badge2y }}>
-              <SpecBadge label="COMPONENT 02" value="CONSTANT PRODUCT CURVE" accent="#14F195" />
-            </motion.div>
-            {/* Badge 3 — top right */}
-            <motion.div style={{ position: "absolute", top: "22%", right: "4%", opacity: badge3op, y: badge3y }}>
-              <SpecBadge label="COMPONENT 03" value="AUTOMATED LP BURN ROUTER" accent="#9945FF" />
+            {/* floating orca */}
+            <motion.div
+              animate={{ y: [0, -18, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="relative z-10"
+            >
+              {/* glow ring */}
+              <div className="absolute inset-0 rounded-full pointer-events-none"
+                style={{
+                  background: "radial-gradient(circle, rgba(20,241,149,0.2) 0%, transparent 65%)",
+                  filter: "blur(20px)",
+                  transform: "scale(1.3)",
+                }} />
+              <img
+                src="/favicon.ico"
+                alt="BluPrint Cyber Orca"
+                style={{
+                  width: 360,
+                  height: 360,
+                  objectFit: "contain",
+                  filter: "drop-shadow(0 0 50px rgba(153,69,255,0.5)) drop-shadow(0 0 80px rgba(20,241,149,0.3))",
+                }}
+              />
             </motion.div>
           </div>
         </div>
+
+        {/* bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
+          style={{ background: "linear-gradient(to bottom, transparent, #0A0410)" }} />
       </section>
 
-      {/* ════════════════════════════════════════════
-          SECTION 2 — LIVE TOKEN ARENA
-      ════════════════════════════════════════════ */}
-      <motion.section style={{ position: "relative", zIndex: 2, padding: "80px 0 60px", opacity: arenaOp, y: arenaY }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px" }}>
+      {/* ══════════════════════════════════════════
+          SECTION 2 — LIVE TRADING DESK
+      ══════════════════════════════════════════ */}
+      <section className="relative z-10 py-20">
+        <div className="max-w-7xl mx-auto px-6">
 
-          {/* section label */}
-          <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "5px 14px", borderRadius: 20, marginBottom: 16,
-              background: "rgba(153,69,255,0.07)", border: "1px solid rgba(153,69,255,0.2)",
-            }}>
-              <span style={{ color: "rgba(153,69,255,0.7)", fontSize: 10, letterSpacing: "0.14em" }}>◈ LIVE TOKEN ARENA</span>
+          {/* heading */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-5"
+              style={{ background: "rgba(153,69,255,0.08)", border: "1px solid rgba(153,69,255,0.2)" }}>
+              <span className="text-[10px] font-bold tracking-[0.14em]" style={{ color: "rgba(153,69,255,0.7)" }}>◈ BLUEPRINT LIVE TRADING DESK</span>
             </div>
-            <h2 style={{ margin: 0, color: "#fff", fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 900, letterSpacing: "-0.01em" }}>
+            <h2 className="text-4xl lg:text-5xl font-black tracking-tight">
               The <span style={{ color: "#14F195" }}>Active</span> Launch Grid
             </h2>
-          </div>
+          </motion.div>
 
           {/* KING OF THE HILL */}
-          <div style={{
-            marginBottom: 32, borderRadius: 20, padding: 2,
-            background: "linear-gradient(90deg, #9945FF, #14F195, #9945FF)",
-            backgroundSize: "200% 100%",
-            animation: "borderFlow 3s linear infinite",
-          }}>
-            <div style={{
-              borderRadius: 18, padding: "24px 28px",
-              background: "linear-gradient(135deg, rgba(153,69,255,0.08), rgba(7,7,15,0.98))",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
-                <span style={{ fontSize: 14 }}>👑</span>
-                <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 10, letterSpacing: "0.14em" }}>KING OF THE HILL</span>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-8 rounded-2xl p-[1px]"
+            style={{
+              background: "linear-gradient(90deg, #9945FF, #14F195, #9945FF, #14F195)",
+              backgroundSize: "300% 100%",
+              animation: "borderFlow 3s linear infinite",
+            }}
+          >
+            <div className="rounded-2xl p-6"
+              style={{ background: "linear-gradient(135deg, rgba(153,69,255,0.08), rgba(10,4,16,0.98))" }}>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-base">👑</span>
+                <span className="text-[10px] font-bold tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.25)" }}>KING OF THE HILL</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-                <div style={{
-                  width: 68, height: 68, borderRadius: "50%", flexShrink: 0,
-                  background: "linear-gradient(135deg, #9945FF, #14F195)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 26, fontWeight: 900, color: "#fff",
-                  boxShadow: "0 0 30px rgba(20,241,149,0.5)",
-                }}>S</div>
-                <div style={{ flex: 1, minWidth: 180 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                    <span style={{ color: "#fff", fontWeight: 900, fontSize: 22 }}>SolCat</span>
-                    <span style={{
-                      color: "#14F195", fontSize: 12, fontWeight: 700,
-                      background: "rgba(20,241,149,0.1)", border: "1px solid rgba(20,241,149,0.25)",
-                      padding: "2px 8px", borderRadius: 6,
-                    }}>$SOLCAT</span>
+              <div className="flex items-center gap-6 flex-wrap">
+                {/* avatar */}
+                <div className="w-16 h-16 rounded-full flex-shrink-0 flex items-center justify-center text-2xl font-black text-white"
+                  style={{ background: "linear-gradient(135deg, #9945FF, #14F195)", boxShadow: "0 0 28px rgba(20,241,149,0.4)" }}>
+                  S
+                </div>
+                {/* info */}
+                <div className="flex-1 min-w-[180px]">
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="text-2xl font-black text-white">SolCat</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded"
+                      style={{ color: "#14F195", background: "rgba(20,241,149,0.1)", border: "1px solid rgba(20,241,149,0.25)" }}>$SOLCAT</span>
                   </div>
-                  <p style={{ margin: 0, color: "rgba(255,255,255,0.35)", fontSize: 12 }}>
-                    MKT CAP: <span style={{ color: "#14F195", fontWeight: 700 }}>$68,500</span>
-                    <span style={{ marginLeft: 20 }}>HOLDERS: <span style={{ color: "#9945FF", fontWeight: 700 }}>892</span></span>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    MKT CAP: <span className="font-bold" style={{ color: "#14F195" }}>$68,500</span>
+                    <span className="ml-5">VOLUME: <span className="font-bold" style={{ color: "#9945FF" }}>$12,400</span></span>
                   </p>
                 </div>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <p style={{ margin: "0 0 6px", color: "#14F195", fontSize: 11, fontWeight: 700, animation: "textPulse 1.5s ease-in-out infinite" }}>
-                    92% BONDING CURVE FILLED → MIGRATING TO RAYDIUM POOL
+                {/* progress */}
+                <div className="flex-1 min-w-[220px]">
+                  <p className="text-xs font-bold mb-2" style={{ color: "#14F195", animation: "textPulse 1.5s ease-in-out infinite" }}>
+                    92% FILLED → MIGRATING TO RAYDIUM LP
                   </p>
-                  <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.05)" }}>
-                    <div style={{
-                      height: "100%", width: "92%", borderRadius: 4,
+                  <div className="h-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
+                    <div className="h-full rounded-full" style={{
+                      width: "92%",
                       background: "linear-gradient(90deg, #9945FF, #14F195)",
                       boxShadow: "0 0 14px rgba(20,241,149,0.7)",
                       animation: "glowPulse 2s ease-in-out infinite",
@@ -286,96 +253,118 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* CONTROL BAR */}
-          <div style={{ display: "flex", gap: 10, marginBottom: 28, flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
-              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(153,69,255,0.5)", fontSize: 13, pointerEvents: "none" }}>›_</span>
+          {/* FILTER BAR */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex gap-3 mb-8 flex-wrap items-center"
+          >
+            <div className="relative flex-1 min-w-[220px]">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
+                style={{ color: "rgba(153,69,255,0.5)" }}>›_</span>
               <input
-                placeholder="Search token, ticker, mint address..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search token, mint address..."
+                className="w-full h-11 pl-9 pr-4 rounded-xl text-white text-xs outline-none transition-all duration-200"
                 style={{
-                  width: "100%", height: 44, paddingLeft: 38, paddingRight: 14,
-                  background: "rgba(255,255,255,0.03)", border: "1px solid rgba(153,69,255,0.2)",
-                  borderRadius: 10, color: "#fff", fontSize: 12,
-                  outline: "none", boxSizing: "border-box",
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(153,69,255,0.2)",
+                  fontFamily: "inherit",
                 }}
-                onFocus={e => { e.target.style.borderColor = "rgba(20,241,149,0.5)"; e.target.style.boxShadow = "0 0 20px rgba(20,241,149,0.1)"; }}
+                onFocus={e => { e.target.style.borderColor = "rgba(20,241,149,0.55)"; e.target.style.boxShadow = "0 0 20px rgba(20,241,149,0.1)"; }}
                 onBlur={e => { e.target.style.borderColor = "rgba(153,69,255,0.2)"; e.target.style.boxShadow = "none"; }}
               />
             </div>
-            {["Newest", "Market Cap", "24h Volume", "Progress %"].map((f, i) => (
-              <button key={f} style={{
-                padding: "10px 16px", borderRadius: 20, cursor: "pointer",
-                background: i === 0 ? "rgba(153,69,255,0.15)" : "rgba(153,69,255,0.04)",
-                border: `1px solid ${i === 0 ? "rgba(153,69,255,0.45)" : "rgba(153,69,255,0.12)"}`,
-                color: i === 0 ? "rgba(153,69,255,0.9)" : "rgba(255,255,255,0.35)",
-                fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", whiteSpace: "nowrap",
-              }}>{f}</button>
+            {FILTERS.map((f, i) => (
+              <button
+                key={f}
+                onClick={() => setActiveFilter(i)}
+                className="px-4 py-2.5 rounded-full text-[11px] font-bold tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap"
+                style={{
+                  background: activeFilter === i ? "rgba(153,69,255,0.15)" : "rgba(153,69,255,0.04)",
+                  border: `1px solid ${activeFilter === i ? "rgba(153,69,255,0.45)" : "rgba(153,69,255,0.12)"}`,
+                  color: activeFilter === i ? "rgba(153,69,255,0.9)" : "rgba(255,255,255,0.3)",
+                }}
+              >{f}</button>
             ))}
-          </div>
+          </motion.div>
 
           {/* TOKEN GRID */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 14 }}>
-            {MOCK_TOKENS.map((token, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map((token, i) => (
               <motion.div
                 key={token.id}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.06 }}
-                whileHover={{ y: -6, boxShadow: "0 12px 40px rgba(153,69,255,0.25)" }}
+                transition={{ delay: i * 0.05 }}
+                whileHover={{ y: -5, boxShadow: "0 16px 44px rgba(153,69,255,0.22)" }}
+                className="rounded-2xl overflow-hidden cursor-pointer transition-all duration-300"
                 style={{
-                  background: "linear-gradient(135deg, rgba(153,69,255,0.06), rgba(7,7,15,0.95))",
-                  border: "1px solid rgba(153,69,255,0.15)",
-                  borderRadius: 16, overflow: "hidden", cursor: "pointer",
-                  transition: "box-shadow 0.2s",
+                  background: "linear-gradient(135deg, rgba(153,69,255,0.07), rgba(10,4,16,0.95))",
+                  border: "1px solid rgba(153,69,255,0.14)",
                 }}
               >
-                <div style={{ padding: "14px 14px 10px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-                      background: "linear-gradient(135deg, #9945FF, #14F195)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 15, fontWeight: 900, color: "#fff",
-                      boxShadow: "0 0 10px rgba(153,69,255,0.4)",
-                    }}>{token.symbol[0]}</div>
+                <div className="p-4">
+                  {/* header */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-base font-black text-white"
+                      style={{ background: "linear-gradient(135deg, #9945FF, #14F195)", boxShadow: "0 0 10px rgba(153,69,255,0.35)" }}>
+                      {token.symbol[0]}
+                    </div>
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{token.name}</span>
-                        <span style={{
-                          color: "#14F195", fontSize: 9, fontWeight: 700,
-                          background: "rgba(20,241,149,0.07)", padding: "1px 5px", borderRadius: 4,
-                        }}>${token.symbol}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-white">{token.name}</span>
+                        {token.hot && (
+                          <span className="text-[8px] font-black px-1.5 py-0.5 rounded"
+                            style={{ color: "#14F195", background: "rgba(20,241,149,0.1)", border: "1px solid rgba(20,241,149,0.25)" }}>HOT</span>
+                        )}
                       </div>
-                      <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 10 }}>{token.time} ago</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] font-bold" style={{ color: "#14F195" }}>${token.symbol}</span>
+                        <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.2)" }}>{token.time} ago</span>
+                      </div>
                     </div>
                   </div>
-                  <p style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, lineHeight: 1.6, marginBottom: 10, minHeight: 36 }}>{token.desc}</p>
-                  <div style={{ display: "flex", gap: 16, marginBottom: 10 }}>
+
+                  {/* desc */}
+                  <p className="text-[11px] leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.35)", minHeight: 34 }}>
+                    {token.desc}
+                  </p>
+
+                  {/* stats */}
+                  <div className="flex gap-4">
                     <div>
-                      <p style={{ margin: 0, color: "rgba(255,255,255,0.18)", fontSize: 9, letterSpacing: "0.1em" }}>MKT CAP</p>
-                      <p style={{ margin: 0, color: "#14F195", fontSize: 14, fontWeight: 700 }}>{token.cap}</p>
+                      <p className="text-[9px] tracking-widest mb-0.5" style={{ color: "rgba(255,255,255,0.18)" }}>MKT CAP</p>
+                      <p className="text-sm font-bold" style={{ color: "#14F195" }}>{token.cap}</p>
                     </div>
                     <div>
-                      <p style={{ margin: 0, color: "rgba(255,255,255,0.18)", fontSize: 9, letterSpacing: "0.1em" }}>REPLIES</p>
-                      <p style={{ margin: 0, color: "rgba(153,69,255,0.9)", fontSize: 14, fontWeight: 700 }}>{token.replies}</p>
+                      <p className="text-[9px] tracking-widest mb-0.5" style={{ color: "rgba(255,255,255,0.18)" }}>REPLIES</p>
+                      <p className="text-sm font-bold" style={{ color: "rgba(153,69,255,0.85)" }}>{token.replies}</p>
                     </div>
                   </div>
                 </div>
-                {/* progress bar */}
-                <div style={{ height: 3, background: "rgba(255,255,255,0.04)" }}>
-                  <div style={{
-                    height: "100%", width: `${token.fill}%`,
-                    background: token.fill > 80 ? "linear-gradient(90deg, #9945FF, #14F195)" : "linear-gradient(90deg, rgba(153,69,255,0.6), rgba(20,241,149,0.5))",
-                    boxShadow: token.fill > 80 ? "0 0 8px rgba(20,241,149,0.7)" : "none",
-                    transition: "width 1.2s ease",
-                  }} />
+
+                {/* curve progress bar */}
+                <div className="h-[3px]" style={{ background: "rgba(255,255,255,0.04)" }}>
+                  <div
+                    className="h-full transition-all duration-1000"
+                    style={{
+                      width: `${token.fill}%`,
+                      background: token.fill > 80
+                        ? "linear-gradient(90deg, #9945FF, #14F195)"
+                        : "linear-gradient(90deg, rgba(153,69,255,0.6), rgba(20,241,149,0.5))",
+                      boxShadow: token.fill > 80 ? "0 0 8px rgba(20,241,149,0.7)" : "none",
+                    }}
+                  />
                 </div>
-                <div style={{ padding: "4px 14px 10px", display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 9 }}>CURVE FILL</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: token.fill > 80 ? "#14F195" : "rgba(153,69,255,0.7)" }}>
+                <div className="px-4 py-2 flex justify-between items-center">
+                  <span className="text-[9px] tracking-widest" style={{ color: "rgba(255,255,255,0.15)" }}>CURVE FILL</span>
+                  <span className="text-[10px] font-bold" style={{ color: token.fill > 80 ? "#14F195" : "rgba(153,69,255,0.65)" }}>
                     {token.fill}%{token.fill > 80 ? " → RAYDIUM" : ""}
                   </span>
                 </div>
@@ -383,57 +372,76 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div style={{ textAlign: "center", marginTop: 36 }}>
-            <Link href="/dex" style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "12px 28px", borderRadius: 12,
-              background: "rgba(153,69,255,0.07)", border: "1px solid rgba(153,69,255,0.22)",
-              color: "rgba(153,69,255,0.8)", textDecoration: "none",
-              fontSize: 11, fontWeight: 700, letterSpacing: "0.1em",
-            }}>VIEW ALL TOKENS →</Link>
+          <div className="text-center mt-10">
+            <Link href="/dex"
+              className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-xs font-bold tracking-widest transition-all duration-200"
+              style={{ background: "rgba(153,69,255,0.07)", border: "1px solid rgba(153,69,255,0.22)", color: "rgba(153,69,255,0.8)" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(153,69,255,0.45)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(153,69,255,0.22)"; }}
+            >VIEW ALL TOKENS →</Link>
           </div>
         </div>
-      </motion.section>
+      </section>
 
-      {/* ════════════════════════════════════════════
-          SECTION 3 — PROTOCOL ARCHITECTURE
-      ════════════════════════════════════════════ */}
-      <section style={{ position: "relative", zIndex: 2, padding: "80px 0" }}>
-        <div style={{ height: 1, maxWidth: 1280, margin: "0 auto 60px", background: "linear-gradient(90deg, transparent, rgba(153,69,255,0.3), rgba(20,241,149,0.3), transparent)" }} />
+      {/* ══════════════════════════════════════════
+          SECTION 3 — ARCHITECTURE SPECS
+      ══════════════════════════════════════════ */}
+      <section className="relative z-10 py-20">
+        <div className="h-px max-w-7xl mx-auto mb-16"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(153,69,255,0.3), rgba(20,241,149,0.3), transparent)" }} />
 
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px" }}>
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ textAlign: "center", marginBottom: 52 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, marginBottom: 14, background: "rgba(20,241,149,0.05)", border: "1px solid rgba(20,241,149,0.15)" }}>
-              <span style={{ color: "rgba(20,241,149,0.6)", fontSize: 10, letterSpacing: "0.14em" }}>◈ PROTOCOL ARCHITECTURE</span>
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4"
+              style={{ background: "rgba(20,241,149,0.05)", border: "1px solid rgba(20,241,149,0.15)" }}>
+              <span className="text-[10px] font-bold tracking-[0.14em]" style={{ color: "rgba(20,241,149,0.6)" }}>◈ PROTOCOL ARCHITECTURE</span>
             </div>
-            <h2 style={{ margin: 0, color: "#fff", fontSize: "clamp(26px, 3.5vw, 40px)", fontWeight: 900, letterSpacing: "-0.01em" }}>
+            <h2 className="text-4xl font-black tracking-tight">
               Why <span style={{ color: "#9945FF" }}>BluPrint</span> Wins
             </h2>
+            <p className="mt-3 text-xs tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>
+              Engineered to outperform at every protocol layer.
+            </p>
           </motion.div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {SPECS.map((spec, i) => (
               <motion.div
                 key={spec.tag}
-                initial={{ opacity: 0, y: 28 }}
+                initial={{ opacity: 0, y: 32 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: i * 0.12, duration: 0.5 }}
+                className="rounded-2xl p-7 relative overflow-hidden"
                 style={{
-                  background: "linear-gradient(135deg, rgba(153,69,255,0.05), rgba(7,7,15,0.95))",
+                  background: "linear-gradient(135deg, rgba(153,69,255,0.06), rgba(10,4,16,0.95))",
                   border: `1px solid ${spec.accent}20`,
-                  borderRadius: 18, padding: 26, position: "relative", overflow: "hidden",
                 }}
               >
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, ${spec.accent}60, transparent)` }} />
-                <span style={{ color: `${spec.accent}70`, fontSize: 9, letterSpacing: "0.16em", display: "block", marginBottom: 16 }}>{spec.tag}</span>
-                <h3 style={{ margin: "0 0 10px", color: "#fff", fontWeight: 800, fontSize: 17, letterSpacing: "-0.01em" }}>{spec.title}</h3>
-                <p style={{ margin: "0 0 20px", color: "rgba(255,255,255,0.38)", fontSize: 13, lineHeight: 1.7 }}>{spec.body}</p>
-                <div style={{ paddingTop: 16, borderTop: `1px solid ${spec.accent}12`, display: "flex", gap: 20 }}>
-                  {spec.metric.map(([v, l]) => (
+                {/* top accent line */}
+                <div className="absolute top-0 left-0 right-0 h-px"
+                  style={{ background: `linear-gradient(90deg, transparent, ${spec.accent}60, transparent)` }} />
+
+                <span className="block text-[9px] font-bold tracking-[0.16em] mb-5"
+                  style={{ color: `${spec.accent}70` }}>{spec.tag}</span>
+
+                <h3 className="text-lg font-black text-white mb-3 leading-tight">{spec.title}</h3>
+
+                <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.38)", lineHeight: 1.8 }}>
+                  {spec.body}
+                </p>
+
+                <div className="mt-6 pt-5 flex gap-5"
+                  style={{ borderTop: `1px solid ${spec.accent}12` }}>
+                  {[["< 10s", "DEPLOY"], ["100%", "ON-CHAIN"], ["0", "ADMIN KEYS"]].map(([v, l]) => (
                     <div key={l}>
-                      <p style={{ margin: 0, color: spec.accent, fontSize: 13, fontWeight: 700 }}>{v}</p>
-                      <p style={{ margin: 0, color: "rgba(255,255,255,0.2)", fontSize: 9, letterSpacing: "0.1em" }}>{l}</p>
+                      <p className="text-sm font-bold" style={{ color: spec.accent }}>{v}</p>
+                      <p className="text-[9px] tracking-wider mt-0.5" style={{ color: "rgba(255,255,255,0.2)" }}>{l}</p>
                     </div>
                   ))}
                 </div>
@@ -443,37 +451,39 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════
+      {/* ══════════════════════════════════════════
           FOOTER
-      ════════════════════════════════════════════ */}
-      <footer style={{ position: "relative", zIndex: 2, paddingTop: 60, paddingBottom: 40 }}>
-        <div style={{ height: 1, maxWidth: 1280, margin: "0 auto 50px", background: "linear-gradient(90deg, transparent, rgba(153,69,255,0.2), transparent)" }} />
+      ══════════════════════════════════════════ */}
+      <footer className="relative z-10 pt-16 pb-10">
+        <div className="h-px max-w-7xl mx-auto mb-12"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(153,69,255,0.2), transparent)" }} />
 
-        {/* ghost orca watermark */}
-        <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", opacity: 0.03, pointerEvents: "none" }}>
-          <Image src="/cyber-orca.png" alt="" width={600} height={540} style={{ filter: "grayscale(1)" }} />
-        </div>
-
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px", position: "relative" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 24, marginBottom: 36 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Image src="/cyber-orca.png" alt="BluPrint" width={40} height={36} />
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between flex-wrap gap-6 mb-10">
+            {/* brand */}
+            <div className="flex items-center gap-3">
+              <img src="/favicon.ico" alt="BluPrint" style={{ width: 36, height: 36, objectFit: "contain" }} />
               <div>
-                <p style={{ margin: 0, color: "#fff", fontWeight: 900, fontSize: 16 }}>BluPrint</p>
-                <p style={{ margin: 0, color: "rgba(255,255,255,0.2)", fontSize: 10, letterSpacing: "0.06em" }}>Solana's fastest bonding-curve launchpad</p>
+                <p className="font-black text-white text-base">BluPrint</p>
+                <p className="text-[10px] tracking-wider" style={{ color: "rgba(255,255,255,0.2)" }}>Solana's fastest bonding-curve launchpad</p>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-              {[["X / Twitter", "#"], ["Telegram", "#"], ["Solscan", "#"], ["Developer Docs", "#"]].map(([label, href]) => (
-                <a key={label as string} href={href as string} style={{ color: "rgba(255,255,255,0.3)", textDecoration: "none", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", transition: "color 0.15s" }}
+
+            {/* links */}
+            <div className="flex gap-7 flex-wrap">
+              {[["X / Twitter", "#"], ["Telegram", "#"], ["Docs", "#"], ["Solscan", "#"]].map(([label, href]) => (
+                <a key={label as string} href={href as string}
+                  className="text-xs font-semibold tracking-wider transition-colors duration-150"
+                  style={{ color: "rgba(255,255,255,0.3)", textDecoration: "none" }}
                   onMouseEnter={e => { (e.target as HTMLAnchorElement).style.color = "#14F195"; }}
                   onMouseLeave={e => { (e.target as HTMLAnchorElement).style.color = "rgba(255,255,255,0.3)"; }}
                 >{label}</a>
               ))}
             </div>
           </div>
-          <div style={{ borderTop: "1px solid rgba(153,69,255,0.08)", paddingTop: 18, textAlign: "center" }}>
-            <p style={{ margin: 0, color: "rgba(255,255,255,0.12)", fontSize: 10, letterSpacing: "0.1em" }}>
+
+          <div className="pt-5 text-center" style={{ borderTop: "1px solid rgba(153,69,255,0.08)" }}>
+            <p className="text-[10px] tracking-widest" style={{ color: "rgba(255,255,255,0.12)" }}>
               Securely powered by Solana Mainnet Live Core © 2026 BluPrint Protocol.
             </p>
           </div>
@@ -481,25 +491,11 @@ export default function HomePage() {
       </footer>
 
       <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-        @keyframes borderFlow { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
-        @keyframes glowPulse { 0%,100%{box-shadow:0 0 14px rgba(20,241,149,0.7)} 50%{box-shadow:0 0 28px rgba(20,241,149,1)} }
-        @keyframes textPulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
-        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+        @keyframes borderFlow { 0%{background-position:0% 50%} 100%{background-position:300% 50%} }
+        @keyframes glowPulse  { 0%,100%{box-shadow:0 0 14px rgba(20,241,149,0.7)} 50%{box-shadow:0 0 28px rgba(20,241,149,1)} }
+        @keyframes textPulse  { 0%,100%{opacity:1} 50%{opacity:0.55} }
       `}</style>
-    </div>
-  );
-}
-
-function SpecBadge({ label, value, accent }: { label: string; value: string; accent: string }) {
-  return (
-    <div style={{
-      padding: "8px 14px", borderRadius: 10,
-      background: `${accent}08`, border: `1px solid ${accent}25`,
-      backdropFilter: "blur(12px)",
-    }}>
-      <p style={{ margin: 0, color: `${accent}70`, fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}>{label}</p>
-      <p style={{ margin: 0, color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em" }}>{value}</p>
     </div>
   );
 }
