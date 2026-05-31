@@ -29,6 +29,7 @@ export default function DexPageContent() {
   const {
     search,
     selectedMint,
+    selectedGenesisAccount, // ✅ store'dan direkt al — hesaplama yok
     isBuy,
     amount,
     setSearch,
@@ -59,23 +60,49 @@ export default function DexPageContent() {
     [tokens, selectedMint]
   );
 
-  const { data: curveInfo, isLoading: isLoadingCurve } = useBondingCurveInfo(selectedMint);
+  // ✅ store'dan gelen selectedGenesisAccount direkt kullanılıyor
+  // Fallback: token yüklendiyse ama store henüz güncellenmemişse token'dan al
+  const genesisAccountForCurve =
+    selectedGenesisAccount ??
+    selectedToken?.genesisAccount ??
+    selectedToken?.mint ??
+    null;
 
+  const { data: curveInfo, isLoading: isLoadingCurve } = useBondingCurveInfo(
+    genesisAccountForCurve // ✅ genesisAccount ile info endpoint çağrılıyor
+  );
+
+  // URL'den mint geldiğinde token seç
   useEffect(() => {
-    if (mintFromUrl && tokens.some((t) => t.mint === mintFromUrl)) {
-      selectToken(mintFromUrl);
+    const match = tokens.find((t) => t.mint === mintFromUrl);
+    if (match) {
+      // ✅ FIX: selectToken'a hem mint hem genesisAccount geçiliyor
+      selectToken(match.mint, match.genesisAccount ?? null);
     }
   }, [mintFromUrl, tokens, selectToken]);
 
   const handleSelectToken = (token: typeof tokens[0]) => {
-    selectToken(token.mint);
+    // ✅ FIX: selectToken(mint, genesisAccount) — store her ikisini birden set ediyor
+    selectToken(token.mint, token.genesisAccount ?? null);
     setSwapError("");
     if (window.innerWidth < 1024) setMobileTradeOpen(true);
   };
 
   const handleSwap = async () => {
     if (!selectedToken || !amount) return;
-    const ok = await swap({ mint: selectedToken.mint, amount, isBuy });
+
+    const ok = await swap({
+      // ✅ FIX: store'dan gelen selectedGenesisAccount öncelikli
+      // token objesinden fallback, en son mint
+      genesisAccount:
+        selectedGenesisAccount ??
+        selectedToken.genesisAccount ??
+        selectedToken.mint,
+      mint: selectedToken.mint, // SPL token mint — ATA için
+      amount,
+      isBuy,
+    });
+
     if (ok) {
       resetTrade();
       setMobileTradeOpen(false);
@@ -97,7 +124,6 @@ export default function DexPageContent() {
 
   return (
     <div className="min-h-screen relative">
-      {/* Premium background layers (pump-like vibe, BluPrint palette) */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-24 left-10 h-[520px] w-[520px] rounded-full bg-[#ff2d95]/10 blur-[140px]" />
         <div className="absolute top-[20%] right-10 h-[460px] w-[460px] rounded-full bg-[#7c3aed]/10 blur-[160px]" />
@@ -121,7 +147,7 @@ export default function DexPageContent() {
                 Trade the <span className="text-[#ff2d95]">newest</span> launches on BluPrint
               </h2>
               <p className="mt-2 text-sm text-gray-400 max-w-2xl">
-                Instant swaps, live curve info, and a clean terminal-grade UI that matches BluPrint’s pink-whale theme.
+                Instant swaps, live curve info, and a clean terminal-grade UI that matches BluPrint&apos;s pink-whale theme.
               </p>
             </div>
 
@@ -169,7 +195,6 @@ export default function DexPageContent() {
               </div>
             </div>
 
-            {/* List container (premium card) */}
             <div className="rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur-sm p-3 sm:p-4">
               <div className="flex items-center justify-between mb-3 px-1">
                 <div className="flex items-center gap-2">
@@ -194,10 +219,10 @@ export default function DexPageContent() {
                 <EmptyState hasSearch={Boolean(search.trim())} />
               ) : (
                 <TokenList
-  tokens={filteredTokens}
-  selectedToken={selectedToken}
-  onSelect={handleSelectToken}
-/>
+                  tokens={filteredTokens}
+                  selectedToken={selectedToken}
+                  onSelect={handleSelectToken}
+                />
               )}
             </div>
           </div>

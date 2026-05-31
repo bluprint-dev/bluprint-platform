@@ -2,13 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { redis, KEYS } from '@/app/lib/redis';
 
 const REFERRAL_REWARD = 0.05; // SOL
-const FIRST_TOKEN_ONLY = true;
 
 export async function POST(req: NextRequest) {
   try {
-    const { mintAddress, name, symbol, imageUrl, userPublicKey, signature } = await req.json();
+    const {
+      mintAddress,
+      genesisAccount,   // ✅ ayrı alan — bonding curve operasyonları için
+      name,
+      symbol,
+      imageUrl,
+      userPublicKey,
+      signature,
+    } = await req.json();
 
-    if (!mintAddress || !userPublicKey || !signature) {
+    // ✅ FIX: genesisAccount da zorunlu
+    if (!mintAddress || !genesisAccount || !userPublicKey || !signature) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
@@ -25,8 +33,9 @@ export async function POST(req: NextRequest) {
 
     // ===============================
     // DUPLICATE PROTECTION
+    // ✅ FIX: genesisAccount bazlı key — curve operasyonlarında bu key kullanılır
     // ===============================
-    const existing = await redis.get(`bonding-curve:creator:${mintAddress}`);
+    const existing = await redis.get(`bonding-curve:creator:${genesisAccount}`);
     if (existing) {
       return NextResponse.json({ error: 'Token already exists' }, { status: 400 });
     }
@@ -40,13 +49,26 @@ export async function POST(req: NextRequest) {
 
     // ===============================
     // SAVE TOKEN
+    // ✅ FIX: tüm curve key'leri genesisAccount ile
+    //         metadata key'leri mint ile (display için)
     // ===============================
-    await redis.set(`bonding-curve:creator:${mintAddress}`, userPublicKey);
-    await redis.sadd('bonding-curve:tokens', mintAddress);
 
+    // curve creator kaydı → genesisAccount bazlı
+    await redis.set(`bonding-curve:creator:${genesisAccount}`, userPublicKey);
+
+    // ✅ FIX: registry set'ine genesisAccount yazılıyor (mint değil)
+    // tokenRegistry.ts bu set'i okuyup her değeri genesisAccount olarak kullanır
+    await redis.sadd('bonding-curve:tokens', genesisAccount);
+
+    // genesisAccount → mintAddress reverse lookup
+    await redis.set(`genesis:mint:${genesisAccount}`, mintAddress);
+
+    // metadata: mint bazlı anahtar DOĞRU — display/image/symbol için mint kullanılır
     await redis.set(
       `token:metadata:${mintAddress}`,
       JSON.stringify({
+        mint: mintAddress,
+        genesisAccount,        // ✅ metadata içinde sakla
         name,
         symbol,
         imageUrl,
@@ -58,22 +80,20 @@ export async function POST(req: NextRequest) {
 
     // ===============================
     // TRENDING
+    // ✅ FIX: trending'e de genesisAccount yaz
     // ===============================
-    await redis.zincrby('trending:tokens', 1, mintAddress);
+    await redis.zincrby('trending:tokens', 1, genesisAccount);
     await redis.expire('trending:tokens', 86400);
 
     // ===============================
-    // REFERRAL ENGINE (CORE ADDITION)
+    // REFERRAL ENGINE
     // ===============================
-
     const referralKey = `referral:by:${userPublicKey}`;
     const referrer = await redis.get(referralKey);
 
     if (referrer && tokenCount === 1) {
       // only first token reward
-
       const earningsKey = `${KEYS.earnings}:${referrer}`;
-
       const earningsRaw = await redis.get(earningsKey);
 
       const earnings = earningsRaw
@@ -92,9 +112,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log('✅ Token tracked + referral processed:', mintAddress);
+    console.log('✅ Token tracked + referral processed:', {
+      mintAddress,
+      genesisAccount,
+    });
 
-    return NextResponse.json({ success: true, mintAddress });
+    return NextResponse.json({ success: true, mintAddress, genesisAccount });
 
   } catch (error: any) {
     console.error('Track error:', error);

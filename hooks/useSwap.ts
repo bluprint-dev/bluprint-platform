@@ -3,6 +3,16 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Transaction } from "@solana/web3.js";
 import { useToast } from "@/app/components/ToastProvider";
 
+// ✅ FIX: genesisAccount ve mint ayrı alanlar
+// genesisAccount → bonding curve PDA türetme, swap işlemi için
+// mint           → display, metadata, ATA için (server tarafında kullanılır)
+export type SwapInput = {
+  genesisAccount: string; // Metaplex Genesis launch account
+  mint: string;           // SPL token mint (display only)
+  amount: string;         // SOL (buy) veya token miktarı (sell) — insan okunur
+  isBuy: boolean;
+};
+
 export function useSwap() {
   const { connection } = useConnection();
   const { publicKey, sendTransaction, connected } = useWallet();
@@ -12,7 +22,7 @@ export function useSwap() {
   const [error, setError] = useState("");
 
   const swap = useCallback(
-    async (input: { mint: string; amount: string; isBuy: boolean }) => {
+    async (input: SwapInput) => {
       if (!connected || !publicKey) {
         window.dispatchEvent(new CustomEvent("wallet-connect-requested"));
         return false;
@@ -22,16 +32,19 @@ export function useSwap() {
       setError("");
 
       try {
-        const lamports = Math.floor(
-          Number(input.amount) * 1_000_000_000
-        ).toString();
+        // Buy: SOL miktarı → lamports
+        // Sell: token miktarı → direkt gönder (token decimals server'da handle edilir)
+        const amount = input.isBuy
+          ? Math.floor(Number(input.amount) * 1_000_000_000).toString()
+          : input.amount;
 
         const res = await fetch("/api/bonding-curve/swap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            genesisAccount: input.mint, // ✅ FIX: unified key
-            amount: lamports,
+            genesisAccount: input.genesisAccount, // ✅ ayrı alan — mint değil
+            mintAddress: input.mint,              // server'da metadata/ATA için
+            amount,
             userPublicKey: publicKey.toString(),
             isBuy: input.isBuy,
           }),
@@ -40,7 +53,7 @@ export function useSwap() {
         const data = await res.json();
 
         if (!data.success) {
-          throw new Error(data.error);
+          throw new Error(data.error ?? "SWAP_FAILED");
         }
 
         const tx = Transaction.from(
@@ -52,7 +65,7 @@ export function useSwap() {
         await connection.confirmTransaction(sig, "confirmed");
 
         showToast(
-          input.isBuy ? "Buy success" : "Sell success",
+          input.isBuy ? "Buy successful!" : "Sell successful!",
           "success"
         );
 

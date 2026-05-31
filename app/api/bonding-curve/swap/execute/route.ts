@@ -5,7 +5,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const { signature, userPublicKey, mintAddress } = body;
+    // ✅ FIX: genesisAccount eklendi
+    // mintAddress → metadata/display için saklanır
+    // genesisAccount → worker ileride curve işlemi yapacaksa bu gerekir
+    const { signature, userPublicKey, mintAddress, genesisAccount } = body;
 
     if (!signature || !userPublicKey || !mintAddress) {
       return NextResponse.json(
@@ -16,7 +19,7 @@ export async function POST(req: NextRequest) {
 
     const jobId = signature;
 
-    // 🔴 1. DUPLICATE CHECK (safe)
+    // 1. DUPLICATE CHECK
     const existing = await redis.get(`job:${jobId}`);
 
     if (existing) {
@@ -26,19 +29,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 🔵 2. QUEUE JOB
+    // 2. QUEUE JOB
+    // ✅ FIX: genesisAccount da job payload'ına eklendi
+    // swapWorker ileride bonding curve işlemi yapacaksa genesisAccount'u kullanacak
     await redis.lpush(
       "swap-queue",
       JSON.stringify({
         jobId,
         signature,
         userPublicKey,
-        mintAddress,
+        mintAddress,      // metadata/display için
+        genesisAccount,   // ✅ curve ops için — undefined gelebilir, worker kontrol eder
         createdAt: Date.now(),
       })
     );
 
-    // 🔴 3. TTL SET (FIXED ioredis version issue)
+    // 3. TTL SET
     await redis.setex(`job:${jobId}`, 3600, "queued");
 
     return NextResponse.json({

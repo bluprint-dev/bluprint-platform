@@ -104,16 +104,24 @@ export async function POST(req: NextRequest) {
     console.log("CREATE_RESULT:", result);
 
     // ======================================================
-    // 🔥 REDIS FIX (DUAL WRITE + BACKWARD COMPATIBILITY)
+    // ✅ FIX: genesisAccount kaydediliyor (mint değil)
+    // bonding-curve:tokens set'i curve operasyonları için kullanılır.
+    // PDA türetme, bucket fetch, swap, quote hepsi genesisAccount ister.
     // ======================================================
 
     await redis.sadd(
-  "bonding-curve:tokens",
-  result.mintAddress
-);
+      "bonding-curve:tokens",
+      result.genesisAccount  // ✅ genesisAccount — mint değil
+    );
 
-    // 2) LEGACY SUPPORT (optional fallback)
-    await redis.sadd("bonding-curve:tokens:legacy", result.mintAddress);
+    // Legacy set'e de genesisAccount yaz
+    await redis.sadd("bonding-curve:tokens:legacy", result.genesisAccount);
+
+    // genesisAccount → mintAddress lookup (reverse map)
+    await redis.set(
+      `genesis:mint:${result.genesisAccount}`,
+      result.mintAddress
+    );
 
     console.log("LAUNCH_ADDRESSES", {
       mintAddress: result.mintAddress,
@@ -121,13 +129,15 @@ export async function POST(req: NextRequest) {
     });
 
     // ======================================================
-    // METADATA (UNCHANGED - SAFE)
+    // METADATA: mint bazlı anahtar — DOĞRU
+    // token:metadata:${mint} display/metadata için mint ile kalır
+    // genesisAccount da metadata içine eklendi
     // ======================================================
     await redis.set(
       `token:metadata:${result.mintAddress}`,
       JSON.stringify({
         mint: result.mintAddress,
-        genesisAccount: result.genesisAccount,
+        genesisAccount: result.genesisAccount,  // ✅ her zaman sakla
 
         name,
         symbol,
@@ -145,7 +155,16 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    console.log("REDIS_METADATA_SAVED:", result.mintAddress);
+    // genesisAccount → metadata lookup için ek index
+    await redis.set(
+      `genesis:metadata:${result.genesisAccount}`,
+      result.mintAddress  // mint'e pointer — metadata fetch için
+    );
+
+    console.log("REDIS_SAVED:", {
+      metadataKey: `token:metadata:${result.mintAddress}`,
+      genesisKey: `genesis:mint:${result.genesisAccount}`,
+    });
 
     return NextResponse.json({
       success: true,
