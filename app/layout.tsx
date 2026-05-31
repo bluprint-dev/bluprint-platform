@@ -23,32 +23,37 @@ const mono = Space_Mono({
 export const metadata: Metadata = {
   title: "BluPrint - Pink Whale Launchpad",
   description: "Launch your meme coin on Solana in seconds.",
-  icons: {
-    icon: "/favicon.ico",
-  },
+  icons: { icon: "/favicon.ico" },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${outfit.variable} ${mono.variable} antialiased bg-[#0A0A0F] text-white`}
-        style={{ fontFamily: "var(--font-outfit), system-ui, sans-serif" }}>
+      <body
+        className={`${outfit.variable} ${mono.variable} antialiased`}
+        style={{ margin: 0, padding: 0, background: "#0A0A0F", color: "#fff", fontFamily: "var(--font-outfit), system-ui, sans-serif" }}
+      >
         <Providers>
           <Background />
-          
-          <div className="fixed top-0 left-0 right-0 z-20">
+
+          {/* MarqueeBanner — fixed top */}
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 20 }}>
             <MarqueeBanner />
           </div>
-          
-          <div className="fixed top-9 left-0 bottom-0 z-30">
+
+          {/* Sidebar — fixed left, desktop only */}
+          <div
+            className="hidden md:block"
+            style={{ position: "fixed", left: 0, top: 36, bottom: 0, width: 224, zIndex: 30 }}
+          >
             <Sidebar />
           </div>
-          
-          <main className="md:ml-56 pt-14 min-h-screen relative z-10">
+
+          {/* Main content */}
+          <main
+            className="md:ml-56"
+            style={{ minHeight: "100vh", paddingTop: 36, position: "relative", zIndex: 10 }}
+          >
             {children}
           </main>
 
