@@ -6,206 +6,198 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import {
-  Home,
-  Sparkles,
-  LineChart,
-  Users,
-  Wallet,
-  X,
-  Menu,
-  Zap,
-} from "lucide-react";
+import { Home, Sparkles, LineChart, Users, Wallet, X, Menu, Zap } from "lucide-react";
 
-export default function Sidebar() {
+const F = {
+  display: "'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif",
+  mono: "'Space Mono', 'JetBrains Mono', monospace",
+};
+
+const menuItems = [
+  { href: "/",        label: "Home",   icon: Home      },
+  { href: "/create",  label: "Create", icon: Sparkles  },
+  { href: "/dex",     label: "DEX",    icon: LineChart  },
+  { href: "/referral",label: "Refer",  icon: Users     },
+];
+
+function shortenAddress(address: string) {
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
+
+function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
+  const pathname = usePathname();
   const { connected, disconnect, publicKey } = useWallet();
   const { setVisible } = useWalletModal();
-  const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  const menuItems = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/create", label: "Create", icon: Sparkles },
-    { href: "/dex", label: "DEX", icon: LineChart },
-    { href: "/referral", label: "Refer", icon: Users },
-  ];
+  return (
+    <div style={{
+      position: "relative",
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      background: "linear-gradient(180deg, #080412 0%, #0d0619 60%, #080412 100%)",
+      borderRight: "1px solid rgba(153,69,255,0.12)",
+      overflow: "hidden",
+    }}>
+      {/* ambient blobs */}
+      <div style={{ position: "absolute", top: -40, left: -20, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(153,69,255,0.12) 0%, transparent 70%)", filter: "blur(30px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: 60, left: -10, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(20,241,149,0.06) 0%, transparent 70%)", filter: "blur(24px)", pointerEvents: "none" }} />
 
-  useEffect(() => setMounted(true), []);
+      {/* grid texture */}
+      <div style={{ position: "absolute", inset: 0, opacity: 0.025, pointerEvents: "none",
+        backgroundImage: "linear-gradient(rgba(153,69,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(153,69,255,1) 1px,transparent 1px)",
+        backgroundSize: "32px 32px" }} />
 
-  const handleWalletClick = () => {
-    if (connected) disconnect();
-    else setVisible(true);
-  };
+      {/* content */}
+      <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", height: "100%" }}>
 
-  const shortenAddress = (address: string) => {
-    return `${address.slice(0, 4)}...${address.slice(-4)}`;
-  };
-
-  const isActive = (href: string) => pathname === href;
-
-  const sidebarContent = (
-    <>
-      {/* Arkaplan */}
-      <div className="absolute inset-0 bg-[#050507] backdrop-blur-2xl" />
-      
-      {/* Glow orbs */}
-      <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-[#ff2d95]/10 blur-3xl" />
-      <div className="absolute bottom-20 left-0 w-40 h-40 rounded-full bg-[#7c3aed]/5 blur-3xl" />
-      
-      {/* Grid */}
-      <div 
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, #ff2d95 1px, transparent 1px),
-            linear-gradient(to bottom, #ff2d95 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-        }}
-      />
-      
-      {/* İçerik */}
-      <div className="relative z-10 flex flex-col h-full">
-        
-        {/* Live Pulse */}
-        <div className="px-3 pt-5 pb-2">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#101014]/50 border border-[#ff2d95]/15">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-xs text-zinc-400">Solana Mainnet Live</span>
-            <Zap className="w-3 h-3 text-[#ff2d95] ml-auto" />
+        {/* live badge */}
+        <div style={{ padding: "16px 12px 8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(20,241,149,0.12)" }}>
+            <span style={{ position: "relative", display: "flex", width: 7, height: 7, flexShrink: 0 }}>
+              <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(20,241,149,0.6)", animation: "sbPing 1.6s ease-out infinite" }} />
+              <span style={{ position: "relative", width: 7, height: 7, borderRadius: "50%", background: "#14F195" }} />
+            </span>
+            <span style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(20,241,149,0.7)", flex: 1 }}>SOLANA MAINNET</span>
+            <Zap size={11} color="#9945FF" />
           </div>
         </div>
-        
-        {/* Logo */}
-        <div className="px-4 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <img src="/favicon.ico" alt="BluPrint" className="w-7 h-7" />
-            <div className="flex">
-              <span className="text-white font-bold text-lg">Blu</span>
-              <span className="text-[#ff2d95] font-bold text-lg">Print</span>
+
+        {/* logo */}
+        <div style={{ padding: "12px 16px 16px" }}>
+          <Link href="/" onClick={onLinkClick} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+            <img src="/favicon.ico" alt="BluPrint" style={{ width: 28, height: 28, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(153,69,255,0.5))" }} />
+            <div style={{ display: "flex", fontFamily: F.display, fontSize: 18, fontWeight: 900, letterSpacing: "-0.02em" }}>
+              <span style={{ color: "#fff" }}>Blu</span>
+              <span style={{ background: "linear-gradient(135deg,#9945FF,#14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Print</span>
             </div>
           </Link>
         </div>
-        
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1.5">
+
+        {/* divider */}
+        <div style={{ height: 1, margin: "0 12px 8px", background: "linear-gradient(90deg,transparent,rgba(153,69,255,0.2),transparent)" }} />
+
+        {/* nav */}
+        <nav style={{ flex: 1, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const active = isActive(item.href);
-            const isHovered = hoveredItem === item.href;
-            
+            const active = pathname === item.href;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onMouseEnter={() => setHoveredItem(item.href)}
-                onMouseLeave={() => setHoveredItem(null)}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${
-                  active
-                    ? "bg-gradient-to-r from-[#ff2d95]/15 to-[#7c3aed]/10 border border-[#ff2d95]/25"
-                    : "text-[#8E8E93] hover:bg-[#1A1A22]/50 hover:translate-x-1"
-                }`}
-              >
+              <Link key={item.href} href={item.href} onClick={onLinkClick}
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  textDecoration: "none",
+                  transition: "all 0.2s",
+                  background: active ? "linear-gradient(135deg,rgba(153,69,255,0.14),rgba(20,241,149,0.05))" : "transparent",
+                  border: active ? "1px solid rgba(153,69,255,0.22)" : "1px solid transparent",
+                }}>
+                {/* active indicator */}
                 {active && (
-                  <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-[#ff2d95] to-[#7c3aed]" />
+                  <div style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 2, borderRadius: "0 2px 2px 0", background: "linear-gradient(180deg,#9945FF,#14F195)" }} />
                 )}
-                
-                <Icon className={`w-5 h-5 ${active ? "text-[#ff2d95]" : "text-[#8E8E93] group-hover:text-[#ff2d95]"}`} />
-                
-                <span className={`text-sm font-medium ${active ? "text-white" : "text-[#8E8E93]"}`}>
+                <Icon size={17} color={active ? "#9945FF" : "rgba(255,255,255,0.3)"} />
+                <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: active ? 700 : 500, color: active ? "#fff" : "rgba(255,255,255,0.38)", letterSpacing: "-0.01em" }}>
                   {item.label}
                 </span>
-                
                 {active && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#ff2d95]" />
+                  <div style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 8px #14F195" }} />
                 )}
               </Link>
             );
           })}
         </nav>
-        
-        {/* Wallet */}
-        <div className="px-3 pt-2 pb-5">
-          <div className="relative">
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#1A1A22] to-[#101014] border border-[#ff2d95]/15" />
-            
-            <button
-              onClick={handleWalletClick}
-              className="relative w-full flex items-center gap-2 px-3 py-3 rounded-xl"
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff2d95] to-[#7c3aed] flex items-center justify-center">
-                <Wallet className="w-4 h-4 text-white" />
+
+        {/* divider */}
+        <div style={{ height: 1, margin: "0 12px 12px", background: "linear-gradient(90deg,transparent,rgba(153,69,255,0.15),transparent)" }} />
+
+        {/* wallet */}
+        <div style={{ padding: "0 10px 20px" }}>
+          <button
+            onClick={() => { connected ? disconnect() : setVisible(true); onLinkClick?.(); }}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "10px 12px",
+              borderRadius: 14,
+              background: connected ? "rgba(20,241,149,0.05)" : "rgba(153,69,255,0.08)",
+              border: connected ? "1px solid rgba(20,241,149,0.18)" : "1px solid rgba(153,69,255,0.22)",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              textAlign: "left",
+            }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, flexShrink: 0, background: connected ? "linear-gradient(135deg,rgba(20,241,149,0.2),rgba(153,69,255,0.2))" : "linear-gradient(135deg,rgba(153,69,255,0.2),rgba(20,241,149,0.1))", display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${connected ? "rgba(20,241,149,0.2)" : "rgba(153,69,255,0.2)"}` }}>
+              <Wallet size={14} color={connected ? "#14F195" : "#9945FF"} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", color: "rgba(255,255,255,0.3)" }}>WALLET</p>
+              <p style={{ margin: "2px 0 0", fontFamily: F.display, fontSize: 12, fontWeight: 600, color: connected ? "#14F195" : "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {connected && publicKey ? shortenAddress(publicKey.toString()) : "Connect Wallet"}
+              </p>
+            </div>
+            {connected && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 6px #14F195" }} />
               </div>
-              
-              <div className="flex-1 text-left">
-                <p className="text-xs text-zinc-400">Wallet</p>
-                <p className="text-white text-sm font-medium truncate">
-                  {connected && publicKey ? shortenAddress(publicKey.toString()) : "Connect Wallet"}
-                </p>
-              </div>
-              
-              {connected && (
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-[10px] text-green-400">Live</span>
-                </div>
-              )}
-            </button>
-          </div>
+            )}
+          </button>
         </div>
       </div>
-    </>
-  );
 
+      <style>{`
+        @keyframes sbPing { 0%{transform:scale(1);opacity:0.8} 75%{transform:scale(2.5);opacity:0} 100%{transform:scale(1);opacity:0} }
+      `}</style>
+    </div>
+  );
+}
+
+export default function Sidebar() {
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
   if (!mounted) return null;
 
   return (
     <>
       {/* Desktop */}
-      <aside className="fixed left-0 top-0 bottom-0 w-56 z-40 hidden md:flex flex-col overflow-hidden">
-        <div className="relative flex flex-col h-full">{sidebarContent}</div>
+      <aside style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 224, zIndex: 40, display: "none" }} className="md:block">
+        <SidebarContent />
       </aside>
 
-      {/* Mobile Header */}
-      <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-[#050507]/95 backdrop-blur-2xl border-b border-[#ff2d95]/15">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-2">
-            <img src="/favicon.ico" alt="BluPrint" className="w-7 h-7" />
-            <div className="flex">
-              <span className="text-white font-bold text-lg">Blu</span>
-              <span className="text-[#ff2d95] font-bold text-lg">Print</span>
+      {/* Mobile header */}
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 30, background: "rgba(8,4,18,0.95)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(153,69,255,0.12)" }} className="md:hidden">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px" }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+            <img src="/favicon.ico" alt="BluPrint" style={{ width: 26, height: 26, objectFit: "contain", filter: "drop-shadow(0 0 6px rgba(153,69,255,0.5))" }} />
+            <div style={{ display: "flex", fontFamily: F.display, fontSize: 17, fontWeight: 900 }}>
+              <span style={{ color: "#fff" }}>Blu</span>
+              <span style={{ background: "linear-gradient(135deg,#9945FF,#14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Print</span>
             </div>
           </Link>
-
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="w-10 h-10 rounded-xl bg-[#1A1A22]/50 border border-[#ff2d95]/20 flex items-center justify-center"
-          >
-            {isMobileMenuOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
+          <button onClick={() => setIsMobileOpen(!isMobileOpen)}
+            style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(153,69,255,0.08)", border: "1px solid rgba(153,69,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            {isMobileOpen ? <X size={18} color="#fff" /> : <Menu size={18} color="#fff" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile drawer */}
       <AnimatePresence>
-        {isMobileMenuOpen && (
+        {isMobileOpen && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 md:hidden"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
-            <motion.div
-              initial={{ x: -280, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -280, opacity: 0 }}
-              className="fixed left-0 top-0 bottom-0 w-56 z-50 shadow-2xl"
-            >
-              <div className="relative flex flex-col h-full">{sidebarContent}</div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setIsMobileOpen(false)}
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)", zIndex: 50 }} className="md:hidden" />
+            <motion.div initial={{ x: -224 }} animate={{ x: 0 }} exit={{ x: -224 }} transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 224, zIndex: 60 }} className="md:hidden">
+              <SidebarContent onLinkClick={() => setIsMobileOpen(false)} />
             </motion.div>
           </>
         )}
