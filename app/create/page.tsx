@@ -4,218 +4,337 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
-import {
-  PublicKey,
-  SystemProgram,
-  Transaction,
-  ComputeBudgetProgram,
-  TransactionInstruction
-} from "@solana/web3.js";
+import { Transaction, VersionedTransaction } from "@solana/web3.js";
 
-import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
-import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
-import { createAndRegisterLaunch } from "@metaplex-foundation/genesis";
-import { genesis } from "@metaplex-foundation/genesis";
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Rocket, Upload, Check, AlertCircle, Loader2, Copy, Sparkles, Activity } from "lucide-react";
+type CreateTokenResult = {
+  success: boolean;
+  error?: string;
+  signature?: string;
+  transaction?: string;
+  mint?: string;
+  genesisAccount?: string;
+};
 
-import Footer from "@/app/components/Footer";
-import { useDexStore } from "@/store/dexStore";
-import { normalizeToken } from "@/lib/dex/normalizeToken";
-import bs58 from "bs58";
+type PromoValidation = {
+  valid: boolean;
+  owner?: string;
+  error?: string;
+};
 
-const CREATE_FEE_SOL = 0.01;
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const FEE_DISTRIBUTION = [
-  { address: "aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x", percentage: 58 },
-  { address: "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc", percentage: 32 },
-  { address: "A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X", percentage: 10 },
-];
+function slugify(s: string) {
+  return s.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+}
 
-const BONDING_CURVE_FEE_WALLET = "AimBpCdpPmTB5QeJ6WwgrBzNmMsjR3MvNe9zgNhzomZ6";
-
-const TERMINAL_MESSAGES = [
-  "Uploading metadata...",
-  "Initializing bonding curve...",
-  "Seeding liquidity...",
-  "Awaiting confirmation...",
-];
-
-const BLACKLIST = ["SOL", "USDC", "USDT", "BONK", "WIF", "JUP", "PYTH", "JTO"];
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CreatePage() {
-  const { connected, publicKey, sendTransaction, wallet } = useWallet();
+  const { publicKey, connected, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const router = useRouter();
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [terminalStep, setTerminalStep] = useState(-1);
-  const [terminalText, setTerminalText] = useState("");
-
-  const [tokenName, setTokenName] = useState("");
-  const [tokenSymbol, setTokenSymbol] = useState("");
-  const [tokenDescription, setTokenDescription] = useState("");
-
+  // Form state
+  const [name, setName] = useState("");
+  const [symbol, setSymbol] = useState("");
+  const [desc, setDesc] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
 
-  const [error, setError] = useState("");
+  // Promo validation state
+  const [promoStatus, setPromoStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+  const promoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Submit state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStep, setSubmitStep] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [mintAddress, setMintAddress] = useState<string | null>(null);
 
-  const isSubmitting = useRef(false);
+  // ─── Promo code validation (debounced 500ms) ──────────────────────────────
 
-  // =========================
-  // REFERRAL BIND (NEW)
-  // =========================
-  const bindReferral = async (wallet: string) => {
-    try {
-      const code = localStorage.getItem("refCode");
-      if (!code) return;
-
-      await fetch("/api/referral/bind", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet,
-          code
-        }),
-      });
-    } catch (e) {
-      console.log("referral bind failed (non-blocking)");
+  const validatePromo = useCallback(async (code: string) => {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed || trimmed.length < 4) {
+      setPromoStatus("idle");
+      return;
     }
-  };
+    setPromoStatus("checking");
+    try {
+      const res = await fetch(`/api/promo/code?code=${encodeURIComponent(trimmed)}`);
+      const data: PromoValidation = await res.json();
+      setPromoStatus(data.valid ? "valid" : "invalid");
+    } catch {
+      setPromoStatus("idle");
+    }
+  }, []);
 
-  // =========================
-  // CREATE FLOW
-  // =========================
-  const handleCreate = async () => {
-    if (!connected || !publicKey) return;
+  useEffect(() => {
+    if (promoDebounceRef.current) clearTimeout(promoDebounceRef.current);
+    promoDebounceRef.current = setTimeout(() => validatePromo(promoCode), 500);
+    return () => {
+      if (promoDebounceRef.current) clearTimeout(promoDebounceRef.current);
+    };
+  }, [promoCode, validatePromo]);
 
-    if (!uploadedImageUrl) {
-      setError("Image required");
+  // ─── Image handling ───────────────────────────────────────────────────────
+
+  const handleImage = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be under 5MB");
+      return;
+    }
+    setError(null);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  }, []);
+
+  // ─── Submit ───────────────────────────────────────────────────────────────
+
+  const handleSubmit = useCallback(async () => {
+    if (!connected || !publicKey) {
+      window.dispatchEvent(new CustomEvent("wallet-connect-requested"));
+      return;
+    }
+    if (!name.trim() || !symbol.trim()) {
+      setError("Name and symbol are required");
+      return;
+    }
+    if (!imageFile) {
+      setError("Image is required");
       return;
     }
 
-    isSubmitting.current = true;
-    setIsLoading(true);
-    setError("");
-    setTerminalStep(0);
+    setIsSubmitting(true);
+    setError(null);
 
     try {
-      // 🔥 REFERRAL BIND FIRST (IMPORTANT)
-      await bindReferral(publicKey.toString());
+      // Step 1: Upload image
+      setSubmitStep("Uploading image…");
+      const formData = new FormData();
+      formData.append("file", imageFile);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadData.success || !uploadData.url) throw new Error(uploadData.error ?? "Image upload failed");
+      const imageUrl: string = uploadData.url;
 
-      let singleSig: string | null = null;
-
-      const umi = createUmi(connection.rpcEndpoint).use(genesis());
-      umi.use(walletAdapterIdentity(wallet!.adapter));
-
-      const result = await createAndRegisterLaunch(
-        umi,
-        {},
-        {
-          wallet: publicKey.toString(),
-          launchType: "bondingCurve",
-          token: {
-            name: tokenName,
-            symbol: tokenSymbol,
-            image: uploadedImageUrl,
-            description: tokenDescription || "",
-          },
-          launch: {
-            creatorFeeWallet: BONDING_CURVE_FEE_WALLET,
-          },
-        } as any,
-        {
-          txSender: async (txs: any[]) => {
-            const tx = new Transaction();
-
-            const latest = await connection.getLatestBlockhash();
-            tx.recentBlockhash = latest.blockhash;
-            tx.feePayer = publicKey;
-
-            const sig = await sendTransaction(tx, connection, {
-              skipPreflight: false,
-              preflightCommitment: "confirmed",
-            });
-
-            await connection.confirmTransaction(sig, "confirmed");
-
-            singleSig = sig;
-            return [];
-          },
-        }
-      );
-
-      setTerminalStep(1);
-
-      // verify backend
-      const res = await fetch("/api/create-token", {
+      // Step 2: Build token transaction
+      setSubmitStep("Building transaction…");
+      const createRes = await fetch("/api/create-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          signature: singleSig,
-          userPublicKey: publicKey.toString(),
-          tokenData: {
-            name: tokenName,
-            symbol: tokenSymbol,
-            imageUrl: uploadedImageUrl,
-            description: tokenDescription,
-          },
+          name: name.trim(),
+          symbol: slugify(symbol),
+          description: desc.trim(),
+          imageUrl,
+          creatorWallet: publicKey.toString(),
+          promoCode: promoCode.trim().toUpperCase() || undefined,
         }),
       });
+      const createData: CreateTokenResult = await createRes.json();
+      if (!createData.success) throw new Error(createData.error ?? "Token creation failed");
 
-      const data = await res.json();
+      const rawTx = createData.transaction ?? createData.signature;
+      if (!rawTx) throw new Error("No transaction returned from server");
+      const { mint, genesisAccount } = createData;
 
-      if (!data.success) throw new Error(data.error);
+      // Step 3: Sign & send
+      setSubmitStep("Awaiting wallet signature…");
+      const txBytes = Buffer.from(rawTx, "base64");
+      let tx: VersionedTransaction | Transaction;
+      try {
+        tx = VersionedTransaction.deserialize(txBytes);
+      } catch {
+        tx = Transaction.from(txBytes);
+      }
 
-      setTerminalStep(2);
+      let sig: string;
+      try {
+        sig = await sendTransaction(tx as VersionedTransaction, connection);
+      } catch (walletErr) {
+        const msg = walletErr instanceof Error ? walletErr.message : "Wallet rejected";
+        throw new Error(msg);
+      }
 
-      useDexStore.getState().addOptimisticToken(
-        normalizeToken({
-          mint: result.mintAddress,
-          name: tokenName,
-          symbol: tokenSymbol,
-          imageUrl: uploadedImageUrl,
-          creator: publicKey.toString(),
-          createdAt: Date.now(),
-        })
-      );
+      setSubmitStep("Confirming…");
+      const { value: status } = await connection.confirmTransaction(sig, "confirmed");
+      if (status.err) throw new Error("Transaction failed on-chain");
 
-      setMintAddress(result.mintAddress);
+      // Step 4: Track launch → DEX listing (non-fatal)
+      if (genesisAccount && mint) {
+        setSubmitStep("Listing on DEX…");
+        fetch("/api/track-launch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            genesisAccount,
+            mint,
+            name: name.trim(),
+            symbol: slugify(symbol),
+            imageUrl,
+            creatorWallet: publicKey.toString(),
+            signature: sig,
+          }),
+        }).catch(() => console.warn("track-launch failed — DEX listing may be delayed"));
+      }
+
+      // Step 5: Unlock referral code for creator (non-fatal)
+      fetch("/api/generate-promocode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: publicKey.toString() }),
+      }).catch(() => console.warn("generate-promocode failed"));
+
+      // Done
       setSuccess(true);
-      setIsLoading(false);
+      setSubmitStep("");
+      setTimeout(() => {
+        router.push(genesisAccount ? `/dex?token=${genesisAccount}` : "/dex");
+      }, 1500);
 
-    } catch (e: any) {
-      setError(e.message || "error");
-      setIsLoading(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unexpected error";
+      setError(msg);
+      setSubmitStep("");
+    } finally {
+      setIsSubmitting(false);
     }
+  }, [connected, publicKey, sendTransaction, connection, router, name, symbol, desc, imageFile, promoCode]);
 
-    isSubmitting.current = false;
-  };
+  // ─── Promo indicator ─────────────────────────────────────────────────────
 
-  if (success && mintAddress) {
-    return (
-      <div className="p-10 text-white">
-        <h1>Token Created 🚀</h1>
-        <p>{mintAddress}</p>
-      </div>
-    );
-  }
+  const promoIndicator = useMemo(() => {
+    if (!promoCode.trim()) return null;
+    if (promoStatus === "checking") return <span className="text-yellow-400 text-xs">Checking…</span>;
+    if (promoStatus === "valid")    return <span className="text-green-400 text-xs">✓ Valid — referrer earns 0.05 SOL</span>;
+    if (promoStatus === "invalid")  return <span className="text-red-400 text-xs">✗ Invalid code</span>;
+    return null;
+  }, [promoCode, promoStatus]);
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-10 text-white">
-      <input placeholder="name" onChange={e => setTokenName(e.target.value)} />
-      <input placeholder="symbol" onChange={e => setTokenSymbol(e.target.value)} />
-      <input placeholder="image url" onChange={e => setUploadedImageUrl(e.target.value)} />
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-lg space-y-5">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Create Token</h1>
+          <p className="text-gray-500 text-sm mt-1">Launch fee: 0.15 SOL</p>
+        </div>
 
-      <button onClick={handleCreate} disabled={isLoading}>
-        {isLoading ? "Creating..." : "Create Token"}
-      </button>
+        {/* Image upload */}
+        <div
+          className="border-2 border-dashed border-gray-700 rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-gray-500 transition-colors"
+          onClick={() => document.getElementById("img-input")?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleImage(f); }}
+        >
+          {imagePreview
+            ? <img src={imagePreview} alt="preview" className="w-24 h-24 rounded-xl object-cover" />
+            : <div className="w-24 h-24 rounded-xl bg-gray-800 flex items-center justify-center text-gray-600 text-3xl">🖼</div>
+          }
+          <span className="text-gray-500 text-sm">Click or drag image (max 5MB)</span>
+          <input
+            id="img-input"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImage(f); }}
+          />
+        </div>
 
-      {error && <p className="text-red-500">{error}</p>}
+        {/* Name */}
+        <div>
+          <label className="block text-sm text-gray-300 mb-1">Name</label>
+          <input
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors"
+            placeholder="My Coin"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={32}
+          />
+        </div>
+
+        {/* Symbol */}
+        <div>
+          <label className="block text-sm text-gray-300 mb-1">Symbol</label>
+          <input
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors uppercase"
+            placeholder="MYCOIN"
+            value={symbol}
+            onChange={(e) => setSymbol(slugify(e.target.value))}
+            maxLength={8}
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm text-gray-300 mb-1">
+            Description <span className="text-gray-600">(optional)</span>
+          </label>
+          <textarea
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors resize-none"
+            placeholder="Tell the world about your token…"
+            rows={3}
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            maxLength={280}
+          />
+        </div>
+
+        {/* Promo code */}
+        <div>
+          <label className="block text-sm text-gray-300 mb-1">
+            Referral Code <span className="text-gray-600">(optional)</span>
+          </label>
+          <input
+            className={`w-full bg-gray-800 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none uppercase transition-colors ${
+              promoStatus === "valid"   ? "border-green-600 focus:border-green-500" :
+              promoStatus === "invalid" ? "border-red-700 focus:border-red-600" :
+                                         "border-gray-700 focus:border-gray-500"
+            }`}
+            placeholder="ENTER CODE"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+            maxLength={12}
+          />
+          <div className="mt-1.5 h-4">{promoIndicator}</div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-950/60 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Success */}
+        {success && (
+          <div className="bg-green-950/60 border border-green-800 rounded-lg px-4 py-3 text-green-300 text-sm">
+            🎉 Token created! Heading to DEX…
+          </div>
+        )}
+
+        {/* Submit */}
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting || success}
+          className="w-full bg-white text-black font-semibold rounded-xl py-4 text-base hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isSubmitting
+            ? (submitStep || "Processing…")
+            : "Launch Token — 0.15 SOL"
+          }
+        </button>
+
+        {!connected && (
+          <p className="text-center text-gray-600 text-sm">Connect your wallet to continue</p>
+        )}
+      </div>
     </div>
   );
 }
