@@ -41,15 +41,24 @@ export default function MarqueeBanner() {
           scrollBehavior: "auto",
           msOverflowStyle: "none",
           scrollbarWidth: "none",
-          background: "linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.1))",
+          background: "transparent",
         }}
       >
         <div className="flex items-center gap-8 pl-24">
           <div
-            className="inline-block font-mono text-sm font-bold tracking-wider text-[#14F195]"
+            className="inline-block font-mono text-sm font-bold tracking-wider text-[#34C759]" // Solana yeşili
             style={{
-              textShadow: "0 0 10px rgba(20, 241, 149, 0.5)",
-              background: "linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.1))",
+              textShadow: "0 0 10px rgba(52, 199, 89, 0.5)",
+              background: "linear-gradient(to right, rgba(52, 199, 89, 0.1), rgba(52, 199, 89, 0.5), rgba(52, 199, 89, 0.1))",
+            }}
+          >
+            {MARQUEE_MESSAGE.repeat(2)}
+          </div>
+          <div
+            className="inline-block font-mono text-sm font-bold tracking-wider text-[#7E5AF7]" // Solana moru
+            style={{
+              textShadow: "0 0 10px rgba(126, 90, 247, 0.5)",
+              background: "linear-gradient(to right, rgba(126, 90, 247, 0.1), rgba(126, 90, 247, 0.5), rgba(126, 90, 247, 0.1))",
             }}
           >
             {MARQUEE_MESSAGE.repeat(2)}
