@@ -32,16 +32,25 @@ export default function MarqueeBanner() {
 
   return (
     <div
-      className="w-full bg-[#9945FF] overflow-hidden whitespace-nowrap py-3 border-y border-[#14F195]/30 select-none"
+      className="w-full bg-transparent overflow-hidden whitespace-nowrap py-3 border-y border-transparent/30 select-none"
     >
       <div
         ref={scrollRef}
         className="flex overflow-x-auto scrollbar-none gap-8 whitespace-nowrap"
-        style={{ scrollBehavior: "auto", msOverflowStyle: "none", scrollbarWidth: "none" }}
+        style={{
+          scrollBehavior: "auto",
+          msOverflowStyle: "none",
+          scrollbarWidth: "none",
+          background: "linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.1))",
+        }}
       >
         <div className="flex items-center gap-8 pl-24">
           <div
             className="inline-block font-mono text-sm font-bold tracking-wider text-[#14F195]"
+            style={{
+              textShadow: "0 0 10px rgba(20, 241, 149, 0.5)",
+              background: "linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.1))",
+            }}
           >
             {MARQUEE_MESSAGE.repeat(2)}
           </div>
