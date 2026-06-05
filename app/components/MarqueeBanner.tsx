@@ -2,13 +2,9 @@
 
 import { useEffect, useRef } from "react";
 
-const MARQUEE_MESSAGES = [
-  "Create your own meme coin",
-  "0% platform fees",
-  "Bonding curve launch",
-  "Fair launch",
-  "Instant liquidity",
-];
+const MARQUEE_MESSAGE = `
+🚀 BLUPRINT.FUN IS LIVE! • 💰 TOTAL FEE ONLY %0.95 — LOWEST IN THE GAME! • 💎 FIRST 100 USERS MINT FOR JUST 0.05 SOL! • 📈 ADVANCED BONDING CURVE & METAPLEX GENESIS INTEGRATION • 🔄 INNER SWAP ACTIVE — NO THIRD PARTY DEX NEEDED! • 👑 INVITE FRIENDS & EARN 0.05 SOL INSTANTLY! • 🏆 RECRUIT 1000 REFERRALS TO CLAIM +10 SOL EXTRA ACCELERATED BONUS & UNLOCK THE ULTRA-EXCLUSIVE VIP FEATURE! • 🚀 BLUPRINT.FUN IS LIVE!
+`;
 
 export default function MarqueeBanner() {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -19,15 +15,14 @@ export default function MarqueeBanner() {
 
     let scrollAmount = 0;
     const speed = 1;
-    const maxScroll = scrollContainer.scrollWidth / 2;
 
     const animate = () => {
       if (!scrollContainer) return;
       scrollAmount += speed;
-      if (scrollAmount >= maxScroll) {
+      scrollContainer.scrollLeft = scrollAmount;
+      if (scrollAmount >= scrollContainer.scrollWidth) {
         scrollAmount = 0;
       }
-      scrollContainer.scrollLeft = scrollAmount;
       requestAnimationFrame(animate);
     };
 
@@ -35,12 +30,9 @@ export default function MarqueeBanner() {
     return () => cancelAnimationFrame(animation);
   }, []);
 
-  const allMessages = [...MARQUEE_MESSAGES, ...MARQUEE_MESSAGES];
-
   return (
     <div
-      className="relative overflow-hidden bg-[#0A0A0F] border-y border-[#14F195]/20 py-3"
-      style={{ backgroundColor: "#0A0A0F" }}
+      className="w-full bg-[#9945FF] overflow-hidden whitespace-nowrap py-3 border-y border-[#14F195]/30 select-none"
     >
       <div
         ref={scrollRef}
@@ -48,15 +40,11 @@ export default function MarqueeBanner() {
         style={{ scrollBehavior: "auto", msOverflowStyle: "none", scrollbarWidth: "none" }}
       >
         <div className="flex items-center gap-8 pl-24">
-          {allMessages.map((message, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-2 text-[#14F195] text-sm font-medium"
-            >
-              <span style={{ color: "#9945FF" }}>◆</span>
-              <span>{message}</span>
-            </div>
-          ))}
+          <div
+            className="inline-block font-mono text-sm font-bold tracking-wider text-[#14F195]"
+          >
+            {MARQUEE_MESSAGE.repeat(2)}
+          </div>
         </div>
       </div>
     </div>
