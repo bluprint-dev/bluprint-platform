@@ -18,9 +18,8 @@ interface FormState {
 
 type PromoStatus = "idle" | "checking" | "valid" | "invalid";
 type LaunchStatus = "idle" | "uploading" | "creating" | "signing" | "confirming" | "done" | "error";
-// TS needs explicit union — all 7 values declared above
 
-const CREATION_FEE_SOL = 0.02;
+const CREATION_FEE_SOL = 0.05;
 
 /* ─── Rotating Globe SVG (subtle background accent) ─────────────────────── */
 function RotatingGlobe() {
@@ -484,7 +483,6 @@ export default function CreatePage() {
         .glow-text-green { text-shadow: 0 0 24px rgba(20,241,149,0.5); }
         .glow-text-purple { text-shadow: 0 0 24px rgba(153,69,255,0.6); }
 
-        /* success screen */
         @keyframes success-pulse {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.05); }
@@ -509,12 +507,18 @@ export default function CreatePage() {
         {/* Nav */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 48, flexWrap: "wrap", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: "linear-gradient(135deg, #9945FF, #14F195)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: "'Orbitron', monospace", fontSize: 14, fontWeight: 900, color: "#0F0817",
-            }}>B</div>
+            {/* ── LOGO: favicon.ico ── */}
+            <img
+              src="/favicon.ico"
+              alt="BluPrint Logo"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                objectFit: "contain",
+                filter: "drop-shadow(0 0 8px rgba(153,69,255,0.6))",
+              }}
+            />
             <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 18, fontWeight: 900, color: "#fff" }}>BluPrint</span>
           </div>
           <WalletMultiButton style={{
@@ -570,7 +574,7 @@ export default function CreatePage() {
               {/* Header */}
               <div style={{ marginBottom: 36 }}>
                 <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", lineHeight: 1.1 }}>
-                  Launch Your <span style={{ color: "#14F195" }} className="glow-text-green">Blueprint</span>
+                  Launch Your <span style={{ color: "#14F195" }} className="glow-text-green">BluPrint</span>
                 </h1>
                 <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 15, margin: 0, maxWidth: 460, lineHeight: 1.6 }}>
                   Fill in the details to deploy your token onto the bonding curve instantly.
@@ -719,11 +723,16 @@ export default function CreatePage() {
 
                 {/* Fee + Launch */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-                  <div className="fee-badge">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
-                    </svg>
-                    Creation Fee: ~{CREATION_FEE_SOL} SOL
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div className="fee-badge">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+                      </svg>
+                      Creation Fee: {CREATION_FEE_SOL} SOL
+                    </div>
+                    <span style={{ fontSize: 11, color: "rgba(20,241,149,0.6)", fontWeight: 600, paddingLeft: 4 }}>
+                      🎯 Special launch price for the first 100 users only!
+                    </span>
                   </div>
                   {!connected && (
                     <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12 }}>Connect wallet to launch</span>
