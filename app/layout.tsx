@@ -3,7 +3,6 @@ import { Outfit, Space_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import Sidebar from "./components/Sidebar";
-import Background from "./components/Background";
 import MarqueeBanner from "./components/MarqueeBanner";
 import ChatbaseEmbed from "./components/ChatbaseEmbed";
 
@@ -34,8 +33,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         style={{ margin: 0, padding: 0, background: "#0A0A0F", color: "#fff", fontFamily: "var(--font-outfit), system-ui, sans-serif" }}
       >
         <Providers>
-          <Background />
-
           {/* MarqueeBanner — fixed top */}
           <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 20 }}>
             <MarqueeBanner />
