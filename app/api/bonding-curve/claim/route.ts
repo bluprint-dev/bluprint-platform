@@ -88,10 +88,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ Sadece gerçek creator claim edebilir
-    // Redis'te genesisAccount → creator kaydı var mı kontrol et
+    // ✅ Creator veya platform wallet claim edebilir
+    // creatorFee.wallet = BONDING_CURVE_FEE_WALLET (launch sırasında set edildi)
+    // sadece bu adres claimBondingCurveCreatorFeeV2'yi çağırabilir
     const storedCreator = await redis.get(`bonding-curve:creator:${genesisAccountRaw}`);
-    if (!storedCreator || storedCreator !== creatorWallet) {
+    const platformWallet = process.env.BONDING_CURVE_FEE_WALLET ?? "";
+
+    const isTokenCreator = storedCreator && storedCreator === creatorWallet;
+    const isPlatformWallet = platformWallet && platformWallet === creatorWallet;
+
+    if (!isTokenCreator && !isPlatformWallet) {
       return NextResponse.json(
         { success: false, error: "UNAUTHORIZED — wallet is not the creator of this token" },
         { status: 403 }

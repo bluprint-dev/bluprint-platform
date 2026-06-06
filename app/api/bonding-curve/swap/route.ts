@@ -14,11 +14,10 @@ import {
 
 const WSOL_MINT = "So11111111111111111111111111111111111111112";
 
-// ✅ Platform wallet — fee buraya birikir
+// ✅ Creator fee wallet — her swap'ta fee buraya birikir
+// .env.local: BONDING_CURVE_FEE_WALLET=AimBpCdpPmTB5QeJ6WwgrBzNmMsjR3MvNe9zgNhzomZ6
 // launch/route.ts'deki creatorFeeWallet ile aynı adres olmalı
-const PLATFORM_FEE_WALLET = process.env.PLATFORM_FEE_WALLET
-  ?? process.env.NEXT_PUBLIC_PLATFORM_WALLET
-  ?? "";
+const PLATFORM_FEE_WALLET = process.env.BONDING_CURVE_FEE_WALLET ?? "";
 
 function toBigIntSafe(value: unknown): bigint {
   try {
