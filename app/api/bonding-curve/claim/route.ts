@@ -1,73 +1,193 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
+import { NextRequest, NextResponse } from "next/server";
+import { publicKey } from "@metaplex-foundation/umi";
+import { findAssociatedTokenPda } from "@metaplex-foundation/mpl-toolbox";
+import { getPlatformUmi } from "@/app/lib/umi";
+import { redis } from "@/app/lib/redis";
+
 import {
-  genesis,
   findBondingCurveBucketV2Pda,
   fetchBondingCurveBucketV2,
   claimBondingCurveCreatorFeeV2,
-  isGraduated,
-} from '@metaplex-foundation/genesis';
-import { keypairIdentity, publicKey } from '@metaplex-foundation/umi';
+  findBondingCurveCreatorFeeUnwrapPda,
+} from "@metaplex-foundation/genesis";
 
-function getPlatformUmi() {
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
-  if (!rpcUrl) throw new Error('NEXT_PUBLIC_RPC_URL not configured');
+const WSOL_MINT = "So11111111111111111111111111111111111111112";
 
-  const secretKeyRaw = process.env.PLATFORM_SECRET_KEY;
-  if (!secretKeyRaw) throw new Error('PLATFORM_SECRET_KEY not configured');
-
-  const umi = createUmi(rpcUrl).use(genesis());
-  const secretKey = Uint8Array.from(JSON.parse(secretKeyRaw));
-  const keypair = umi.eddsa.createKeypairFromSecretKey(secretKey);
-  umi.use(keypairIdentity(keypair));
-  return umi;
+function safeError(error: unknown) {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message };
+  }
+  return { message: String(error) };
 }
 
-export async function POST(req: NextRequest) {
+// ─────────────────────────────────────────────────────────────
+// GET /api/bonding-curve/claim?genesisAccount=xxx&wallet=xxx
+// Bekleyen fee miktarını gösterir (claim etmez)
+// ─────────────────────────────────────────────────────────────
+export async function GET(req: NextRequest) {
   try {
-    const { genesisAccount } = await req.json();
-    if (!genesisAccount) {
-      return NextResponse.json({ success: false, error: 'genesisAccount required' }, { status: 400 });
+    const { searchParams } = new URL(req.url);
+    const genesisAccountStr = searchParams.get("genesisAccount");
+    const walletStr = searchParams.get("wallet");
+
+    if (!genesisAccountStr) {
+      return NextResponse.json({ success: false, error: "Missing genesisAccount" }, { status: 400 });
     }
 
     const umi = getPlatformUmi();
-    const genesisAccountPubkey = publicKey(genesisAccount);
+    const genesisAccount = publicKey(genesisAccountStr);
 
     const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
-      genesisAccount: genesisAccountPubkey,
+      genesisAccount,
       bucketIndex: 0,
     });
 
-    const bucket = await fetchBondingCurveBucketV2(umi, bucketPda);
-    if (Number(bucket.creatorFeeAccrued) === 0) {
-      return NextResponse.json({ success: false, error: 'No fees to claim' }, { status: 400 });
+    let bucket;
+    try {
+      bucket = await fetchBondingCurveBucketV2(umi, bucketPda);
+    } catch {
+      return NextResponse.json({ success: false, error: "Bucket not found" }, { status: 404 });
     }
 
-    const graduated = await isGraduated(umi, bucket);
-    if (graduated) {
-      return NextResponse.json({ success: false, error: 'Token graduated, use Raydium claim' }, { status: 400 });
-    }
-
-    const baseMint = (bucket as any).baseMint;
-    const creatorFeeWallet = (bucket as any).creatorFeeWallet;
-    if (!baseMint || !creatorFeeWallet) {
-      return NextResponse.json({ success: false, error: 'Missing baseMint or creatorFeeWallet' }, { status: 500 });
-    }
-
-    const result = await claimBondingCurveCreatorFeeV2(umi, {
-      genesisAccount: genesisAccountPubkey,
-      bucket: bucketPda,
-      baseMint,
-      creatorFeeWallet,
-    }).sendAndConfirm(umi);
+    // creatorFeeAccrued ve creatorFeeClaimed bucket'ta on-chain tutuluyor
+    const accrued = bucket.creatorFeeAccrued ?? BigInt(0);
+    const claimed = bucket.creatorFeeClaimed ?? BigInt(0);
+    const pending = accrued > claimed ? accrued - claimed : BigInt(0);
 
     return NextResponse.json({
       success: true,
-      signature: Buffer.from(result.signature).toString('base64'),
-      claimedAmount: bucket.creatorFeeAccrued.toString(),
+      genesisAccount: genesisAccountStr,
+      bucketPda: bucketPda.toString(),
+      fees: {
+        accrued: accrued.toString(),
+        claimed: claimed.toString(),
+        pending: pending.toString(),
+        pendingSol: (Number(pending) / 1e9).toFixed(6),
+      },
     });
-  } catch (err: any) {
-    console.error('Claim error:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (err) {
+    console.error("CLAIM_GET_FATAL:", safeError(err));
+    return NextResponse.json({ success: false, error: "Internal error" }, { status: 500 });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/bonding-curve/claim
+// Body: { genesisAccount, creatorWallet, mintAddress }
+// Creator fee'yi creatorWallet'a çeker
+// ─────────────────────────────────────────────────────────────
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { genesisAccount: genesisAccountRaw, creatorWallet, mintAddress } = body;
+
+    if (!genesisAccountRaw || !creatorWallet) {
+      return NextResponse.json(
+        { success: false, error: "Missing genesisAccount or creatorWallet" },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Sadece gerçek creator claim edebilir
+    // Redis'te genesisAccount → creator kaydı var mı kontrol et
+    const storedCreator = await redis.get(`bonding-curve:creator:${genesisAccountRaw}`);
+    if (!storedCreator || storedCreator !== creatorWallet) {
+      return NextResponse.json(
+        { success: false, error: "UNAUTHORIZED — wallet is not the creator of this token" },
+        { status: 403 }
+      );
+    }
+
+    const umi = getPlatformUmi();
+    const genesisAccount = publicKey(genesisAccountRaw);
+    const creatorFeeWallet = publicKey(creatorWallet);
+    const wsol = publicKey(WSOL_MINT);
+
+    const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
+      genesisAccount,
+      bucketIndex: 0,
+    });
+
+    let bucket;
+    try {
+      bucket = await fetchBondingCurveBucketV2(umi, bucketPda);
+    } catch {
+      return NextResponse.json({ success: false, error: "Bucket not found" }, { status: 404 });
+    }
+
+    // Pending fee kontrol
+    const accrued = bucket.creatorFeeAccrued ?? BigInt(0);
+    const claimed = bucket.creatorFeeClaimed ?? BigInt(0);
+    const pending = accrued > claimed ? accrued - claimed : BigInt(0);
+
+    if (pending === BigInt(0)) {
+      return NextResponse.json({ success: false, error: "NO_FEES_TO_CLAIM" }, { status: 400 });
+    }
+
+    // baseMint bul
+    const baseMintStr = mintAddress
+      ?? (await redis.get(`genesis:mint:${genesisAccountRaw}`))
+      ?? null;
+
+    if (!baseMintStr) {
+      return NextResponse.json(
+        { success: false, error: "MISSING_BASE_MINT — provide mintAddress" },
+        { status: 400 }
+      );
+    }
+
+    const baseMint = publicKey(baseMintStr as string);
+
+    // creator'ın WSOL ATA'sı (fee buraya gider, native SOL olarak unwrap edilir)
+    const [creatorWsolATA] = findAssociatedTokenPda(umi, {
+      mint: wsol,
+      owner: creatorFeeWallet,
+    });
+
+    // Transient unwrap PDA (WSOL → native SOL için SDK kullanır)
+    const [bucketCreatorFeeUnwrapAccount] = findBondingCurveCreatorFeeUnwrapPda(umi, {
+      bucket: bucketPda,
+    });
+
+    // ✅ Claim instruction
+    const builder = claimBondingCurveCreatorFeeV2(umi, {
+      genesisAccount,
+      bucket: bucketPda,
+      baseMint,
+      quoteMint: wsol,
+      bucketQuoteTokenAccount: undefined, // SDK türetir
+      creatorFeeWallet,
+      creatorFeeWalletQuoteTokenAccount: creatorWsolATA,
+      bucketCreatorFeeUnwrapAccount,
+    });
+
+    const tx = await (await builder.setLatestBlockhash(umi)).buildAndSign(umi);
+
+    const serialized = Buffer.from(
+      umi.transactions.serialize(tx)
+    ).toString("base64");
+
+    console.log("CLAIM_TX_BUILT:", {
+      genesisAccount: genesisAccountRaw,
+      creatorWallet,
+      pendingSol: (Number(pending) / 1e9).toFixed(6),
+    });
+
+    return NextResponse.json({
+      success: true,
+      transaction: serialized,
+      claim: {
+        pending: pending.toString(),
+        pendingSol: (Number(pending) / 1e9).toFixed(6),
+        creatorWallet,
+        genesisAccount: genesisAccountRaw,
+      },
+    });
+  } catch (err) {
+    console.error("CLAIM_POST_FATAL:", safeError(err));
+    return NextResponse.json(
+      { success: false, error: "CLAIM_FAILED", details: safeError(err) },
+      { status: 500 }
+    );
   }
 }

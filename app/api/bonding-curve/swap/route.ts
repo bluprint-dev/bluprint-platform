@@ -14,6 +14,12 @@ import {
 
 const WSOL_MINT = "So11111111111111111111111111111111111111112";
 
+// ✅ Platform wallet — fee buraya birikir
+// launch/route.ts'deki creatorFeeWallet ile aynı adres olmalı
+const PLATFORM_FEE_WALLET = process.env.PLATFORM_FEE_WALLET
+  ?? process.env.NEXT_PUBLIC_PLATFORM_WALLET
+  ?? "";
+
 function toBigIntSafe(value: unknown): bigint {
   try {
     if (typeof value === "bigint") return value;
@@ -39,15 +45,8 @@ function extractBaseMint(bucket: unknown): string | null {
     const b = (bucket as any).bucket;
     const baseMint = b?.baseMint;
     if (!baseMint) return null;
-
-    if (baseMint.__option === "Some" && baseMint.value) {
-      return baseMint.value;
-    }
-
-    if (typeof baseMint === "string") {
-      return baseMint;
-    }
-
+    if (baseMint.__option === "Some" && baseMint.value) return baseMint.value;
+    if (typeof baseMint === "string") return baseMint;
     return null;
   } catch {
     return null;
@@ -82,6 +81,9 @@ export async function POST(req: NextRequest) {
     const user = publicKey(userPublicKey);
     const wsol = publicKey(WSOL_MINT);
 
+    // ------------------------------
+    // BUCKET
+    // ------------------------------
     const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
       genesisAccount,
       bucketIndex: 0,
@@ -106,20 +108,29 @@ export async function POST(req: NextRequest) {
 
     const direction = isBuy ? SwapDirection.Buy : SwapDirection.Sell;
 
+    // ------------------------------
+    // QUOTE
+    // ------------------------------
     const quote = getSwapResult(bucket, amountBigInt, direction);
     const minOut = minOutWithSlippage(quote.amountOut);
 
+    // ------------------------------
+    // BASE MINT
+    // ------------------------------
     const baseMintStr = extractBaseMint(bucket) ?? mintAddress ?? null;
 
     if (!baseMintStr) {
       return NextResponse.json(
-        { success: false, error: "MISSING_BASE_MINT — bucket returned no baseMint, provide mintAddress in request body" },
+        { success: false, error: "MISSING_BASE_MINT — provide mintAddress in request body" },
         { status: 400 }
       );
     }
 
     const baseMint = publicKey(baseMintStr);
 
+    // ------------------------------
+    // ATAs — user
+    // ------------------------------
     const [baseATA] = findAssociatedTokenPda(umi, {
       mint: baseMint,
       owner: user,
@@ -130,6 +141,34 @@ export async function POST(req: NextRequest) {
       owner: user,
     });
 
+    // ------------------------------
+    // ✅ FEE ATA — platform wallet'ının WSOL ATA'sı
+    // Genesis SDK swap'ta creator fee'yi buraya gönderir.
+    // creatorFeeWallet = launch sırasında set edilen platform wallet
+    // Her swap'ta fee otomatik bu ATA'ya akar, sonra claim edilir.
+    // ------------------------------
+    let feeQuoteTokenAccount: ReturnType<typeof publicKey> | undefined = undefined;
+
+    if (PLATFORM_FEE_WALLET) {
+      try {
+        const platformWallet = publicKey(PLATFORM_FEE_WALLET);
+        const [platformWsolATA] = findAssociatedTokenPda(umi, {
+          mint: wsol,
+          owner: platformWallet,
+        });
+        feeQuoteTokenAccount = platformWsolATA;
+        console.log("FEE_ATA:", platformWsolATA.toString());
+      } catch (e) {
+        console.warn("FEE_ATA_DERIVE_FAILED:", e);
+        // fee ATA olmadan devam et — swap yine çalışır ama fee kaçar
+      }
+    } else {
+      console.warn("PLATFORM_FEE_WALLET not set — creator fee will not be collected");
+    }
+
+    // ------------------------------
+    // BUILD SWAP
+    // ------------------------------
     const builder = swapBondingCurveV2(umi, {
       genesisAccount,
       bucket: bucketPda,
@@ -142,9 +181,10 @@ export async function POST(req: NextRequest) {
       swapDirection: direction,
       amount: amountBigInt,
       minAmountOutScaled: minOut,
+      // ✅ Fee platform wallet WSOL ATA'sına akar
+      ...(feeQuoteTokenAccount ? { feeQuoteTokenAccount } : {}),
     });
 
-    // ✅ FIX: blockhash olmadan build() hata veriyor
     const tx = await (await builder.setLatestBlockhash(umi)).buildAndSign(umi);
 
     const serialized = Buffer.from(
@@ -158,12 +198,14 @@ export async function POST(req: NextRequest) {
         amountIn: quote.amountIn.toString(),
         amountOut: quote.amountOut.toString(),
         fee: quote.fee.toString(),
+        creatorFee: quote.creatorFee?.toString() ?? "0",
       },
       meta: {
         genesisAccount: genesisAccountRaw,
         mintAddress: baseMintStr,
         userPublicKey,
         direction: isBuy ? "buy" : "sell",
+        feeWallet: PLATFORM_FEE_WALLET || null,
       },
     });
   } catch (error) {
