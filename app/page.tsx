@@ -9,16 +9,16 @@ const SPECS = [
   {
     tag: "01 / Virtual Pools",
     title: "Algorithmic Bonding Curves",
-    body: "Constant-product (x·y=k) virtual reserve calculations establish programmatic floor pricing and protect initial purchasers from coordinated manipulation.",
+    body: "Constant-product (xÂ·y=k) virtual reserve calculations establish programmatic floor pricing and protect initial purchasers from coordinated manipulation.",
     accent: "#9945FF",
-    metrics: [["< 10s", "DEPLOY"], ["x·y=k", "FORMULA"], ["0", "ADMIN KEYS"]],
+    metrics: [["< 10s", "DEPLOY"], ["xÂ·y=k", "FORMULA"], ["0", "ADMIN KEYS"]],
   },
   {
     tag: "02 / Token Integrity",
     title: "Immutable SPL Standards",
     body: "Direct deployment via Metaplex token program with immutable authority revocation. Fully verified, fully permissionless, on-chain in seconds.",
     accent: "#14F195",
-    metrics: [["100%", "ON-CHAIN"], ["SPL", "STANDARD"], ["∞", "SUPPLY CTL"]],
+    metrics: [["100%", "ON-CHAIN"], ["SPL", "STANDARD"], ["âˆ", "SUPPLY CTL"]],
   },
   {
     tag: "03 / Autonomous Migrations",
@@ -36,7 +36,7 @@ const F = {
   mono: "'Space Mono', 'JetBrains Mono', 'Fira Code', monospace",
 };
 
-/* ── Live Activity Feed (simulated social proof) ─────────────────────────── */
+/* â”€â”€ Live Activity Feed (simulated social proof) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const ACTIVITY_NAMES = ["whale_orca", "sol_degen", "0xmoonbag", "pumpking", "rug_survivor", "chad_buyer", "paperhands99", "diamondflip", "solsurfer", "nfa_anon"];
 const ACTIVITY_ACTIONS = ["just launched", "bought", "bought", "bought", "bought"];
 const ACTIVITY_TOKENS = ["PEPE2", "BONK2", "WIF3", "DOGE3", "MOON", "CHAD", "FROG", "BULL", "PUMP", "BASED"];
@@ -85,7 +85,7 @@ function LiveActivityToast() {
               <span style={{ color: "#fff", fontWeight: 700 }}>{item.name}</span>
               {" "}{item.action}{" "}
               <span style={{ color: item.action === "just launched" ? "#9945FF" : "#14F195", fontWeight: 700 }}>${item.token}</span>
-              {item.action !== "just launched" && <span style={{ color: "rgba(255,255,255,0.4)" }}> · {item.amount} SOL</span>}
+              {item.action !== "just launched" && <span style={{ color: "rgba(255,255,255,0.4)" }}> Â· {item.amount} SOL</span>}
             </span>
           </motion.div>
         ))}
@@ -94,7 +94,7 @@ function LiveActivityToast() {
   );
 }
 
-/* ── Live Viewer Count ───────────────────────────────────────────────────── */
+/* â”€â”€ Live Viewer Count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function useViewerCount() {
   const [count, setCount] = useState(47);
   useEffect(() => {
@@ -106,7 +106,7 @@ function useViewerCount() {
   return count;
 }
 
-/* ── Urgency Counter ─────────────────────────────────────────────────────── */
+/* â”€â”€ Urgency Counter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function SlotsCounter() {
   const [slots, setSlots] = useState(37);
   useEffect(() => {
@@ -130,7 +130,7 @@ function SlotsCounter() {
   );
 }
 
-/* ── Pulse Viewers Badge ─────────────────────────────────────────────────── */
+/* â”€â”€ Pulse Viewers Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ViewersBadge({ count }: { count: number }) {
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 999, background: "rgba(153,69,255,0.07)", border: "1px solid rgba(153,69,255,0.2)" }}>
@@ -142,7 +142,7 @@ function ViewersBadge({ count }: { count: number }) {
   );
 }
 
-/* ── Scrolling Launch Ticker ─────────────────────────────────────────────── */
+/* â”€â”€ Scrolling Launch Ticker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function LaunchTicker({ tokens }: { tokens: DexToken[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const posRef = useRef(0);
@@ -185,13 +185,15 @@ function LaunchTicker({ tokens }: { tokens: DexToken[] }) {
   );
 }
 
-/* ── Main ────────────────────────────────────────────────────────────────── */
+/* â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function HomePage() {
   const [tokens, setTokens] = useState<DexToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState(0);
   const [search, setSearch] = useState("");
   const viewers = useViewerCount();
+  const prevMintsRef = useRef<Set<string>>(new Set());
+  const [newMints, setNewMints] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -199,11 +201,36 @@ export default function HomePage() {
     link.rel = "stylesheet";
     document.head.appendChild(link);
 
-    fetch("/api/bonding-curve/tokens")
-      .then((r) => r.json())
-      .then((data) => { if (data.success) setTokens(data.tokens ?? []); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const fetchTokens = (initial = false) => {
+      fetch("/api/bonding-curve/tokens")
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) {
+            const incoming: DexToken[] = data.tokens ?? [];
+            if (!initial) {
+              const fresh = incoming
+                .filter((t) => !prevMintsRef.current.has(t.mint))
+                .map((t) => t.mint);
+              if (fresh.length > 0) {
+                setNewMints((prev) => new Set([...prev, ...fresh]));
+                setTimeout(() => setNewMints((prev) => {
+                  const next = new Set(prev);
+                  fresh.forEach((m) => next.delete(m));
+                  return next;
+                }), 300000);
+              }
+            }
+            prevMintsRef.current = new Set(incoming.map((t) => t.mint));
+            setTokens(incoming);
+          }
+        })
+        .catch(() => {})
+        .finally(() => { if (initial) setLoading(false); });
+    };
+
+    fetchTokens(true);
+    const iv = setInterval(() => fetchTokens(false), 30000);
+    return () => clearInterval(iv);
   }, []);
 
   const filtered = tokens.filter((t) =>
@@ -251,10 +278,10 @@ export default function HomePage() {
         <div style={{ position: "absolute", top: "30%", right: "-10%", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle,rgba(20,241,149,0.06) 0%,transparent 65%)", filter: "blur(50px)" }} />
       </div>
 
-      {/* ── Live Activity Toasts ── */}
+      {/* â”€â”€ Live Activity Toasts â”€â”€ */}
       <LiveActivityToast />
 
-      {/* ── HERO ── */}
+      {/* â”€â”€ HERO â”€â”€ */}
       <section style={{ position: "relative", zIndex: 10, minHeight: "100vh", display: "flex", alignItems: "center" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "96px 24px", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
 
@@ -269,7 +296,7 @@ export default function HomePage() {
                   <span style={{ position: "relative", width: 8, height: 8, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 6px #14F195" }} />
                 </span>
                 <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", color: "#14F195" }}>
-                  SOLANA MAINNET · LIVE NOW
+                  SOLANA MAINNET Â· LIVE NOW
                 </span>
               </div>
               <ViewersBadge count={viewers} />
@@ -296,17 +323,17 @@ export default function HomePage() {
               <Link href="/create" className="cta-pulse" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 34px", borderRadius: 14, background: "linear-gradient(135deg,#14F195,#0fa96a)", color: "#07070f", textDecoration: "none", fontFamily: F.display, fontSize: 15, fontWeight: 800, letterSpacing: "0.06em", position: "relative", overflow: "hidden" }}>
                 {/* scanline effect */}
                 <span style={{ position: "absolute", left: 0, right: 0, height: "30%", background: "linear-gradient(transparent,rgba(255,255,255,0.08),transparent)", animation: "scanline 2s linear infinite", pointerEvents: "none" }} />
-                🚀 LAUNCH TOKEN · 0.05 SOL
+                ğŸš€ LAUNCH TOKEN Â· 0.05 SOL
               </Link>
               <Link href="/dex" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 28px", borderRadius: 14, background: "rgba(153,69,255,0.08)", border: "1px solid rgba(153,69,255,0.32)", color: "rgba(153,69,255,0.9)", textDecoration: "none", fontFamily: F.display, fontSize: 13, fontWeight: 700, letterSpacing: "0.05em" }}>
-                VIEW TERMINAL →
+                VIEW TERMINAL â†’
               </Link>
             </div>
 
             {/* stats */}
             <div style={{ display: "flex", gap: 40, paddingTop: 8 }}>
               {[
-                [tokens.length > 0 ? `${tokens.length}+` : "—", "TOKENS LIVE"],
+                [tokens.length > 0 ? `${tokens.length}+` : "â€”", "TOKENS LIVE"],
                 ["< 10s", "DEPLOY TIME"],
                 ["100%", "ON-CHAIN"],
                 ["0.95%", "TOTAL FEE"],
@@ -355,16 +382,16 @@ export default function HomePage() {
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 128, pointerEvents: "none", background: "linear-gradient(to bottom,transparent,#0a0414)" }} />
       </section>
 
-      {/* ── LIVE TICKER ── */}
+      {/* â”€â”€ LIVE TICKER â”€â”€ */}
       <LaunchTicker tokens={tokens} />
 
-      {/* ── TOKEN GRID ── */}
+      {/* â”€â”€ TOKEN GRID â”€â”€ */}
       <section style={{ position: "relative", zIndex: 10, paddingTop: 80, paddingBottom: 80 }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px" }}>
 
           <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 999, marginBottom: 20, background: "rgba(153,69,255,0.07)", border: "1px solid rgba(153,69,255,0.18)" }}>
-              <span style={{ fontFamily: F.mono, color: "rgba(153,69,255,0.65)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em" }}>◈ BLUEPRINT LIVE TRADING DESK</span>
+              <span style={{ fontFamily: F.mono, color: "rgba(153,69,255,0.65)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em" }}>â—ˆ BLUEPRINT LIVE TRADING DESK</span>
             </div>
             <h2 style={{ margin: 0, fontFamily: F.display, fontSize: "clamp(32px,4vw,54px)", fontWeight: 900, letterSpacing: "-0.025em", color: "#fff", lineHeight: 1.1 }}>
               The <span style={{ color: "#14F195" }}>Active</span> Launch Grid
@@ -375,14 +402,14 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          {/* KING OF THE HILL — upgraded FOMO card */}
+          {/* KING OF THE HILL â€” upgraded FOMO card */}
           {tokens.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
               style={{ marginBottom: 32, borderRadius: 20, padding: "1.5px", background: "linear-gradient(90deg,#9945FF,#14F195,#9945FF)", backgroundSize: "300% 100%", animation: "borderFlow 3s linear infinite" }}>
               <div style={{ borderRadius: 18, padding: 24, background: "linear-gradient(135deg,rgba(153,69,255,0.08),rgba(10,4,16,0.98))" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span>👑</span>
+                    <span>ğŸ‘‘</span>
                     <span style={{ fontFamily: F.mono, color: "rgba(255,255,255,0.22)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em" }}>KING OF THE HILL</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -403,14 +430,14 @@ export default function HomePage() {
                     <p style={{ margin: 0, fontFamily: F.mono, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{tokens[0].mint.slice(0,8)}...{tokens[0].mint.slice(-6)}</p>
                   </div>
                   <div style={{ flex: 1, minWidth: 220 }}>
-                    <p style={{ margin: "0 0 8px", fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: "#14F195", animation: "textPulse 1.5s ease-in-out infinite" }}>LIVE ON BONDING CURVE → TRADE NOW</p>
+                    <p style={{ margin: "0 0 8px", fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: "#14F195", animation: "textPulse 1.5s ease-in-out infinite" }}>LIVE ON BONDING CURVE â†’ TRADE NOW</p>
                     <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.05)" }}>
                       <div style={{ height: "100%", width: "68%", borderRadius: 4, background: "linear-gradient(90deg,#9945FF,#14F195)", animation: "glowPulse 2s ease-in-out infinite" }} />
                     </div>
-                    <p style={{ margin: "6px 0 0", fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.3)" }}>68% filled · migrating to Raydium soon 🔥</p>
+                    <p style={{ margin: "6px 0 0", fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.3)" }}>68% filled Â· migrating to Raydium soon ğŸ”¥</p>
                   </div>
                   <Link href={`/dex?mint=${tokens[0].mint}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "12px 24px", borderRadius: 12, background: "linear-gradient(135deg,#14F195,#0fa96a)", color: "#07070f", textDecoration: "none", fontFamily: F.display, fontSize: 13, fontWeight: 800, letterSpacing: "0.06em", flexShrink: 0 }}>
-                    TRADE NOW →
+                    TRADE NOW â†’
                   </Link>
                 </div>
               </div>
@@ -421,7 +448,7 @@ export default function HomePage() {
           <motion.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
             style={{ display: "flex", gap: 12, marginBottom: 32, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
-              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(153,69,255,0.45)", fontSize: 13, fontFamily: F.mono, pointerEvents: "none" }}>›_</span>
+              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(153,69,255,0.45)", fontSize: 13, fontFamily: F.mono, pointerEvents: "none" }}>â€º_</span>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search token, symbol, mint address..."
                 style={{ width: "100%", height: 44, paddingLeft: 36, paddingRight: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(153,69,255,0.18)", borderRadius: 12, color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box", fontFamily: F.mono }}
                 onFocus={(e) => { e.target.style.borderColor = "rgba(20,241,149,0.5)"; e.target.style.boxShadow = "0 0 20px rgba(20,241,149,0.1)"; }}
@@ -455,15 +482,25 @@ export default function HomePage() {
                   Be the first to launch a token on BluPrint. Your coin will appear here live on the bonding curve seconds after creation.
                 </p>
                 <Link href="/create" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 32px", borderRadius: 14, background: "linear-gradient(135deg,#14F195,#0fa96a)", color: "#07070f", textDecoration: "none", fontFamily: F.display, fontSize: 14, fontWeight: 800, letterSpacing: "0.06em", boxShadow: "0 0 36px rgba(20,241,149,0.4)" }}>
-                  ⬡ CREATE THE FIRST TOKEN
+                  â¬¡ CREATE THE FIRST TOKEN
                 </Link>
               </motion.div>
             ) : (
               <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 16 }}>
                 {sorted.map((token, i) => (
-                  <motion.div key={token.mint} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                    className="tc" style={{ borderRadius: 20, overflow: "hidden", cursor: "pointer", background: "linear-gradient(135deg,rgba(153,69,255,0.07),rgba(10,4,16,0.95))", border: "1px solid rgba(153,69,255,0.13)", position: "relative" }}>
+                  <motion.div key={token.mint}
+                    initial={{ opacity: 0, y: newMints.has(token.mint) ? -40 : 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: newMints.has(token.mint) ? 0 : i * 0.05, type: newMints.has(token.mint) ? "spring" : "tween", stiffness: 260, damping: 20 }}
+                    className="tc" style={{ borderRadius: 20, overflow: "hidden", cursor: "pointer", background: newMints.has(token.mint) ? "linear-gradient(135deg,rgba(20,241,149,0.1),rgba(10,4,16,0.95))" : "linear-gradient(135deg,rgba(153,69,255,0.07),rgba(10,4,16,0.95))", border: newMints.has(token.mint) ? "1px solid rgba(20,241,149,0.3)" : "1px solid rgba(153,69,255,0.13)", position: "relative" }}>
+                    {/* NEW badge for freshly launched tokens */}
+                    {newMints.has(token.mint) && (
+                      <div style={{ position: "absolute", top: 10, left: 10, display: "flex", alignItems: "center", gap: 5, background: "rgba(20,241,149,0.15)", border: "1px solid rgba(20,241,149,0.4)", borderRadius: 999, padding: "3px 8px", zIndex: 5 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 6px #14F195", display: "inline-block", animation: "ping2 1s ease-out infinite" }} />
+                        <span style={{ fontFamily: "monospace", fontSize: 9, color: "#14F195", fontWeight: 700, letterSpacing: "0.1em" }}>NEW</span>
+                      </div>
+                    )}
                     {/* "X watching" micro badge */}
                     {i < 3 && (
                       <div style={{ position: "absolute", top: 10, right: 10, display: "flex", alignItems: "center", gap: 5, background: "rgba(10,4,22,0.85)", border: "1px solid rgba(20,241,149,0.2)", borderRadius: 999, padding: "3px 8px" }}>
@@ -494,7 +531,7 @@ export default function HomePage() {
                       <div style={{ display: "flex", gap: 16 }}>
                         <div>
                           <p style={{ margin: 0, fontFamily: F.mono, fontSize: 9, letterSpacing: "0.12em", color: "rgba(255,255,255,0.18)" }}>CREATOR</p>
-                          <p style={{ margin: "3px 0 0", fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: "rgba(153,69,255,0.8)" }}>{token.creator ? `${token.creator.slice(0,6)}...` : "—"}</p>
+                          <p style={{ margin: "3px 0 0", fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: "rgba(153,69,255,0.8)" }}>{token.creator ? `${token.creator.slice(0,6)}...` : "â€”"}</p>
                         </div>
                         <div>
                           <p style={{ margin: 0, fontFamily: F.mono, fontSize: 9, letterSpacing: "0.12em", color: "rgba(255,255,255,0.18)" }}>STATUS</p>
@@ -507,7 +544,7 @@ export default function HomePage() {
                     </div>
                     <div style={{ padding: "6px 16px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: "0.12em", color: "rgba(255,255,255,0.18)" }}>CURVE FILL</span>
-                      <Link href={`/dex?mint=${token.mint}`} style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: "rgba(153,69,255,0.7)", textDecoration: "none" }}>TRADE →</Link>
+                      <Link href={`/dex?mint=${token.mint}`} style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: "rgba(153,69,255,0.7)", textDecoration: "none" }}>TRADE â†’</Link>
                     </div>
                   </motion.div>
                 ))}
@@ -518,20 +555,20 @@ export default function HomePage() {
           {sorted.length > 0 && (
             <div style={{ textAlign: "center", marginTop: 40 }}>
               <Link href="/dex" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", borderRadius: 12, background: "rgba(153,69,255,0.07)", border: "1px solid rgba(153,69,255,0.2)", color: "rgba(153,69,255,0.8)", textDecoration: "none", fontFamily: F.mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em" }}>
-                VIEW ALL TOKENS →
+                VIEW ALL TOKENS â†’
               </Link>
             </div>
           )}
         </div>
       </section>
 
-      {/* ── SPECS ── */}
+      {/* â”€â”€ SPECS â”€â”€ */}
       <section style={{ position: "relative", zIndex: 10, paddingTop: 80, paddingBottom: 80 }}>
         <div style={{ height: 1, maxWidth: 1280, margin: "0 auto 64px", background: "linear-gradient(90deg,transparent,rgba(153,69,255,0.28),rgba(20,241,149,0.28),transparent)" }} />
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px" }}>
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 999, marginBottom: 16, background: "rgba(20,241,149,0.05)", border: "1px solid rgba(20,241,149,0.14)" }}>
-              <span style={{ fontFamily: F.mono, color: "rgba(20,241,149,0.55)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em" }}>◈ PROTOCOL ARCHITECTURE</span>
+              <span style={{ fontFamily: F.mono, color: "rgba(20,241,149,0.55)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em" }}>â—ˆ PROTOCOL ARCHITECTURE</span>
             </div>
             <h2 style={{ margin: 0, fontFamily: F.display, fontSize: "clamp(30px,4vw,52px)", fontWeight: 900, letterSpacing: "-0.025em", color: "#fff", lineHeight: 1.1 }}>
               Why <span style={{ color: "#9945FF" }}>BluPrint</span> Wins
@@ -560,7 +597,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {/* â”€â”€ FOOTER â”€â”€ */}
       <footer style={{ position: "relative", zIndex: 10, paddingTop: 56, paddingBottom: 40 }}>
         <div style={{ height: 1, maxWidth: 1280, margin: "0 auto 48px", background: "linear-gradient(90deg,transparent,rgba(153,69,255,0.18),transparent)" }} />
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px" }}>
@@ -583,7 +620,7 @@ export default function HomePage() {
           </div>
           <div style={{ borderTop: "1px solid rgba(153,69,255,0.07)", paddingTop: 18, textAlign: "center" }}>
             <p style={{ margin: 0, fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.12)", letterSpacing: "0.1em" }}>
-              Securely powered by Solana Mainnet Live Core © 2026 BluPrint Protocol.
+              Securely powered by Solana Mainnet Live Core Â© 2026 BluPrint Protocol.
             </p>
           </div>
         </div>
