@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { Home, Sparkles, LineChart, Users, Wallet, X, Menu, Zap } from "lucide-react";
+import { Home, Sparkles, LineChart, Users, Wallet, X, Menu, Zap, Coins } from "lucide-react";
 
 const F = {
   display: "var(--font-outfit), 'Outfit', sans-serif",
@@ -14,10 +14,11 @@ const F = {
 };
 
 const menuItems = [
-  { href: "/",         label: "Home",   icon: Home      },
-  { href: "/create",  label: "Create", icon: Sparkles  },
-  { href: "/dex",     label: "DEX",    icon: LineChart  },
-  { href: "/referral",label: "Refer",  icon: Users     },
+  { href: "/",                label: "Home",    icon: Home      },
+  { href: "/create",          label: "Create",  icon: Sparkles  },
+  { href: "/dex",             label: "DEX",     icon: LineChart  },
+  { href: "/referral",        label: "Refer",   icon: Users     },
+  { href: "/creator-rewards", label: "Rewards", icon: Coins     },
 ];
 
 function shortenAddress(address: string) {
@@ -40,12 +41,12 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
       borderRight: "1px solid rgba(153,69,255,0.12)",
       overflow: "hidden",
     }}>
-      {/* Arka Plan Neon Işımaları */}
       <div style={{ position: "absolute", top: -40, left: -20, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(153,69,255,0.12) 0%, transparent 70%)", filter: "blur(30px)", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: 60, left: -10, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(20,241,149,0.06) 0%, transparent 70%)", filter: "blur(24px)", pointerEvents: "none" }} />
 
       <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", height: "100%" }}>
-        {/* Ağ Durumu */}
+
+        {/* Mainnet badge */}
         <div style={{ padding: "16px 12px 8px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(20,241,149,0.12)" }}>
             <span style={{ position: "relative", display: "flex", width: 7, height: 7, flexShrink: 0 }}>
@@ -57,7 +58,7 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
           </div>
         </div>
 
-        {/* Logo Alanı */}
+        {/* Logo */}
         <div style={{ padding: "12px 16px 16px" }}>
           <Link href="/" onClick={onLinkClick} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
             <img src="/favicon.ico" alt="BluPrint" style={{ width: 28, height: 28, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(153,69,255,0.5))" }} />
@@ -70,7 +71,7 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
 
         <div style={{ height: 1, margin: "0 12px 8px", background: "linear-gradient(90deg,transparent,rgba(153,69,255,0.2),transparent)" }} />
 
-        {/* Navigasyon Linkleri */}
+        {/* Nav */}
         <nav style={{ flex: 1, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -106,7 +107,7 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
 
         <div style={{ height: 1, margin: "0 12px 12px", background: "linear-gradient(90deg,transparent,rgba(153,69,255,0.15),transparent)" }} />
 
-        {/* Cüzdan Butonu */}
+        {/* Wallet */}
         <div style={{ padding: "0 10px 20px" }}>
           <button
             onClick={() => { connected ? disconnect() : setVisible(true); onLinkClick?.(); }}
@@ -152,12 +153,12 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* DESKTOP SIDEBAR */}
+      {/* DESKTOP */}
       <div style={{ width: "100%", height: "100%" }}>
         <SidebarContent />
       </div>
 
-      {/* MOBILE HEADER BAR */}
+      {/* MOBILE HEADER */}
       <div style={{ position: "fixed", top: 36, left: 0, right: 0, zIndex: 45, background: "rgba(8,4,18,0.95)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(153,69,255,0.12)", height: 50 }} className="md:hidden">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 16px", height: "100%" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
@@ -178,16 +179,16 @@ export default function Sidebar() {
       <AnimatePresence>
         {isMobileOpen && (
           <>
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileOpen(false)}
               style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 55 }}
             />
-            <motion.div 
-              initial={{ x: "-100%" }} 
-              animate={{ x: 0 }} 
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", bounce: 0, duration: 0.25 }}
               style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 240, zIndex: 60 }}
