@@ -1,0 +1,201 @@
+﻿===== app\api\upload\route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import { redis } from '@/app/lib/redis';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+
+export async function POST(req: NextRequest) {
+  try {
+    // Rate limit by IP
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    const rateKey = `rate:upload:${ip}`;
+    const rateCount = await redis.incr(rateKey);
+    if (rateCount === 1) await redis.expire(rateKey, 60);
+    if (rateCount > 10) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
+
+    const formData = await req.formData();
+    const file = formData.get('file') as File | null;
+
+    if (!file) {
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'File too large. Max 5MB' }, { status: 400 });
+    }
+
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return NextResponse.json({ error: 'Invalid file type' }, { status: 400 });
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Upload to Pinata
+    const pinataForm = new FormData();
+    const blob = new Blob([buffer], { type: file.type });
+    pinataForm.append('file', blob, file.name || 'token-image');
+
+    const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.PINATA_JWT}`,
+      },
+      body: pinataForm,
+    });
+
+    if (!pinataRes.ok) {
+      const err = await pinataRes.text();
+      console.error('Pinata error:', err);
+      return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    }
+
+    const data = await pinataRes.json();
+    const imageUrl = `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
+
+    return NextResponse.json({
+      success: true,
+      imageUrl,
+      id: data.IpfsHash,
+    });
+    
+  } catch (error: any) {
+    console.error('Upload error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+===== app\api\irys\upload\route.ts =====
+import { NextRequest, NextResponse } from 'next/server';
+import Irys from '@irys/sdk';
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { name, symbol, description, imageUrl } = body;
+
+    // Secret key'i dÃ¼zgÃ¼n parse et
+    const secretKey = process.env.PLATFORM_SECRET_KEY;
+    let key;
+    try {
+      key = JSON.parse(secretKey!);
+    } catch {
+      key = secretKey;
+    }
+
+    // Irys client
+    const irys = new Irys({
+      network: 'mainnet',
+      token: 'solana',
+      key: key,
+    });
+
+    // Metadata JSON
+    const metadata = {
+      name,
+      symbol,
+      description: description || `${name} token on BluPrint`,
+      image: imageUrl,
+      external_url: 'https://bluprint.fun',
+      attributes: [
+        { trait_type: 'Launchpad', value: 'BluPrint' },
+        { trait_type: 'Bonding Curve', value: 'Metaplex Genesis' },
+      ],
+      properties: {
+        creators: [{ address: process.env.PLATFORM_PUBLIC_KEY, share: 100 }],
+      },
+    };
+
+    // Irys'a yÃ¼kle
+    const receipt = await irys.upload(JSON.stringify(metadata), {
+      tags: [{ name: 'Content-Type', value: 'application/json' }],
+    });
+
+    const gatewayUrl = `https://gateway.irys.xyz/${receipt.id}`;
+
+    return NextResponse.json({
+      success: true,
+      uri: gatewayUrl,
+      id: receipt.id,
+    });
+
+  } catch (error: any) {
+    console.error('Irys upload error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+===== app\api\upload-metadata\route.ts =====
+import { NextResponse } from 'next/server';
+
+export async function POST(req: Request) {
+  try {
+    const metadata = await req.json();
+
+    // Validate required fields
+    if (
+      !metadata.name ||
+      !metadata.symbol ||
+      !metadata.description ||
+      !metadata.image
+    ) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Missing required metadata fields: name, symbol, description, image required' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Optional: Validate image URL format
+    if (!metadata.image.startsWith('https://')) {
+      return NextResponse.json(
+        { success: false, error: 'Image must be a valid HTTPS URL' },
+        { status: 400 }
+      );
+    }
+
+    const pinataRes = await fetch(
+      'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.PINATA_JWT}`,
+        },
+        body: JSON.stringify(metadata),
+      }
+    );
+
+    if (!pinataRes.ok) {
+      const error = await pinataRes.text();
+      console.error('Pinata error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Pinata upload failed' },
+        { status: 500 }
+      );
+    }
+
+    const pinataData = await pinataRes.json();
+
+    return NextResponse.json({
+      success: true,
+      uri: `https://gateway.pinata.cloud/ipfs/${pinataData.IpfsHash}`,
+      hash: pinataData.IpfsHash,
+    });
+  } catch (err: any) {
+    console.error('Metadata upload error:', err);
+    return NextResponse.json(
+      {
+        success: false,
+        error: err.message,
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
