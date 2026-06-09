@@ -80,11 +80,11 @@ const PRESET_FEED: FeedItem[] = Array.from({ length: 50 }, (_, i) => {
 
 function feedLine(item: FeedItem): { action: string; value: string } {
   switch (item.kind) {
-    case "trade":    return { action: `${item.token} işlem yaptı`,        value: `${item.amount} SOL` };
-    case "launch":   return { action: `${item.token} tokeni başlattı`,    value: `0.05 SOL` };
-    case "referral": return { action: `referralini çekti`,                 value: `${item.amount} SOL` };
-    case "milestone":return { action: `${item.milestone} milestone açtı`, value: `+${item.reward} SOL kazandı` };
-    case "deposit":  return { action: `platforma yatırdı`,                value: `${item.amount} SOL` };
+    case "trade":    return { action: `${item.token} made a trade`,        value: `${item.amount} SOL` };
+    case "launch":   return { action: `${item.token} launched token`,    value: `0.05 SOL` };
+    case "referral": return { action: `claimed referral`,                 value: `${item.amount} SOL` };
+    case "milestone":return { action: `${item.milestone} milestone reached`, value: `+${item.reward} SOL earned` };
+    case "deposit":  return { action: `deposited`,                value: `${item.amount} SOL` };
   }
 }
 
