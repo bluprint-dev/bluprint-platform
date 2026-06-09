@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,71 +36,120 @@ const F = {
   mono: "var(--font-mono), 'JetBrains Mono', monospace",
 };
 
-/* ── Live Activity Feed ──────────────────────────────────────────────────────── */
-const ACTIVITY_NAMES = [
-  "whale_orca","sol_degen","0xmoonbag","pumpking","rug_survivor",
-  "chad_buyer","paperhands99","diamondflip","solsurfer","nfa_anon",
+/* ── Activity Feed ───────────────────────────────────────────────────────────── */
+const FAKE_WALLETS = [
+  "7xKp...2MQr","3rNt...Qz8w","9fBw...Ly4k","5mJc...Vu1p","2sHd...Xo6n",
+  "8nEa...Ri3s","4kGp...Se9t","6tCv...Bn2m","1yFq...Wm7j","0hDl...Zj5c",
+  "AePk...3rXw","BtNw...7sKq","CxMj...5qPn","DvLi...9pMr","EuKh...2oNt",
+  "FtJg...8nLs","GsIf...4mKp","HrHe...1lJo","IqGd...6kIn","JpFc...3jHm",
+  "KoEb...9iGl","LnDa...7hFk","MmCz...5gEj","NlBx...2fDi","OkAw...8eCh",
+  "PjZv...4dBg","QiYu...1cAf","RhXt...7bZe","SgWs...3aYd","TfVr...9zXc",
 ];
-const ACTIVITY_ACTIONS = ["just launched","bought","bought","bought","bought"];
-const ACTIVITY_TOKENS = [
-  "PEPE2","BONK2","WIF3","DOGE3","MOON","CHAD","FROG","BULL","PUMP","BASED",
-];
+const FAKE_TOKENS_LIST = ["$LUK","$BONK2","$WIF3","$PEPE2","$MOON","$CHAD","$FROG","$BULL","$PUMP","$BASED","$DOGE3","$ORCA2","$BLUP","$NEIRO","$GOAT","$GIGA"];
 
-function randomActivity() {
-  const name   = ACTIVITY_NAMES[Math.floor(Math.random() * ACTIVITY_NAMES.length)];
-  const action = ACTIVITY_ACTIONS[Math.floor(Math.random() * ACTIVITY_ACTIONS.length)];
-  const token  = ACTIVITY_TOKENS[Math.floor(Math.random() * ACTIVITY_TOKENS.length)];
-  const amount = (Math.random() * 2 + 0.05).toFixed(2);
-  return { name, action, token, amount, id: Math.random() };
+type FeedKind = "trade" | "launch" | "referral" | "milestone" | "deposit";
+
+interface FeedItem {
+  id: number;
+  wallet: string;
+  kind: FeedKind;
+  amount: number;
+  token: string;
+  milestone?: number;
+  reward?: number;
 }
 
-function LiveActivityToast() {
-  const [items, setItems] = useState<ReturnType<typeof randomActivity>[]>([]);
+function rndAmt(min: number, max: number) {
+  return parseFloat((Math.random() * (max - min) + min).toFixed(2));
+}
+function pickItem<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
+
+const PRESET_FEED: FeedItem[] = Array.from({ length: 50 }, (_, i) => {
+  const kinds: FeedKind[] = ["trade","trade","trade","launch","referral","milestone","deposit","trade","trade"];
+  const kind = kinds[Math.floor(Math.random() * kinds.length)];
+  return {
+    id: i,
+    wallet: FAKE_WALLETS[Math.floor(Math.random() * FAKE_WALLETS.length)],
+    kind,
+    amount: rndAmt(0.05, 5.5),
+    token: FAKE_TOKENS_LIST[Math.floor(Math.random() * FAKE_TOKENS_LIST.length)],
+    milestone: [100, 250, 500, 1000][Math.floor(Math.random() * 4)],
+    reward: rndAmt(0.5, 3.0),
+  };
+});
+
+function feedLine(item: FeedItem): { action: string; value: string } {
+  switch (item.kind) {
+    case "trade":    return { action: `${item.token} işlem yaptı`,        value: `${item.amount} SOL` };
+    case "launch":   return { action: `${item.token} tokeni başlattı`,    value: `0.05 SOL` };
+    case "referral": return { action: `referralini çekti`,                 value: `${item.amount} SOL` };
+    case "milestone":return { action: `${item.milestone} milestone açtı`, value: `+${item.reward} SOL kazandı` };
+    case "deposit":  return { action: `platforma yatırdı`,                value: `${item.amount} SOL` };
+  }
+}
+
+function LiveActivityFeed() {
+  const [shown, setShown] = useState<FeedItem[]>(PRESET_FEED.slice(0, 6));
+  const [cursor, setCursor] = useState(6);
+
   useEffect(() => {
-    const push = () => { setItems(prev => [randomActivity(), ...prev].slice(0, 4)); };
-    push();
-    const iv = setInterval(push, 2800);
+    const iv = setInterval(() => {
+      setCursor(c => {
+        const next = c % PRESET_FEED.length;
+        setShown(prev => [PRESET_FEED[next], ...prev].slice(0, 8));
+        return next + 1;
+      });
+    }, 2600);
     return () => clearInterval(iv);
   }, []);
 
+  const dotColor = (k: FeedKind) =>
+    k === "launch" ? "#9945FF" : k === "milestone" ? "#f59e0b" : "#14F195";
+
   return (
     <div style={{
-      position: "fixed", bottom: 24, left: 24, zIndex: 999,
-      display: "flex", flexDirection: "column", gap: 8, pointerEvents: "none",
+      position: "fixed", bottom: 20, right: 20, zIndex: 999,
+      display: "flex", flexDirection: "column", gap: 5,
+      width: 288, pointerEvents: "none",
     }}>
-      <AnimatePresence>
-        {items.map((item) => (
-          <motion.div key={item.id}
-            initial={{ opacity: 0, x: -40, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: -40, scale: 0.9 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              display: "flex", alignItems: "center", gap: 10,
-              background: "rgba(10,4,22,0.92)", backdropFilter: "blur(20px)",
-              border: "1px solid rgba(20,241,149,0.2)", borderRadius: 12,
-              padding: "10px 14px", boxShadow: "0 4px 24px rgba(20,241,149,0.08)",
-              minWidth: 260,
-            }}
-          >
-            <div style={{
-              width: 8, height: 8, borderRadius: "50%",
-              background: item.action === "just launched" ? "#9945FF" : "#14F195",
-              boxShadow: `0 0 8px ${item.action === "just launched" ? "#9945FF" : "#14F195"}`,
-              flexShrink: 0,
-            }} />
-            <span style={{ fontFamily: F.mono, fontSize: 11, color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap" }}>
-              <span style={{ color: "#fff", fontWeight: 700 }}>{item.name}</span>
-              {" "}{item.action}{" "}
-              <span style={{ color: item.action === "just launched" ? "#9945FF" : "#14F195", fontWeight: 700 }}>
-                ${item.token}
-              </span>
-              {item.action !== "just launched" && (
-                <span style={{ color: "rgba(255,255,255,0.4)" }}> · {item.amount} SOL</span>
-              )}
-            </span>
-          </motion.div>
-        ))}
+      <AnimatePresence initial={false}>
+        {shown.map(item => {
+          const { action, value } = feedLine(item);
+          return (
+            <motion.div key={item.id}
+              initial={{ opacity: 0, x: 50, scale: 0.93 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 50, scale: 0.88 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                background: "rgba(8,3,18,0.95)", backdropFilter: "blur(20px)",
+                border: "1px solid rgba(20,241,149,0.12)", borderRadius: 10,
+                padding: "7px 11px",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.6)",
+              }}
+            >
+              <div style={{
+                width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+                background: dotColor(item.kind),
+                boxShadow: `0 0 5px ${dotColor(item.kind)}`,
+              }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", gap: 4, alignItems: "baseline", flexWrap: "wrap" }}>
+                  <span style={{ fontFamily: F.mono, fontSize: 10, color: "#a78bfa", fontWeight: 700, whiteSpace: "nowrap" }}>
+                    {item.wallet}
+                  </span>
+                  <span style={{ fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.42)", whiteSpace: "nowrap" }}>
+                    {action}
+                  </span>
+                </div>
+                <div style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 800, color: "#14F195", marginTop: 1 }}>
+                  {value}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
     </div>
   );
@@ -321,7 +368,7 @@ export default function HomePage() {
       </div>
 
       {/* Live toasts — bottom left */}
-      <LiveActivityToast />
+      <LiveActivityFeed />
 
       {/* ── HERO ── */}
       <section style={{ position: "relative", zIndex: 10, minHeight: "100vh", display: "flex", alignItems: "center" }}>
