@@ -43,9 +43,9 @@ export async function POST(req: NextRequest) {
       userWallet,
     } = body;
 
-    if (!genesisAccount || !mintAddress || !createLaunchInput) {
+    if (!genesisAccount || !createLaunchInput) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields: genesisAccount, mintAddress, createLaunchInput" },
+        { success: false, error: "Missing required fields: genesisAccount, createLaunchInput" },
         { status: 400 }
       );
     }
@@ -55,7 +55,6 @@ export async function POST(req: NextRequest) {
 
     const umi = createUmi(rpcUrl).use(genesis());
 
-    // Genesis API'ye token'ı kaydet
     // RegisterLaunchInput: { genesisAccount, createLaunchInput } — mintAddress yok
     await registerLaunch(umi, {}, {
       genesisAccount,
@@ -64,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     console.log("REGISTER_SUCCESS:", { mintAddress, genesisAccount });
 
-    // Redis'e kaydet (isteğe bağlı, hata olursa devam et)
+    // Redis'e kaydet (hata olursa devam et)
     try {
       if (redis && mintAddress) {
         await redis.hset(`token:${mintAddress}`, {
@@ -80,10 +79,12 @@ export async function POST(req: NextRequest) {
           userWallet: userWallet || "",
           createdAt: Date.now().toString(),
         });
-
-        // Son tokenlar listesine ekle
         await redis.lpush("recent_tokens", mintAddress);
-        await redis.ltrim("recent_tokens", 0, 99); // Son 100 token
+        await redis.ltrim("recent_tokens", 0, 99);
+
+        // claim route için creator mapping
+        await redis.set(`bonding-curve:creator:${genesisAccount}`, userWallet || "");
+        await redis.set(`genesis:mint:${genesisAccount}`, mintAddress || "");
       }
     } catch (redisErr) {
       console.warn("Redis save failed (non-fatal):", redisErr);
