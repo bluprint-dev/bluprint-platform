@@ -50,8 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     // getPlatformUmi → platform cüzdanı signer olarak set edilmiş
-    const umi = getPlatformUmi().use(genesis());
-
+    const umi = getPlatformUmi();
     await registerLaunch(umi, {}, {
       genesisAccount,
       createLaunchInput,
