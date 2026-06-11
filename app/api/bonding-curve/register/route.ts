@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import {
   genesis,
   registerLaunch,
@@ -7,6 +6,7 @@ import {
   isGenesisApiNetworkError,
   isGenesisValidationError,
 } from "@metaplex-foundation/genesis";
+import { getPlatformUmi } from "@/app/lib/umi";
 import { redis } from "@/app/lib/redis";
 
 export const runtime = "nodejs";
@@ -19,7 +19,6 @@ function safeError(error: unknown) {
 }
 
 // POST /api/bonding-curve/register
-// Body: { genesisAccount, mintAddress, createLaunchInput, name, symbol, imageUrl, description, website, twitter, telegram, userWallet }
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -50,12 +49,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
-    if (!rpcUrl) throw new Error("NEXT_PUBLIC_RPC_URL missing");
+    // getPlatformUmi → platform cüzdanı signer olarak set edilmiş
+    const umi = getPlatformUmi().use(genesis());
 
-    const umi = createUmi(rpcUrl).use(genesis());
-
-    // RegisterLaunchInput: { genesisAccount, createLaunchInput } — mintAddress yok
     await registerLaunch(umi, {}, {
       genesisAccount,
       createLaunchInput,
@@ -81,8 +77,6 @@ export async function POST(req: NextRequest) {
         });
         await redis.lpush("recent_tokens", mintAddress);
         await redis.ltrim("recent_tokens", 0, 99);
-
-        // claim route için creator mapping
         await redis.set(`bonding-curve:creator:${genesisAccount}`, userWallet || "");
         await redis.set(`genesis:mint:${genesisAccount}`, mintAddress || "");
       }
