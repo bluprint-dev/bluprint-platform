@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
@@ -11,7 +11,7 @@ import {
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 
-/* ─── Types ──────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 interface FormState {
   name: string;
   symbol: string;
@@ -35,7 +35,7 @@ type LaunchStatus =
 const CREATION_FEE_SOL = 0.05;
 const PLATFORM_WALLET = new PublicKey("A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X");
 
-/* ─── Rotating Globe ──────────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Rotating Globe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function RotatingGlobe() {
   return (
     <div style={{
@@ -69,7 +69,7 @@ function RotatingGlobe() {
   );
 }
 
-/* ─── Bonding Curve Bar ───────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Bonding Curve Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function BondingCurveBar({ pct }: { pct: number }) {
   return (
     <div>
@@ -91,9 +91,9 @@ function BondingCurveBar({ pct }: { pct: number }) {
   );
 }
 
-/* ─── Main Component ──────────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function CreatePage() {
-  const { publicKey, signAllTransactions, connected } = useWallet();
+  const { publicKey, signTransaction, connected } = useWallet();
   const { connection } = useConnection();
 
   const [form, setForm] = useState<FormState>({
@@ -131,7 +131,7 @@ export default function CreatePage() {
     if (file) handleImage(file);
   }, [handleImage]);
 
-  /* ── promo code validation ── */
+  /* â”€â”€ promo code validation â”€â”€ */
   useEffect(() => {
     if (!form.promoCode || form.promoCode.length < 4) {
       setPromoStatus("idle");
@@ -150,19 +150,18 @@ export default function CreatePage() {
     }, 500);
   }, [form.promoCode]);
 
-  /* ─────────────────────────────────────────────────────────────────────────────
-     handleLaunch — YENİ AKIŞ
-     1. Görsel → Pinata  (/api/upload)
-     2. Metadata JSON → Irys  (/api/irys/upload)
-     3. Backend'den transaction'ları al  (/api/bonding-curve/launch)  ← imzalamaz
-     4. Kullanıcı cüzdanı tüm TX'leri imzalar ve gönderir
-     5. 0.05 SOL platform fee TX  (kullanıcı imzalar)
-     6. Genesis API'ye register  (/api/bonding-curve/register)
-     7. Redis + referral kaydet  (/api/track-launch)
-     8. Promo kodu işle  (/api/generate-promocode)
-  ───────────────────────────────────────────────────────────────────────────── */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     FIXED handleLaunch
+     DoÄŸru akÄ±ÅŸ:
+       1. GÃ¶rsel â†’ Pinata  (/api/upload)
+       2. Metadata JSON â†’ Irys  (/api/irys/upload)
+       3. Token + Bonding Curve oluÅŸtur  (/api/bonding-curve/launch)  â† server-side, platform wallet imzalar
+       4. KullanÄ±cÄ± 0.05 SOL gÃ¶nderir  (tek kullanÄ±cÄ± TX)
+       5. Redis + referral kaydet  (/api/track-launch)
+       6. Promo kodu iÅŸle  (/api/generate-promocode)
+  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const handleLaunch = async () => {
-    if (!connected || !publicKey || !signAllTransactions) return;
+    if (!connected || !publicKey || !signTransaction) return;
     if (!form.name.trim() || !form.symbol.trim()) return;
 
     setLaunchStatus("uploading");
@@ -170,20 +169,21 @@ export default function CreatePage() {
     setTxSig("");
 
     try {
-      // ── ADIM 1: Görsel → Pinata ───────────────────────────────────────────
+      // â”€â”€ ADIM 1: GÃ¶rsel â†’ Pinata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       let imageUrl = "";
       if (imageFile) {
         const fd = new FormData();
         fd.append("file", imageFile);
         const upRes = await fetch("/api/upload", { method: "POST", body: fd });
         const upJson = await upRes.json();
+        // Pinata endpoint imageUrl dÃ¶ndÃ¼rÃ¼yor (url deÄŸil)
         if (!upJson.imageUrl) throw new Error("Image upload failed: " + (upJson.error || "unknown"));
         imageUrl = upJson.imageUrl;
       }
 
       setLaunchStatus("creating");
 
-      // ── ADIM 2: Metadata JSON → Pinata/Irys ──────────────────────────────
+      // â”€â”€ ADIM 2: Metadata JSON â†’ Irys â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const metaRes = await fetch("/api/irys/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -203,19 +203,19 @@ export default function CreatePage() {
       }
       const metadataUri = metaJson.uri;
 
-      // ── ADIM 3: Backend'den transaction'ları al (sadece hazırlar, imzalamaz) ──
+      // â”€â”€ ADIM 3: Token + Bonding Curve oluÅŸtur (server-side) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Platform wallet server'da imzalar, kullanÄ±cÄ± gÃ¶rmez
       const launchRes = await fetch("/api/bonding-curve/launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
           symbol: form.symbol.trim().toUpperCase(),
-          image: metadataUri,
+          image: metadataUri,          // Irys URI â†’ Genesis SDK bunu metadata olarak kullanÄ±r
           description: form.description.trim(),
           website: form.website.trim() || undefined,
           twitter: form.twitter.trim() || undefined,
           telegram: form.telegram.trim() || undefined,
-          userWallet: publicKey.toBase58(),
         }),
       });
       const launchJson = await launchRes.json();
@@ -223,24 +223,15 @@ export default function CreatePage() {
         throw new Error("Token creation failed: " + (launchJson.error || launchJson.type || "unknown"));
       }
 
-      const { transactions: serializedTxs, mintAddress, genesisAccount } = launchJson;
+      const { mintAddress, genesisAccount } = launchJson;
 
-      // ── ADIM 4: Transaction'ları deserialize et ───────────────────────────
-      const txObjects = (serializedTxs as string[]).map((b64: string) => {
-        const buf = Buffer.from(b64, "base64");
-        try {
-          return VersionedTransaction.deserialize(buf);
-        } catch {
-          return Transaction.from(buf);
-        }
-      });
+      // â”€â”€ ADIM 4: KullanÄ±cÄ± 0.05 SOL gÃ¶nderir (tek kullanÄ±cÄ± TX) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      setLaunchStatus("signing");
 
-      // ── ADIM 5: 0.05 SOL platform fee TX'ini de listeye ekle ─────────────
-      const { blockhash: feeBlockhash, lastValidBlockHeight: feeLastValid } =
-        await connection.getLatestBlockhash("confirmed");
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
 
       const feeTx = new Transaction({
-        recentBlockhash: feeBlockhash,
+        recentBlockhash: blockhash,
         feePayer: publicKey,
       }).add(
         SystemProgram.transfer({
@@ -250,82 +241,20 @@ export default function CreatePage() {
         })
       );
 
-      // Tüm TX'leri birleştir: önce genesis TX'leri, sonra fee TX
-      const allTxs = [...txObjects, feeTx];
-
-      // ── ADIM 6: Kullanıcı cüzdanıyla tek seferde imzala ──────────────────
-      setLaunchStatus("signing");
-      const signedTxs = await signAllTransactions(allTxs as any[]);
-
-      // ── ADIM 7: İmzalı transaction'ları sırayla gönder ve onayla ─────────
+      const signedFeeTx = await signTransaction(feeTx);
       setLaunchStatus("confirming");
 
-      let lastSig = "";
-      const blockhashInfo = launchJson.blockhash;
-
-      for (let i = 0; i < signedTxs.length; i++) {
-        const signedTx = signedTxs[i];
-        const raw = signedTx instanceof VersionedTransaction
-          ? signedTx.serialize()
-          : (signedTx as Transaction).serialize();
-
-        const sig = await connection.sendRawTransaction(raw, {
-          skipPreflight: false,
-          preflightCommitment: "confirmed",
-        });
-        lastSig = sig;
-
-        // Son TX fee TX'i (farklı blockhash), diğerleri genesis blockhash
-        const isFeeTx = i === signedTxs.length - 1;
-        const bh = isFeeTx
-          ? { blockhash: feeBlockhash, lastValidBlockHeight: feeLastValid }
-          : { blockhash: blockhashInfo.blockhash, lastValidBlockHeight: blockhashInfo.lastValidBlockHeight };
-
-        await connection.confirmTransaction(
-          { signature: sig, ...bh },
-          "confirmed"
-        );
-      }
-
-      // ── ADIM 8: Genesis API'ye register ──────────────────────────────────
-      const registerRes = await fetch("/api/bonding-curve/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          genesisAccount,
-          mintAddress,
-          createLaunchInput: {
-            wallet: publicKey.toBase58(),
-            token: {
-              name: form.name.trim(),
-              symbol: form.symbol.trim().toUpperCase(),
-              image: metadataUri,
-              description: form.description.trim(),
-              externalLinks: {
-                website: form.website.trim() || undefined,
-                twitter: form.twitter.trim() || undefined,
-                telegram: form.telegram.trim() || undefined,
-              },
-            },
-            launchType: "bondingCurve",
-            launch: { creatorFeeWallet: publicKey.toBase58(), firstBuyAmount: 0 },
-          },
-          name: form.name.trim(),
-          symbol: form.symbol.trim().toUpperCase(),
-          imageUrl,
-          description: form.description.trim(),
-          website: form.website.trim(),
-          twitter: form.twitter.trim(),
-          telegram: form.telegram.trim(),
-          userWallet: publicKey.toBase58(),
-        }),
+      const sig = await connection.sendRawTransaction(signedFeeTx.serialize(), {
+        skipPreflight: false,
+        preflightCommitment: "confirmed",
       });
-      const registerJson = await registerRes.json();
-      if (!registerJson.success) {
-        console.warn("Register failed (token zaten oluşmuş olabilir):", registerJson);
-      }
 
-      // ── ADIM 9: Redis + referral kaydet ──────────────────────────────────
+      await connection.confirmTransaction(
+        { signature: sig, blockhash, lastValidBlockHeight },
+        "confirmed"
+      );
+
+      // â”€â”€ ADIM 5: Redis + referral kaydet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       fetch("/api/track-launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -336,16 +265,18 @@ export default function CreatePage() {
           symbol: form.symbol.trim().toUpperCase(),
           imageUrl,
           userPublicKey: publicKey.toBase58(),
-          signature: lastSig,
+          signature: sig,
         }),
       }).catch(() => {});
 
+      // â”€â”€ ADIM 6: Referral sistemi â†’ promo kodu oluÅŸtur â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Referral kodu varsa create-token endpoint'ine bildir
       if (promoStatus === "valid" && form.promoCode) {
         fetch("/api/create-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            signature: lastSig,
+            signature: sig,
             userPublicKey: publicKey.toBase58(),
             tokenData: {
               name: form.name.trim(),
@@ -356,13 +287,14 @@ export default function CreatePage() {
         }).catch(() => {});
       }
 
+      // KullanÄ±cÄ±ya promo kodu oluÅŸtur
       fetch("/api/generate-promocode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wallet: publicKey.toBase58() }),
       }).catch(() => {});
 
-      setTxSig(lastSig);
+      setTxSig(sig);
       setLaunchStatus("done");
 
     } catch (err: any) {
@@ -380,18 +312,18 @@ export default function CreatePage() {
     creating: "CREATING TOKEN...",
     signing: "WAITING FOR SIGNATURE...",
     confirming: "CONFIRMING ON-CHAIN...",
-    done: "🚀 LAUNCHED!",
+    done: "ğŸš€ LAUNCHED!",
     error: "TRY AGAIN",
   };
 
   const promoIndicator = {
     idle: null,
     checking: <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>checking...</span>,
-    valid: <span style={{ color: "#14F195", fontSize: 12, fontWeight: 600 }}>✓ Valid code</span>,
-    invalid: <span style={{ color: "#ff6b6b", fontSize: 12 }}>✗ Invalid code</span>,
+    valid: <span style={{ color: "#14F195", fontSize: 12, fontWeight: 600 }}>âœ“ Valid code</span>,
+    invalid: <span style={{ color: "#ff6b6b", fontSize: 12 }}>âœ— Invalid code</span>,
   }[promoStatus];
 
-  /* ─── Render ─────────────────────────────────────────────────────────────── */
+  /* â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0F0817 0%, #1a0b2e 50%, #2d124d 100%)", fontFamily: "'Space Grotesk', sans-serif" }}>
       <style>{`
@@ -459,7 +391,7 @@ export default function CreatePage() {
         {/* Success screen */}
         {launchStatus === "done" ? (
           <div style={{ maxWidth: 540, margin: "0 auto", textAlign: "center", padding: "60px 20px" }}>
-            <div className="success-icon" style={{ fontSize: 64, marginBottom: 24 }}>🚀</div>
+            <div className="success-icon" style={{ fontSize: 64, marginBottom: 24 }}>ğŸš€</div>
             <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: 32, fontWeight: 900, color: "#14F195", margin: "0 0 16px" }} className="glow-text-green">
               Token Launched!
             </h1>
@@ -469,7 +401,7 @@ export default function CreatePage() {
             {txSig && (
               <a href={`https://solscan.io/tx/${txSig}`} target="_blank" rel="noopener noreferrer"
                 style={{ color: "#9945FF", fontSize: 13, display: "block", margin: "16px 0 32px", wordBreak: "break-all" }}>
-                View on Solscan ↗
+                View on Solscan â†—
               </a>
             )}
             <button className="launch-btn" style={{ maxWidth: 280, margin: "0 auto" }}
@@ -486,7 +418,7 @@ export default function CreatePage() {
         ) : (
           <div className="layout-grid" style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 32, alignItems: "start" }}>
 
-            {/* ── LEFT COLUMN ── */}
+            {/* â”€â”€ LEFT COLUMN â”€â”€ */}
             <div>
               <div style={{ marginBottom: 36 }}>
                 <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", lineHeight: 1.1 }}>
@@ -546,7 +478,7 @@ export default function CreatePage() {
                       <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, margin: "0 0 4px" }}>
                         Drag & drop or <span style={{ color: "#9945FF", fontWeight: 600 }}>browse</span>
                       </p>
-                      <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12, margin: 0 }}>PNG, JPG, GIF, WebP — recommended 500×500</p>
+                      <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12, margin: 0 }}>PNG, JPG, GIF, WebP â€” recommended 500Ã—500</p>
                     </div>
                   )}
                 </div>
@@ -555,7 +487,7 @@ export default function CreatePage() {
                 <div style={{ marginBottom: 20 }}>
                   <div className="accordion-trigger" onClick={() => setSocialOpen(o => !o)}>
                     <span>Social Links (Optional)</span>
-                    <span className={`accordion-chevron${socialOpen ? " open" : ""}`}>▾</span>
+                    <span className={`accordion-chevron${socialOpen ? " open" : ""}`}>â–¾</span>
                   </div>
                   {socialOpen && (
                     <div style={{ paddingTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -577,7 +509,7 @@ export default function CreatePage() {
                 <div style={{ marginBottom: 28 }}>
                   <div className="accordion-trigger" onClick={() => setPromoOpen(o => !o)}>
                     <span>Promo / Referral Code (Optional)</span>
-                    <span className={`accordion-chevron${promoOpen ? " open" : ""}`}>▾</span>
+                    <span className={`accordion-chevron${promoOpen ? " open" : ""}`}>â–¾</span>
                   </div>
                   {promoOpen && (
                     <div style={{ paddingTop: 16 }}>
@@ -605,7 +537,7 @@ export default function CreatePage() {
                       Creation Fee: {CREATION_FEE_SOL} SOL
                     </div>
                     <span style={{ fontSize: 11, color: "rgba(20,241,149,0.6)", fontWeight: 600, paddingLeft: 4 }}>
-                      🏯 Special launch price for the first 100 users only!
+                      ğŸ¯ Special launch price for the first 100 users only!
                     </span>
                   </div>
                   {!connected && <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12 }}>Connect wallet to launch</span>}
@@ -635,7 +567,7 @@ export default function CreatePage() {
               </div>
             </div>
 
-            {/* ── RIGHT COLUMN – Live Preview ── */}
+            {/* â”€â”€ RIGHT COLUMN â€” Live Preview â”€â”€ */}
             <div className="right-col" style={{ position: "sticky", top: 32 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 8px #14F195", animation: "matrix-flicker 1.5s ease-in-out infinite" }} />
@@ -675,9 +607,9 @@ export default function CreatePage() {
                     )}
                     {(form.website || form.twitter || form.telegram) && (
                       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-                        {form.website && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>🌐 Web</div>}
-                        {form.twitter && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>✕ Twitter</div>}
-                        {form.telegram && <div style={{ background: "rgba(29,155,240,0.1)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(41,182,246,0.7)", fontWeight: 600 }}>✈ Telegram</div>}
+                        {form.website && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>ğŸŒ Web</div>}
+                        {form.twitter && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>ğ• Twitter</div>}
+                        {form.telegram && <div style={{ background: "rgba(29,155,240,0.1)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(41,182,246,0.7)", fontWeight: 600 }}>âœˆ Telegram</div>}
                       </div>
                     )}
                     <div style={{ borderTop: "1px solid rgba(153,69,255,0.12)", paddingTop: 16 }}>
@@ -702,7 +634,7 @@ export default function CreatePage() {
                 ].map(({ done, text }) => (
                   <div key={text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 18, height: 18, borderRadius: "50%", background: done ? "rgba(20,241,149,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${done ? "rgba(20,241,149,0.5)" : "rgba(255,255,255,0.1)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: done ? "#14F195" : "rgba(255,255,255,0.2)", transition: "all 0.3s" }}>
-                      {done ? "✓" : ""}
+                      {done ? "âœ“" : ""}
                     </div>
                     <span style={{ fontSize: 13, color: done ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.25)", transition: "color 0.3s" }}>
                       {text}
