@@ -1,28 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Irys from '@irys/sdk';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { name, symbol, description, imageUrl } = body;
 
-    // Secret key'i düzgün parse et
-    const secretKey = process.env.PLATFORM_SECRET_KEY;
-    let key;
-    try {
-      key = JSON.parse(secretKey!);
-    } catch {
-      key = secretKey;
-    }
-
-    // Irys client
-    const irys = new Irys({
-      network: 'mainnet',
-      token: 'solana',
-      key: key,
-    });
-
-    // Metadata JSON
     const metadata = {
       name,
       symbol,
@@ -38,21 +20,35 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    // Irys'a yükle
-    const receipt = await irys.upload(JSON.stringify(metadata), {
-      tags: [{ name: 'Content-Type', value: 'application/json' }],
+    const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.PINATA_JWT}`,
+      },
+      body: JSON.stringify({
+        pinataContent: metadata,
+        pinataMetadata: { name: `${symbol}-metadata.json` },
+      }),
     });
 
-    const gatewayUrl = `https://gateway.irys.xyz/${receipt.id}`;
+    if (!pinataRes.ok) {
+      const err = await pinataRes.text();
+      console.error('Pinata error:', err);
+      return NextResponse.json({ success: false, error: 'Pinata upload failed' }, { status: 500 });
+    }
+
+    const pinataData = await pinataRes.json();
+    const uri = `https://gateway.pinata.cloud/ipfs/${pinataData.IpfsHash}`;
 
     return NextResponse.json({
       success: true,
-      uri: gatewayUrl,
-      id: receipt.id,
+      uri,
+      id: pinataData.IpfsHash,
     });
 
   } catch (error: any) {
-    console.error('Irys upload error:', error);
+    console.error('Metadata upload error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
