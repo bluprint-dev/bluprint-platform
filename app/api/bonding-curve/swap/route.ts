@@ -14,7 +14,6 @@ import {
 
 const WSOL_MINT = "So11111111111111111111111111111111111111112";
 
-// ✅ Creator fee wallet — her swap'ta fee buraya birikir
 const PLATFORM_FEE_WALLET = process.env.BONDING_CURVE_FEE_WALLET ?? "";
 
 function toBigIntSafe(value: unknown): bigint {
@@ -50,40 +49,6 @@ function extractBaseMint(bucket: unknown): string | null {
   }
 }
 
-// Platform wallet'ın WSOL ATA'sını kontrol et, yoksa platform umi ile oluştur
-async function ensurePlatformFeeAta(
-  umi: ReturnType<typeof getPlatformUmi>,
-  platformWalletKey: ReturnType<typeof publicKey>,
-  wsolKey: ReturnType<typeof publicKey>
-): Promise<ReturnType<typeof publicKey> | undefined> {
-  try {
-    const [ataAddress] = findAssociatedTokenPda(umi, {
-      mint: wsolKey,
-      owner: platformWalletKey,
-    });
-
-    // Onchain'de var mı kontrol et
-    const account = await umi.rpc.getAccount(ataAddress);
-    if (account.exists) {
-      console.log("FEE_ATA already exists:", ataAddress.toString());
-      return ataAddress;
-    }
-
-    // Yoksa platform umi ile oluştur (platform cüzdanı ödüyor)
-    console.log("FEE_ATA not found, creating...", ataAddress.toString());
-    await createAssociatedToken(umi, {
-      mint: wsolKey,
-      owner: platformWalletKey,
-    }).sendAndConfirm(umi);
-
-    console.log("FEE_ATA created:", ataAddress.toString());
-    return ataAddress;
-  } catch (e) {
-    console.warn("FEE_ATA ensure failed (non-fatal, fee will not be collected):", e);
-    return undefined;
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -111,7 +76,7 @@ export async function POST(req: NextRequest) {
     const user = publicKey(userPublicKey);
     const wsol = publicKey(WSOL_MINT);
 
-    // ── BUCKET ──────────────────────────────────────────────────────────────
+    // —— BUCKET ——————————————————————————————————————————————————————
     const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
       genesisAccount,
       bucketIndex: 0,
@@ -136,11 +101,11 @@ export async function POST(req: NextRequest) {
 
     const direction = isBuy ? SwapDirection.Buy : SwapDirection.Sell;
 
-    // ── QUOTE ────────────────────────────────────────────────────────────────
+    // —— QUOTE ————————————————————————————————————————————————————————
     const quote = getSwapResult(bucket, amountBigInt, direction);
     const minOut = minOutWithSlippage(quote.amountOut);
 
-    // ── BASE MINT ────────────────────────────────────────────────────────────
+    // —— BASE MINT ————————————————————————————————————————————————————
     const baseMintStr = extractBaseMint(bucket) ?? mintAddress ?? null;
     if (!baseMintStr) {
       return NextResponse.json(
@@ -150,22 +115,44 @@ export async function POST(req: NextRequest) {
     }
     const baseMint = publicKey(baseMintStr);
 
-    // ── USER ATAs ────────────────────────────────────────────────────────────
+    // —— USER ATAs ————————————————————————————————————————————————————
     const [baseATA] = findAssociatedTokenPda(umi, { mint: baseMint, owner: user });
     const [quoteATA] = findAssociatedTokenPda(umi, { mint: wsol, owner: user });
 
-    // ── PLATFORM FEE ATA ─────────────────────────────────────────────────────
-    // ATA yoksa platform umi ile otomatik oluşturur — kullanıcıya yük binmez
+    // —— PLATFORM FEE ATA —————————————————————————————————————————————
+    // ATA'yı ayrı tx ile oluşturmak yerine swap tx'ine instruction olarak ekliyoruz.
+    // Böylece platform wallet bakiyesi sıfır olsa bile sorun olmaz —
+    // ATA oluşturma maliyeti swap yapan kullanıcı tarafından karşılanır (sadece ilk swap'ta, ~0.002 SOL).
+    // Sonraki swap'larda ATA zaten var olacağı için instruction idempotent olarak çalışır.
     let feeQuoteTokenAccount: ReturnType<typeof publicKey> | undefined = undefined;
+    let feeAtaBuilder = transactionBuilder();
+
     if (PLATFORM_FEE_WALLET) {
       const platformWallet = publicKey(PLATFORM_FEE_WALLET);
-      feeQuoteTokenAccount = await ensurePlatformFeeAta(umi, platformWallet, wsol);
+      const [feeAta] = findAssociatedTokenPda(umi, {
+        mint: wsol,
+        owner: platformWallet,
+      });
+      feeQuoteTokenAccount = feeAta;
+
+      // Onchain'de var mı kontrol et
+      const feeAtaAccount = await umi.rpc.getAccount(feeAta);
+      if (!feeAtaAccount.exists) {
+        // Yoksa swap tx'ine createAssociatedToken instruction ekle (idempotent)
+        console.log("FEE_ATA not found, will create inside swap tx:", feeAta.toString());
+        feeAtaBuilder = createAssociatedToken(umi, {
+          mint: wsol,
+          owner: platformWallet,
+        });
+      } else {
+        console.log("FEE_ATA exists:", feeAta.toString());
+      }
     } else {
       console.warn("PLATFORM_FEE_WALLET not set — creator fee will not be collected");
     }
 
-    // ── BUILD SWAP ───────────────────────────────────────────────────────────
-    const builder = swapBondingCurveV2(umi, {
+    // —— BUILD SWAP ———————————————————————————————————————————————————
+    const swapBuilder = swapBondingCurveV2(umi, {
       genesisAccount,
       bucket: bucketPda,
       baseMint,
@@ -180,7 +167,10 @@ export async function POST(req: NextRequest) {
       ...(feeQuoteTokenAccount ? { feeQuoteTokenAccount } : {}),
     });
 
-    const tx = await (await builder.setLatestBlockhash(umi)).buildAndSign(umi);
+    // feeAtaBuilder varsa önce ekle, sonra swap — tek tx
+    const combinedBuilder = feeAtaBuilder.add(swapBuilder);
+
+    const tx = await (await combinedBuilder.setLatestBlockhash(umi)).buildAndSign(umi);
     const serialized = Buffer.from(umi.transactions.serialize(tx)).toString("base64");
 
     return NextResponse.json({
