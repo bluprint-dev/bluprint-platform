@@ -163,13 +163,12 @@ export async function POST(req: NextRequest) {
 
       const feeAtaAccount = await umi.rpc.getAccount(feeAta);
 if (!feeAtaAccount.exists) {
-  console.log("FEE_ATA not found, creating in separate tx:", feeAta.toString());
-  const createAtaTx = await createAssociatedToken(umi, {
+  console.log("FEE_ATA not found, creating inside swap tx:", feeAta.toString());
+  feeAtaBuilder = createAssociatedToken(umi, {
     mint: wsol,
     owner: feeWallet,
     payer: user,
-  }).sendAndConfirm(umi);
-  console.log("FEE_ATA created:", createAtaTx.signature);
+  });
 } else {
   console.log("FEE_ATA exists, fee will be collected:", feeAta.toString());
 }
