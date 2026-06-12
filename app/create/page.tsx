@@ -286,7 +286,7 @@ export default function CreatePage() {
         launchType: "bondingCurve" as const,
         launch: {
           creatorFeeWallet: BONDING_CURVE_FEE_WALLET, // ✅ launch/route.ts ile aynı
-          firstBuyAmount: 1,
+          firstBuyAmount: 0,
         },
       };
 
