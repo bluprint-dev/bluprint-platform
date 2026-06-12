@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { publicKey, transactionBuilder, createNoopSigner, signerIdentity } from "@metaplex-foundation/umi";
 import { findAssociatedTokenPda, createAssociatedToken } from "@metaplex-foundation/mpl-toolbox";
 import { getPlatformUmi } from "@/app/lib/umi";
@@ -64,20 +64,19 @@ export async function POST(req: NextRequest) {
 
     if (!genesisAccountRaw || !userPublicKey || !amount) {
       return NextResponse.json(
-        { success: false, error: "MISSING_PARAMS — genesisAccount, userPublicKey, amount required" },
+        { success: false, error: "MISSING_PARAMS â€” genesisAccount, userPublicKey, amount required" },
         { status: 400 }
       );
     }
 
     const amountBigInt = toBigIntSafe(amount);
+    const umi = getPlatformUmi().use(signerIdentity(createNoopSigner(user)));
+
     const genesisAccount = publicKey(genesisAccountRaw);
     const user = publicKey(userPublicKey);
     const wsol = publicKey(WSOL_MINT);
 
-    // user tanımlandıktan SONRA umi oluşturuluyor — payer kullanıcı olacak
-    const umi = getPlatformUmi().use(signerIdentity(createNoopSigner(user)));
-
-    // —— BUCKET ——————————————————————————————————————————————————
+    // â€”â€” BUCKET â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
       genesisAccount,
       bucketIndex: 0,
@@ -88,7 +87,7 @@ export async function POST(req: NextRequest) {
       bucket = await fetchBondingCurveBucketV2(umi, bucketPda);
     } catch (e) {
       return NextResponse.json(
-        { success: false, error: "BUCKET_FETCH_FAILED — genesisAccount may be invalid" },
+        { success: false, error: "BUCKET_FETCH_FAILED â€” genesisAccount may be invalid" },
         { status: 400 }
       );
     }
@@ -102,28 +101,29 @@ export async function POST(req: NextRequest) {
 
     const direction = isBuy ? SwapDirection.Buy : SwapDirection.Sell;
 
-    // —— QUOTE ————————————————————————————————————————————————————
+    // â€”â€” QUOTE â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const quote = getSwapResult(bucket, amountBigInt, direction);
     const minOut = minOutWithSlippage(quote.amountOut);
 
-    // —— BASE MINT ————————————————————————————————————————————————
+    // â€”â€” BASE MINT â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const baseMintStr = extractBaseMint(bucket) ?? mintAddress ?? null;
     if (!baseMintStr) {
       return NextResponse.json(
-        { success: false, error: "MISSING_BASE_MINT — provide mintAddress in request body" },
+        { success: false, error: "MISSING_BASE_MINT â€” provide mintAddress in request body" },
         { status: 400 }
       );
     }
     const baseMint = publicKey(baseMintStr);
 
-    // —— USER ATAs ————————————————————————————————————————————————
+    // â€”â€” USER ATAs â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const [baseATA] = findAssociatedTokenPda(umi, { mint: baseMint, owner: user });
     const [quoteATA] = findAssociatedTokenPda(umi, { mint: wsol, owner: user });
 
-    // —— PLATFORM FEE ATA —————————————————————————————————————————
-    // ATA yoksa swap tx'ine instruction olarak ekliyoruz.
-    // Payer kullanıcı olduğu için platform wallet bakiyesi gerekmez.
-    // İlk swap'ta kullanıcı ~0.002 SOL rent öder, sonraki swap'larda ATA zaten var.
+    // â€”â€” PLATFORM FEE ATA â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    // ATA'yÄ± ayrÄ± tx ile oluÅŸturmak yerine swap tx'ine instruction olarak ekliyoruz.
+    // BÃ¶ylece platform wallet bakiyesi sÄ±fÄ±r olsa bile sorun olmaz â€”
+    // ATA oluÅŸturma maliyeti swap yapan kullanÄ±cÄ± tarafÄ±ndan karÅŸÄ±lanÄ±r (sadece ilk swap'ta, ~0.002 SOL).
+    // Sonraki swap'larda ATA zaten var olacaÄŸÄ± iÃ§in instruction idempotent olarak Ã§alÄ±ÅŸÄ±r.
     let feeQuoteTokenAccount: ReturnType<typeof publicKey> | undefined = undefined;
     let feeAtaBuilder = transactionBuilder();
 
@@ -135,22 +135,24 @@ export async function POST(req: NextRequest) {
       });
       feeQuoteTokenAccount = feeAta;
 
+      // Onchain'de var mÄ± kontrol et
       const feeAtaAccount = await umi.rpc.getAccount(feeAta);
       if (!feeAtaAccount.exists) {
+        // Yoksa swap tx'ine createAssociatedToken instruction ekle (idempotent)
         console.log("FEE_ATA not found, will create inside swap tx:", feeAta.toString());
         feeAtaBuilder = createAssociatedToken(umi, {
-          mint: wsol,
-          owner: platformWallet,
-          payer: user,
-        });
+  mint: wsol,
+  owner: platformWallet,
+  payer: user,
+});
       } else {
         console.log("FEE_ATA exists:", feeAta.toString());
       }
     } else {
-      console.warn("PLATFORM_FEE_WALLET not set — fee will not be collected");
+      console.warn("PLATFORM_FEE_WALLET not set â€” creator fee will not be collected");
     }
 
-    // —— BUILD SWAP ———————————————————————————————————————————————
+    // â€”â€” BUILD SWAP â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const swapBuilder = swapBondingCurveV2(umi, {
       genesisAccount,
       bucket: bucketPda,
@@ -166,7 +168,7 @@ export async function POST(req: NextRequest) {
       ...(feeQuoteTokenAccount ? { feeQuoteTokenAccount } : {}),
     });
 
-    // feeAtaBuilder varsa önce ekle, sonra swap — tek tx
+    // feeAtaBuilder varsa Ã¶nce ekle, sonra swap â€” tek tx
     const combinedBuilder = feeAtaBuilder.add(swapBuilder);
 
     const tx = await (await combinedBuilder.setLatestBlockhash(umi)).buildAndSign(umi);
