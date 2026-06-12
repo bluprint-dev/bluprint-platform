@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       launchType: "bondingCurve" as const,
       launch: {
         creatorFeeWallet: platformFeeWallet, // ✅ PLATFORM cüzdanı — her swap'ta fee buraya gelir
-        firstBuyAmount: 1,
+        firstBuyAmount: 0,
       },
     };
 
