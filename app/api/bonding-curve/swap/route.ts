@@ -141,9 +141,10 @@ export async function POST(req: NextRequest) {
         // Yoksa swap tx'ine createAssociatedToken instruction ekle (idempotent)
         console.log("FEE_ATA not found, will create inside swap tx:", feeAta.toString());
         feeAtaBuilder = createAssociatedToken(umi, {
-          mint: wsol,
-          owner: platformWallet,
-        });
+  mint: wsol,
+  owner: platformWallet,
+  payer: user,
+});
       } else {
         console.log("FEE_ATA exists:", feeAta.toString());
       }
