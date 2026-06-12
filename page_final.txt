@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
@@ -11,6 +11,7 @@ import {
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 
+/* â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 interface FormState {
   name: string;
   symbol: string;
@@ -33,8 +34,8 @@ type LaunchStatus =
 
 const CREATION_FEE_SOL = 0.05;
 const PLATFORM_WALLET = new PublicKey("A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X");
-const BONDING_CURVE_FEE_WALLET = "AimBpCdpPmTB5QeJ6WwgrBzNmMsjR3MvNe9zgNhzomZ6";
 
+/* â”€â”€â”€ Rotating Globe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function RotatingGlobe() {
   return (
     <div style={{
@@ -68,6 +69,7 @@ function RotatingGlobe() {
   );
 }
 
+/* â”€â”€â”€ Bonding Curve Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function BondingCurveBar({ pct }: { pct: number }) {
   return (
     <div>
@@ -89,6 +91,7 @@ function BondingCurveBar({ pct }: { pct: number }) {
   );
 }
 
+/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function CreatePage() {
   const { publicKey, signAllTransactions, connected } = useWallet();
   const { connection } = useConnection();
@@ -128,6 +131,7 @@ export default function CreatePage() {
     if (file) handleImage(file);
   }, [handleImage]);
 
+  /* â”€â”€ promo code validation â”€â”€ */
   useEffect(() => {
     if (!form.promoCode || form.promoCode.length < 4) {
       setPromoStatus("idle");
@@ -146,6 +150,17 @@ export default function CreatePage() {
     }, 500);
   }, [form.promoCode]);
 
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     handleLaunch â€” YENÄ° AKIÅ
+     1. GÃ¶rsel â†’ Pinata  (/api/upload)
+     2. Metadata JSON â†’ Irys  (/api/irys/upload)
+     3. Backend'den transaction'larÄ± al  (/api/bonding-curve/launch)  â† imzalamaz
+     4. KullanÄ±cÄ± cÃ¼zdanÄ± tÃ¼m TX'leri imzalar ve gÃ¶nderir
+     5. 0.05 SOL platform fee TX  (kullanÄ±cÄ± imzalar)
+     6. Genesis API'ye register  (/api/bonding-curve/register)
+     7. Redis + referral kaydet  (/api/track-launch)
+     8. Promo kodu iÅŸle  (/api/generate-promocode)
+  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const handleLaunch = async () => {
     if (!connected || !publicKey || !signAllTransactions) return;
     if (!form.name.trim() || !form.symbol.trim()) return;
@@ -155,7 +170,7 @@ export default function CreatePage() {
     setTxSig("");
 
     try {
-      // ── ADIM 1: Görsel → Pinata ──────────────────────────────────────────────
+      // â”€â”€ ADIM 1: GÃ¶rsel â†’ Pinata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       let imageUrl = "";
       if (imageFile) {
         const fd = new FormData();
@@ -168,7 +183,7 @@ export default function CreatePage() {
 
       setLaunchStatus("creating");
 
-      // ── ADIM 2: Metadata JSON → Pinata ──────────────────────────────────────
+      // â”€â”€ ADIM 2: Metadata JSON â†’ Pinata/Irys â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const metaRes = await fetch("/api/irys/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -186,16 +201,16 @@ export default function CreatePage() {
       if (!metaJson.success || !metaJson.uri) {
         throw new Error("Metadata upload failed: " + (metaJson.error || "unknown"));
       }
+      const metadataUri = metaJson.uri;
 
-      // ── ADIM 3: Backend'den transaction'ları al ──────────────────────────────
-      // image: imageUrl (görsel URL) — metadata URI değil!
+      // â”€â”€ ADIM 3: Backend'den transaction'larÄ± al (sadece hazÄ±rlar, imzalamaz) â”€â”€
       const launchRes = await fetch("/api/bonding-curve/launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
           symbol: form.symbol.trim().toUpperCase(),
-          image: imageUrl,                          // ✅ Direkt görsel URL
+          image: imageUrl,
           description: form.description.trim(),
           website: form.website.trim() || undefined,
           twitter: form.twitter.trim() || undefined,
@@ -210,7 +225,7 @@ export default function CreatePage() {
 
       const { transactions: serializedTxs, mintAddress, genesisAccount } = launchJson;
 
-      // ── ADIM 4: Transaction'ları deserialize et ──────────────────────────────
+      // â”€â”€ ADIM 4: Transaction'larÄ± deserialize et â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const txObjects = (serializedTxs as string[]).map((b64: string) => {
         const buf = Buffer.from(b64, "base64");
         try {
@@ -220,7 +235,7 @@ export default function CreatePage() {
         }
       });
 
-      // ── ADIM 5: 0.05 SOL platform fee TX ────────────────────────────────────
+      // â”€â”€ ADIM 5: 0.05 SOL platform fee TX'ini de listeye ekle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const { blockhash: feeBlockhash, lastValidBlockHeight: feeLastValid } =
         await connection.getLatestBlockhash("confirmed");
 
@@ -235,13 +250,14 @@ export default function CreatePage() {
         })
       );
 
+      // TÃ¼m TX'leri birleÅŸtir: Ã¶nce genesis TX'leri, sonra fee TX
       const allTxs = [...txObjects, feeTx];
 
-      // ── ADIM 6: Kullanıcı cüzdanıyla tek seferde imzala ─────────────────────
+      // â”€â”€ ADIM 6: KullanÄ±cÄ± cÃ¼zdanÄ±yla tek seferde imzala â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       setLaunchStatus("signing");
       const signedTxs = await signAllTransactions(allTxs as any[]);
 
-      // ── ADIM 7: İmzalı transaction'ları sırayla gönder ──────────────────────
+      // â”€â”€ ADIM 7: Ä°mzalÄ± transaction'larÄ± sÄ±rayla gÃ¶nder ve onayla â”€â”€â”€â”€â”€â”€â”€â”€â”€
       setLaunchStatus("confirming");
 
       let lastSig = "";
@@ -259,6 +275,7 @@ export default function CreatePage() {
         });
         lastSig = sig;
 
+        // Son TX fee TX'i (farklÄ± blockhash), diÄŸerleri genesis blockhash
         const isFeeTx = i === signedTxs.length - 1;
         const bh = isFeeTx
           ? { blockhash: feeBlockhash, lastValidBlockHeight: feeLastValid }
@@ -270,35 +287,29 @@ export default function CreatePage() {
         );
       }
 
-      // ── ADIM 8: Genesis API'ye register ─────────────────────────────────────
-      // createLaunchInput launch/route.ts ile BİREBİR AYNI olmalı
-      const createLaunchInput = {
-        wallet: publicKey.toBase58(),
-        token: {
-          name: form.name.trim(),
-          symbol: form.symbol.trim().toUpperCase(),
-          image: imageUrl,                          // ✅ Görsel URL
-          description: form.description.trim(),
-          externalLinks: {
-            website: form.website.trim() || undefined,
-            twitter: form.twitter.trim() || undefined,
-            telegram: form.telegram.trim() || undefined,
-          },
-        },
-        launchType: "bondingCurve" as const,
-        launch: {
-          creatorFeeWallet: BONDING_CURVE_FEE_WALLET, // ✅ launch/route.ts ile aynı
-          firstBuyAmount: 0,
-        },
-      };
-
+      // â”€â”€ ADIM 8: Genesis API'ye register â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const registerRes = await fetch("/api/bonding-curve/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           genesisAccount,
           mintAddress,
-          createLaunchInput,
+          createLaunchInput: {
+            wallet: publicKey.toBase58(),
+            token: {
+              name: form.name.trim(),
+              symbol: form.symbol.trim().toUpperCase(),
+              image: metadataUri,
+              description: form.description.trim(),
+              externalLinks: {
+                website: form.website.trim() || undefined,
+                twitter: form.twitter.trim() || undefined,
+                telegram: form.telegram.trim() || undefined,
+              },
+            },
+            launchType: "bondingCurve",
+            launch: { creatorFeeWallet: publicKey.toBase58(), firstBuyAmount: 0 },
+          },
           name: form.name.trim(),
           symbol: form.symbol.trim().toUpperCase(),
           imageUrl,
@@ -311,10 +322,10 @@ export default function CreatePage() {
       });
       const registerJson = await registerRes.json();
       if (!registerJson.success) {
-        console.warn("Register failed:", registerJson);
+        console.warn("Register failed (token zaten oluÅŸmuÅŸ olabilir):", registerJson);
       }
 
-      // ── ADIM 9: Redis + referral kaydet ─────────────────────────────────────
+      // â”€â”€ ADIM 9: Redis + referral kaydet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       fetch("/api/track-launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -369,17 +380,18 @@ export default function CreatePage() {
     creating: "CREATING TOKEN...",
     signing: "WAITING FOR SIGNATURE...",
     confirming: "CONFIRMING ON-CHAIN...",
-    done: "🚀 LAUNCHED!",
+    done: "ğŸš€ LAUNCHED!",
     error: "TRY AGAIN",
   };
 
   const promoIndicator = {
     idle: null,
     checking: <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>checking...</span>,
-    valid: <span style={{ color: "#14F195", fontSize: 12, fontWeight: 600 }}>✓ Valid code</span>,
-    invalid: <span style={{ color: "#ff6b6b", fontSize: 12 }}>✗ Invalid code</span>,
+    valid: <span style={{ color: "#14F195", fontSize: 12, fontWeight: 600 }}>âœ“ Valid code</span>,
+    invalid: <span style={{ color: "#ff6b6b", fontSize: 12 }}>âœ— Invalid code</span>,
   }[promoStatus];
 
+  /* â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0F0817 0%, #1a0b2e 50%, #2d124d 100%)", fontFamily: "'Space Grotesk', sans-serif" }}>
       <style>{`
@@ -426,6 +438,7 @@ export default function CreatePage() {
         @media (max-width: 768px) { .layout-grid { grid-template-columns: 1fr !important; } .right-col { position: static !important; } }
       `}</style>
 
+      {/* Background blobs */}
       <div className="mesh-bg">
         <div className="mesh-blob" style={{ width: 700, height: 700, background: "#9945FF", top: -200, left: -200 }} />
         <div className="mesh-blob" style={{ width: 500, height: 500, background: "#14F195", bottom: -100, right: -100 }} />
@@ -434,6 +447,7 @@ export default function CreatePage() {
 
       <div style={{ position: "relative", zIndex: 1, maxWidth: 1200, margin: "0 auto", padding: "40px 20px 80px" }}>
 
+        {/* Nav */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 48, flexWrap: "wrap", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <img src="/favicon.ico" alt="BluPrint Logo" style={{ width: 36, height: 36, borderRadius: 10, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(153,69,255,0.6))" }} />
@@ -442,9 +456,10 @@ export default function CreatePage() {
           <WalletMultiButton style={{ background: "rgba(153,69,255,0.12)", border: "1px solid rgba(153,69,255,0.35)", borderRadius: 12, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 14 }} />
         </div>
 
+        {/* Success screen */}
         {launchStatus === "done" ? (
           <div style={{ maxWidth: 540, margin: "0 auto", textAlign: "center", padding: "60px 20px" }}>
-            <div className="success-icon" style={{ fontSize: 64, marginBottom: 24 }}>🚀</div>
+            <div className="success-icon" style={{ fontSize: 64, marginBottom: 24 }}>ğŸš€</div>
             <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: 32, fontWeight: 900, color: "#14F195", margin: "0 0 16px" }} className="glow-text-green">
               Token Launched!
             </h1>
@@ -454,7 +469,7 @@ export default function CreatePage() {
             {txSig && (
               <a href={`https://solscan.io/tx/${txSig}`} target="_blank" rel="noopener noreferrer"
                 style={{ color: "#9945FF", fontSize: 13, display: "block", margin: "16px 0 32px", wordBreak: "break-all" }}>
-                View on Solscan ↗
+                View on Solscan â†—
               </a>
             )}
             <button className="launch-btn" style={{ maxWidth: 280, margin: "0 auto" }}
@@ -471,6 +486,7 @@ export default function CreatePage() {
         ) : (
           <div className="layout-grid" style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 32, alignItems: "start" }}>
 
+            {/* â”€â”€ LEFT COLUMN â”€â”€ */}
             <div>
               <div style={{ marginBottom: 36 }}>
                 <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", lineHeight: 1.1 }}>
@@ -483,22 +499,26 @@ export default function CreatePage() {
 
               <div className="glass-card" style={{ padding: 32 }}>
 
+                {/* Token Name */}
                 <div style={{ marginBottom: 20 }}>
                   <label className="gl-label">Token Name</label>
                   <input className="gl-input" placeholder='e.g. "Solana Doge"' value={form.name} onChange={set("name")} maxLength={32} />
                 </div>
 
+                {/* Symbol */}
                 <div style={{ marginBottom: 20 }}>
                   <label className="gl-label">Ticker / Symbol</label>
                   <input className="gl-input" placeholder='e.g. "SDOGE"' value={form.symbol}
                     onChange={e => setForm(f => ({ ...f, symbol: e.target.value.toUpperCase().slice(0, 10) }))} maxLength={10} />
                 </div>
 
+                {/* Description */}
                 <div style={{ marginBottom: 24 }}>
                   <label className="gl-label">Description</label>
                   <textarea className="gl-input" placeholder="The meme lore, the story, the vision..." value={form.description} onChange={set("description")} rows={4} maxLength={500} style={{ resize: "vertical" }} />
                 </div>
 
+                {/* Image Upload */}
                 <div style={{ marginBottom: 24 }}>
                   <label className="gl-label">Token Image / Logo</label>
                   <input type="file" accept="image/*" ref={fileInputRef} style={{ display: "none" }}
@@ -526,15 +546,16 @@ export default function CreatePage() {
                       <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, margin: "0 0 4px" }}>
                         Drag & drop or <span style={{ color: "#9945FF", fontWeight: 600 }}>browse</span>
                       </p>
-                      <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12, margin: 0 }}>PNG, JPG, GIF, WebP — recommended 500×500</p>
+                      <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12, margin: 0 }}>PNG, JPG, GIF, WebP â€” recommended 500Ã—500</p>
                     </div>
                   )}
                 </div>
 
+                {/* Social Links */}
                 <div style={{ marginBottom: 20 }}>
                   <div className="accordion-trigger" onClick={() => setSocialOpen(o => !o)}>
                     <span>Social Links (Optional)</span>
-                    <span className={`accordion-chevron${socialOpen ? " open" : ""}`}>▾</span>
+                    <span className={`accordion-chevron${socialOpen ? " open" : ""}`}>â–¾</span>
                   </div>
                   {socialOpen && (
                     <div style={{ paddingTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -552,10 +573,11 @@ export default function CreatePage() {
                   )}
                 </div>
 
+                {/* Promo Code */}
                 <div style={{ marginBottom: 28 }}>
                   <div className="accordion-trigger" onClick={() => setPromoOpen(o => !o)}>
                     <span>Promo / Referral Code (Optional)</span>
-                    <span className={`accordion-chevron${promoOpen ? " open" : ""}`}>▾</span>
+                    <span className={`accordion-chevron${promoOpen ? " open" : ""}`}>â–¾</span>
                   </div>
                   {promoOpen && (
                     <div style={{ paddingTop: 16 }}>
@@ -573,6 +595,7 @@ export default function CreatePage() {
                   )}
                 </div>
 
+                {/* Fee + Launch */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <div className="fee-badge">
@@ -582,7 +605,7 @@ export default function CreatePage() {
                       Creation Fee: {CREATION_FEE_SOL} SOL
                     </div>
                     <span style={{ fontSize: 11, color: "rgba(20,241,149,0.6)", fontWeight: 600, paddingLeft: 4 }}>
-                      🎯 Special launch price for the first 100 users only!
+                      ğŸ¯ Special launch price for the first 100 users only!
                     </span>
                   </div>
                   {!connected && <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12 }}>Connect wallet to launch</span>}
@@ -612,6 +635,7 @@ export default function CreatePage() {
               </div>
             </div>
 
+            {/* â”€â”€ RIGHT COLUMN â€“ Live Preview â”€â”€ */}
             <div className="right-col" style={{ position: "sticky", top: 32 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 8px #14F195", animation: "matrix-flicker 1.5s ease-in-out infinite" }} />
@@ -651,9 +675,9 @@ export default function CreatePage() {
                     )}
                     {(form.website || form.twitter || form.telegram) && (
                       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-                        {form.website && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>🌐 Web</div>}
-                        {form.twitter && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>✕ Twitter</div>}
-                        {form.telegram && <div style={{ background: "rgba(29,155,240,0.1)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(41,182,246,0.7)", fontWeight: 600 }}>✈ Telegram</div>}
+                        {form.website && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>ğŸŒ Web</div>}
+                        {form.twitter && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>âœ• Twitter</div>}
+                        {form.telegram && <div style={{ background: "rgba(29,155,240,0.1)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(41,182,246,0.7)", fontWeight: 600 }}>âœˆ Telegram</div>}
                       </div>
                     )}
                     <div style={{ borderTop: "1px solid rgba(153,69,255,0.12)", paddingTop: 16 }}>
@@ -668,6 +692,7 @@ export default function CreatePage() {
                 <div style={{ position: "absolute", bottom: -30, left: "10%", right: "10%", height: 60, background: "rgba(153,69,255,0.25)", filter: "blur(30px)", borderRadius: "50%", zIndex: 0 }} />
               </div>
 
+              {/* Hints */}
               <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
                 {[
                   { done: !!form.name, text: "Token name" },
@@ -677,7 +702,7 @@ export default function CreatePage() {
                 ].map(({ done, text }) => (
                   <div key={text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 18, height: 18, borderRadius: "50%", background: done ? "rgba(20,241,149,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${done ? "rgba(20,241,149,0.5)" : "rgba(255,255,255,0.1)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: done ? "#14F195" : "rgba(255,255,255,0.2)", transition: "all 0.3s" }}>
-                      {done ? "✓" : ""}
+                      {done ? "âœ“" : ""}
                     </div>
                     <span style={{ fontSize: 13, color: done ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.25)", transition: "color 0.3s" }}>
                       {text}
