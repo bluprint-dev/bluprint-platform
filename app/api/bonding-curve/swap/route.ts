@@ -47,11 +47,14 @@ function extractBaseMint(bucket: unknown): string | null {
   }
 }
 
-// Bucket'tan creatorFeeWallet adresini oku
 function extractCreatorFeeWallet(bucket: unknown): string | null {
   try {
+    // Bucket'ın tüm yapısını logla — hangi alanda fee wallet olduğunu göreceğiz
+    console.log("BUCKET_RAW:", JSON.stringify(bucket, (_, v) =>
+      typeof v === "bigint" ? v.toString() : v
+    ));
+
     const b = (bucket as any);
-    // Farklı SDK versiyonlarında alan adı değişebilir, hepsini dene
     const wallet =
       b?.creatorFeeWallet ??
       b?.feeWallet ??
