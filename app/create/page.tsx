@@ -188,7 +188,6 @@ export default function CreatePage() {
       }
 
       // ── ADIM 3: Backend'den transaction'ları al ──────────────────────────────
-      // image: imageUrl (görsel URL) — metadata URI değil!
       const launchRes = await fetch("/api/bonding-curve/launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -237,7 +236,7 @@ export default function CreatePage() {
 
       const allTxs = [...txObjects, feeTx];
 
-      // ── ADIM 6: Kullanıcı cüzdanıyla tek seferde imzala ─────────────────────
+      // ── ADIM 6: Kullanıcı cüzdanıyla tek seferde imzala ──────────────────────
       setLaunchStatus("signing");
       const signedTxs = await signAllTransactions(allTxs as any[]);
 
@@ -254,7 +253,7 @@ export default function CreatePage() {
           : (signedTx as Transaction).serialize();
 
         const sig = await connection.sendRawTransaction(raw, {
-          skipPreflight: false,
+          skipPreflight: true,          // ✅ Bağımlı TX'lerde simulation false positive verir
           preflightCommitment: "confirmed",
         });
         lastSig = sig;
@@ -271,7 +270,6 @@ export default function CreatePage() {
       }
 
       // ── ADIM 8: Genesis API'ye register ─────────────────────────────────────
-      // createLaunchInput launch/route.ts ile BİREBİR AYNI olmalı
       const createLaunchInput = {
         wallet: publicKey.toBase58(),
         token: {
@@ -314,7 +312,7 @@ export default function CreatePage() {
         console.warn("Register failed:", registerJson);
       }
 
-      // ── ADIM 9: Redis + referral kaydet ─────────────────────────────────────
+      // ── ADIM 9: Track + referral ─────────────────────────────────────────────
       fetch("/api/track-launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -417,6 +415,7 @@ export default function CreatePage() {
         .accordion-chevron { transition: transform 0.3s; font-size: 16px; }
         .accordion-chevron.open { transform: rotate(180deg); }
         .fee-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(20,241,149,0.06); border: 1px solid rgba(20,241,149,0.2); border-radius: 10px; padding: 8px 16px; font-size: 13px; color: rgba(20,241,149,0.8); font-weight: 600; }
+        .fee-note { font-size: 11px; color: rgba(255,255,255,0.28); line-height: 1.5; margin-top: 6px; padding-left: 2px; }
         .mesh-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
         .mesh-blob { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.08; }
         .glow-text-green { text-shadow: 0 0 24px rgba(20,241,149,0.5); }
@@ -573,7 +572,8 @@ export default function CreatePage() {
                   )}
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+                {/* ── Fee section ── */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <div className="fee-badge">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -584,6 +584,10 @@ export default function CreatePage() {
                     <span style={{ fontSize: 11, color: "rgba(20,241,149,0.6)", fontWeight: 600, paddingLeft: 4 }}>
                       🎯 Special launch price for the first 100 users only!
                     </span>
+                    <p className="fee-note">
+                      * {CREATION_FEE_SOL} SOL is the BluPrint platform fee. Metaplex protocol fees (rent, storage,
+                      on-chain accounts) are separate and may vary depending on network conditions.
+                    </p>
                   </div>
                   {!connected && <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12 }}>Connect wallet to launch</span>}
                 </div>
