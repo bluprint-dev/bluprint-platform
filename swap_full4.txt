@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { publicKey, transactionBuilder, createNoopSigner, signerIdentity } from "@metaplex-foundation/umi";
 import { findAssociatedTokenPda, createAssociatedToken } from "@metaplex-foundation/mpl-toolbox";
 import { getPlatformUmi } from "@/app/lib/umi";
@@ -13,6 +13,8 @@ import {
 } from "@metaplex-foundation/genesis";
 
 const WSOL_MINT = "So11111111111111111111111111111111111111112";
+
+const PLATFORM_FEE_WALLET = process.env.BONDING_CURVE_FEE_WALLET ?? "";
 
 function toBigIntSafe(value: unknown): bigint {
   try {
@@ -47,28 +49,6 @@ function extractBaseMint(bucket: unknown): string | null {
   }
 }
 
-// Bucket'tan creatorFeeWallet adresini oku
-function extractCreatorFeeWallet(bucket: unknown): string | null {
-  try {
-    const b = (bucket as any);
-    // Farklı SDK versiyonlarında alan adı değişebilir, hepsini dene
-    const wallet =
-      b?.creatorFeeWallet ??
-      b?.feeWallet ??
-      b?.bucket?.creatorFeeWallet ??
-      b?.bucket?.feeWallet ??
-      null;
-
-    if (!wallet) return null;
-    if (wallet.__option === "Some" && wallet.value) return wallet.value.toString();
-    if (typeof wallet === "string") return wallet;
-    if (wallet?.toString) return wallet.toString();
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -84,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     if (!genesisAccountRaw || !userPublicKey || !amount) {
       return NextResponse.json(
-        { success: false, error: "MISSING_PARAMS" },
+        { success: false, error: "MISSING_PARAMS â€” genesisAccount, userPublicKey, amount required" },
         { status: 400 }
       );
     }
@@ -94,9 +74,10 @@ export async function POST(req: NextRequest) {
     const user = publicKey(userPublicKey);
     const wsol = publicKey(WSOL_MINT);
 
+    // user tanÄ±mlandÄ±ktan SONRA umi oluÅŸturuluyor â€” payer kullanÄ±cÄ± olacak
     const umi = getPlatformUmi().use(signerIdentity(createNoopSigner(user)));
 
-    // —— BUCKET ——————————————————————————————————————————
+    // â€”â€” BUCKET â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
       genesisAccount,
       bucketIndex: 0,
@@ -107,7 +88,7 @@ export async function POST(req: NextRequest) {
       bucket = await fetchBondingCurveBucketV2(umi, bucketPda);
     } catch (e) {
       return NextResponse.json(
-        { success: false, error: "BUCKET_FETCH_FAILED" },
+        { success: false, error: "BUCKET_FETCH_FAILED â€” genesisAccount may be invalid" },
         { status: 400 }
       );
     }
@@ -119,58 +100,57 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // —— FEE WALLET'I BUCKET'TAN OKU ——————————————————————
-    const feeWalletStr = extractCreatorFeeWallet(bucket);
-    console.log("BUCKET_FEE_WALLET:", feeWalletStr);
-
     const direction = isBuy ? SwapDirection.Buy : SwapDirection.Sell;
 
-    // —— QUOTE ——————————————————————————————————————————————
+    // â€”â€” QUOTE â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const quote = getSwapResult(bucket, amountBigInt, direction);
     const minOut = minOutWithSlippage(quote.amountOut);
 
-    // —— BASE MINT ——————————————————————————————————————————
+    // â€”â€” BASE MINT â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const baseMintStr = extractBaseMint(bucket) ?? mintAddress ?? null;
     if (!baseMintStr) {
       return NextResponse.json(
-        { success: false, error: "MISSING_BASE_MINT" },
+        { success: false, error: "MISSING_BASE_MINT â€” provide mintAddress in request body" },
         { status: 400 }
       );
     }
     const baseMint = publicKey(baseMintStr);
 
-    // —— USER ATAs ——————————————————————————————————————————
+    // â€”â€” USER ATAs â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const [baseATA] = findAssociatedTokenPda(umi, { mint: baseMint, owner: user });
     const [quoteATA] = findAssociatedTokenPda(umi, { mint: wsol, owner: user });
 
-    // —— FEE ATA (bucket'tan gelen adresle) ——————————————————
+    // â€”â€” PLATFORM FEE ATA â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    // ATA yoksa swap tx'ine instruction olarak ekliyoruz.
+    // Payer kullanÄ±cÄ± olduÄŸu iÃ§in platform wallet bakiyesi gerekmez.
+    // Ä°lk swap'ta kullanÄ±cÄ± ~0.002 SOL rent Ã¶der, sonraki swap'larda ATA zaten var.
     let feeQuoteTokenAccount: ReturnType<typeof publicKey> | undefined = undefined;
     let feeAtaBuilder = transactionBuilder();
 
-    if (feeWalletStr) {
-      const feeWallet = publicKey(feeWalletStr);
+    if (PLATFORM_FEE_WALLET) {
+      const platformWallet = publicKey(PLATFORM_FEE_WALLET);
       const [feeAta] = findAssociatedTokenPda(umi, {
         mint: wsol,
-        owner: feeWallet,
+        owner: platformWallet,
       });
       feeQuoteTokenAccount = feeAta;
 
       const feeAtaAccount = await umi.rpc.getAccount(feeAta);
       if (!feeAtaAccount.exists) {
-        console.log("FEE_ATA not found, creating inside swap tx:", feeAta.toString());
+        console.log("FEE_ATA not found, will create inside swap tx:", feeAta.toString());
         feeAtaBuilder = createAssociatedToken(umi, {
           mint: wsol,
-          owner: feeWallet,
+          owner: platformWallet,
           payer: user,
         });
       } else {
-        console.log("FEE_ATA exists, fee will be collected:", feeAta.toString());
+        console.log("FEE_ATA exists:", feeAta.toString());
       }
     } else {
-      console.warn("creatorFeeWallet not found in bucket — fee skipped");
+      console.warn("PLATFORM_FEE_WALLET not set â€” fee will not be collected");
     }
 
-    // —— BUILD SWAP ——————————————————————————————————————————
+    // â€”â€” BUILD SWAP â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const swapBuilder = swapBondingCurveV2(umi, {
       genesisAccount,
       bucket: bucketPda,
@@ -186,7 +166,9 @@ export async function POST(req: NextRequest) {
       ...(feeQuoteTokenAccount ? { feeQuoteTokenAccount } : {}),
     });
 
+    // feeAtaBuilder varsa Ã¶nce ekle, sonra swap â€” tek tx
     const combinedBuilder = feeAtaBuilder.add(swapBuilder);
+
     const tx = await (await combinedBuilder.setLatestBlockhash(umi)).buildAndSign(umi);
     const serialized = Buffer.from(umi.transactions.serialize(tx)).toString("base64");
 
@@ -204,7 +186,7 @@ export async function POST(req: NextRequest) {
         mintAddress: baseMintStr,
         userPublicKey,
         direction: isBuy ? "buy" : "sell",
-        feeWallet: feeWalletStr ?? null,
+        feeWallet: PLATFORM_FEE_WALLET || null,
       },
     });
   } catch (error) {
