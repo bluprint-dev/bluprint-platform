@@ -49,12 +49,15 @@ function extractBaseMint(bucket: unknown): string | null {
 
 function extractCreatorFeeWallet(bucket: unknown): string | null {
   try {
-    // Bucket'ın tüm yapısını logla — hangi alanda fee wallet olduğunu göreceğiz
-    console.log("BUCKET_RAW:", JSON.stringify(bucket, (_, v) =>
-      typeof v === "bigint" ? v.toString() : v
-    ));
+    const b = bucket as any;
 
-    const b = (bucket as any);
+    const creatorFee = b?.extensions?.creatorFee;
+    if (creatorFee?.__option === "Some" && creatorFee?.value?.wallet) {
+      const wallet = creatorFee.value.wallet;
+      if (typeof wallet === "string") return wallet;
+      if (wallet?.toString) return wallet.toString();
+    }
+
     const wallet =
       b?.creatorFeeWallet ??
       b?.feeWallet ??
