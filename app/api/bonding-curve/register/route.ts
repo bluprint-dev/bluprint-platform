@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  genesis,
   registerLaunch,
   isGenesisApiError,
   isGenesisApiNetworkError,
@@ -18,7 +17,6 @@ function safeError(error: unknown) {
   return { message: String(error) };
 }
 
-// POST /api/bonding-curve/register
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -49,8 +47,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // getPlatformUmi → platform cüzdanı signer olarak set edilmiş
+    // Tam input'u logla — Genesis'e ne gönderiyoruz
+    console.log("REGISTER_INPUT:", JSON.stringify({ genesisAccount, createLaunchInput }, null, 2));
+
     const umi = getPlatformUmi();
+
     await registerLaunch(umi, {}, {
       genesisAccount,
       createLaunchInput,
@@ -58,7 +59,6 @@ export async function POST(req: NextRequest) {
 
     console.log("REGISTER_SUCCESS:", { mintAddress, genesisAccount });
 
-    // Redis'e kaydet (hata olursa devam et)
     try {
       if (redis && mintAddress) {
         await redis.hset(`token:${mintAddress}`, {
@@ -92,16 +92,23 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("REGISTER_FATAL:", safeError(err));
 
+    if (isGenesisApiError(err)) {
+      // Tam hata detayını logla
+      console.error("GENESIS_API_DETAIL:", JSON.stringify((err as any).responseBody));
+      return NextResponse.json(
+        {
+          success: false,
+          type: "GENESIS_API_ERROR",
+          statusCode: (err as any).statusCode,
+          details: (err as any).responseBody,
+        },
+        { status: 502 }
+      );
+    }
     if (isGenesisValidationError(err)) {
       return NextResponse.json(
         { success: false, type: "VALIDATION_ERROR", field: (err as any).field, error: (err as any).message },
         { status: 400 }
-      );
-    }
-    if (isGenesisApiError(err)) {
-      return NextResponse.json(
-        { success: false, type: "GENESIS_API_ERROR", statusCode: (err as any).statusCode, details: (err as any).responseBody },
-        { status: 502 }
       );
     }
     if (isGenesisApiNetworkError(err)) {
