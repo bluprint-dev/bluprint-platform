@@ -189,7 +189,7 @@ if (!feeAtaAccount.exists) {
       swapDirection: direction,
       amount: amountBigInt,
       minAmountOutScaled: minOut,
-      ...(feeQuoteTokenAccount ? { feeQuoteTokenAccount } : {}),
+      
     });
 
     const combinedBuilder = feeAtaBuilder.add(swapBuilder);
