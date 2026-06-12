@@ -33,7 +33,7 @@ function safeError(error: unknown) {
 }
 
 function minOutWithSlippage(amountOut: bigint) {
-  return (amountOut * BigInt(99)) / BigInt(100);
+  return (amountOut * BigInt(95)) / BigInt(100);
 }
 
 function extractBaseMint(bucket: unknown): string | null {
