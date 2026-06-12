@@ -1,19 +1,19 @@
-import { useCallback, useState } from "react";
+﻿import { useCallback, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
 import { useToast } from "@/app/components/ToastProvider";
 
-// ✅ genesisAccount ve mint ayrı alanlar
+// âœ… genesisAccount ve mint ayrÄ± alanlar
 export type SwapInput = {
   genesisAccount: string; // Metaplex Genesis launch account
   mint: string;           // SPL token mint (display only)
-  amount: string;         // SOL (buy) veya token miktarı (sell)
+  amount: string;         // SOL (buy) veya token miktarÄ± (sell)
   isBuy: boolean;
 };
 
 export function useSwap() {
   const { connection } = useConnection();
-  const { publicKey, signTransaction, connected } = useWallet();
+  const { publicKey, sendTransaction, connected } = useWallet();
   const { showToast } = useToast();
 
   const [isSwapping, setIsSwapping] = useState(false);
@@ -52,24 +52,18 @@ export function useSwap() {
           throw new Error(data.error ?? "SWAP_FAILED");
         }
 
-        // ✅ Backend'den gelen VersionedTransaction'ı deserialize et
+        // âœ… FIX: Umi versioned transaction Ã¼retiyor, Transaction.from() deÄŸil
+        // VersionedTransaction.deserialize() kullanÄ±lmalÄ±
         const tx = VersionedTransaction.deserialize(
           Buffer.from(data.transaction, "base64")
         );
 
-        // ✅ Kullanıcı cüzdanıyla imzala
-        const signedTx = await signTransaction!(tx);
-
-        // ✅ skipPreflight: true — bağımlı tx'lerde simulation false positive verir
-        const sig = await connection.sendRawTransaction(signedTx.serialize(), {
-          skipPreflight: true,
-          preflightCommitment: "confirmed",
-        });
+        const sig = await sendTransaction(tx, connection);
 
         await connection.confirmTransaction(sig, "confirmed");
 
         showToast(
-          input.isBuy ? "Buy successful! 🚀" : "Sell successful! ✅",
+          input.isBuy ? "Buy successful!" : "Sell successful!",
           "success"
         );
 
@@ -83,7 +77,7 @@ export function useSwap() {
         setIsSwapping(false);
       }
     },
-    [connected, publicKey, signTransaction, connection, showToast]
+    [connected, publicKey, sendTransaction, connection, showToast]
   );
 
   return { swap, isSwapping, error, setError };
