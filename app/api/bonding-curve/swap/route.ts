@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { publicKey, transactionBuilder, createNoopSigner, signerIdentity } from "@metaplex-foundation/umi";
-import { findAssociatedTokenPda, createAssociatedToken } from "@metaplex-foundation/mpl-toolbox";
+import { findAssociatedTokenPda, createAssociatedToken, syncNative, transferSol } from "@metaplex-foundation/mpl-toolbox";
 import { getPlatformUmi } from "@/app/lib/umi";
 
 import {
@@ -151,18 +151,22 @@ export async function POST(req: NextRequest) {
     console.log("USER_BASE_ATA:", baseATA.toString());
     console.log("USER_QUOTE_ATA:", quoteATA.toString());
 
-    // -- USER QUOTE ATA KONTROL (closed veya yok ise swap tx'e ekle) --
-    let quoteAtaBuilder = transactionBuilder();
-    const quoteAtaAccount = await umi.rpc.getAccount(quoteATA);
-    if (!quoteAtaAccount.exists) {
-      console.log("USER_QUOTE_ATA not found, creating in swap tx");
-      quoteAtaBuilder = createAssociatedToken(umi, {
-        mint: wsol,
-        owner: user,
-        payer: user,
-      });
-    } else {
-      console.log("USER_QUOTE_ATA exists");
+    // -- WRAP SOL (sadece buy'da) --
+    let wrapBuilder = transactionBuilder();
+    if (isBuy) {
+      const quoteAtaAccount = await umi.rpc.getAccount(quoteATA);
+      if (!quoteAtaAccount.exists) {
+        console.log("USER_QUOTE_ATA not found, creating + wrapping SOL");
+        wrapBuilder = wrapBuilder
+          .add(createAssociatedToken(umi, { mint: wsol, owner: user, payer: user }))
+          .add(transferSol(umi, { source: umi.identity, destination: quoteATA, amount: { basisPoints: amountBigInt, identifier: "SOL", decimals: 9 } }))
+          .add(syncNative(umi, { account: quoteATA }));
+      } else {
+        console.log("USER_QUOTE_ATA exists, wrapping SOL");
+        wrapBuilder = wrapBuilder
+          .add(transferSol(umi, { source: umi.identity, destination: quoteATA, amount: { basisPoints: amountBigInt, identifier: "SOL", decimals: 9 } }))
+          .add(syncNative(umi, { account: quoteATA }));
+      }
     }
 
     // -- FEE ATA --
@@ -208,7 +212,7 @@ export async function POST(req: NextRequest) {
       minAmountOutScaled: minOut,
     });
 
-    const combinedBuilder = quoteAtaBuilder.add(swapIx);
+    const combinedBuilder = wrapBuilder.add(swapIx);
     const tx = await (await combinedBuilder.setLatestBlockhash(umi)).buildAndSign(umi);
     const serialized = Buffer.from(umi.transactions.serialize(tx)).toString("base64");
 
