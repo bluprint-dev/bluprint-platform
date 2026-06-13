@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Footer from "@/app/components/Footer";
 import DexHeader from "@/components/dex/Header";
@@ -14,6 +14,7 @@ import { useSwap } from "@/hooks/useSwap";
 import { useDexStore } from "@/store/dexStore";
 import { filterTokens } from "@/lib/dex/normalizeToken";
 import { useTrades } from "@/hooks/useTrades";
+import TradeChart from "@/components/dex/TradeChart";
 
 function timeAgo(dateStr: string) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -23,74 +24,6 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(diff / 86400)}d`;
 }
 
-function MiniChart({ trades }: { trades: Array<{ price: number; created_at: string; is_buy: boolean }> }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || trades.length < 2) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const pts = [...trades].reverse();
-    const prices = pts.map(t => t.price);
-    const minP = Math.min(...prices);
-    const maxP = Math.max(...prices);
-    const range = maxP - minP || 1;
-
-    const W = canvas.width;
-    const H = canvas.height;
-    const pad = 8;
-
-    ctx.clearRect(0, 0, W, H);
-
-    // gradient fill
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, "rgba(153,69,255,0.3)");
-    grad.addColorStop(1, "rgba(153,69,255,0)");
-
-    ctx.beginPath();
-    pts.forEach((t, i) => {
-      const x = pad + (i / (pts.length - 1)) * (W - pad * 2);
-      const y = H - pad - ((t.price - minP) / range) * (H - pad * 2);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.strokeStyle = "#9945FF";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // fill below
-    ctx.lineTo(W - pad, H);
-    ctx.lineTo(pad, H);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
-  }, [trades]);
-
-  if (trades.length < 2) {
-    return (
-      <div style={{
-        flex: 1, display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", gap: 8,
-      }}>
-        <div style={{ fontSize: 28, opacity: 0.3 }}>◈</div>
-        <p style={{ color: "rgba(153,69,255,0.35)", fontFamily: "monospace", fontSize: 10, letterSpacing: "0.12em" }}>
-          AWAITING_TRADES...
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={800}
-      height={280}
-      style={{ width: "100%", height: "100%", display: "block" }}
-    />
-  );
-}
 
 export default function DexPageContent() {
   const searchParams = useSearchParams();
@@ -337,7 +270,7 @@ export default function DexPageContent() {
                     backgroundSize: "48px 48px",
                   }} />
                   <div style={{ position: "absolute", inset: 0, padding: 8 }}>
-                    <MiniChart trades={trades} />
+                    <TradeChart trades={trades} symbol={selectedToken?.symbol ?? ""} />
                   </div>
                 </div>
 
