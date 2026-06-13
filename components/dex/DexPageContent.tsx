@@ -270,7 +270,7 @@ export default function DexPageContent() {
                     backgroundSize: "48px 48px",
                   }} />
                   <div style={{ position: "absolute", inset: 0, padding: 8 }}>
-                    <TradeChart trades={trades} symbol={selectedToken?.symbol ?? ""} />
+                    <TradeChart symbol={selectedToken?.symbol ?? ""} mint={selectedToken?.mint ?? ""} />
                   </div>
                 </div>
 
