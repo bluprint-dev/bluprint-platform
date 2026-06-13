@@ -1,0 +1,44 @@
+﻿"use client";
+
+import { memo } from "react";
+import TokenCard from "./TokenCard";
+import type { DexToken } from "@/types/dex";
+
+type TokenListProps = {
+  tokens: DexToken[];
+  selectedToken: DexToken | null;
+  onSelect: (token: DexToken) => void;
+};
+
+function TokenListComponent({ tokens, selectedToken, onSelect }: TokenListProps) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {/* Terminal header row */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "42px 1fr auto",
+        gap: 12, padding: "4px 12px 8px",
+        borderBottom: "1px solid rgba(153,69,255,0.1)",
+        marginBottom: 4,
+      }}>
+        {["", "TOKEN", "AGE"].map((h) => (
+          <span key={h} style={{
+            color: "rgba(153,69,255,0.4)", fontFamily: "monospace",
+            fontSize: 9, letterSpacing: "0.12em",
+          }}>{h}</span>
+        ))}
+      </div>
+
+      {tokens.map((token, i) => (
+        <TokenCard
+          key={token.mint}
+          token={token}
+          selected={selectedToken?.mint === token.mint}
+          index={i}
+          onSelect={onSelect}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default memo(TokenListComponent);
