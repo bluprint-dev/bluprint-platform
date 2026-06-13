@@ -148,6 +148,8 @@ export async function POST(req: NextRequest) {
     // -- USER ATAs --
     const [baseATA] = findAssociatedTokenPda(umi, { mint: baseMint, owner: user });
     const [quoteATA] = findAssociatedTokenPda(umi, { mint: wsol, owner: user });
+    console.log("USER_BASE_ATA:", baseATA.toString());
+    console.log("USER_QUOTE_ATA:", quoteATA.toString());
 
     // -- FEE ATA --
     let feeAtaTxBase64: string | null = null;
