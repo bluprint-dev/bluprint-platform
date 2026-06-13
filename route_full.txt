@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { publicKey, transactionBuilder, createNoopSigner, signerIdentity } from "@metaplex-foundation/umi";
 import { findAssociatedTokenPda, createAssociatedToken } from "@metaplex-foundation/mpl-toolbox";
 import { getPlatformUmi } from "@/app/lib/umi";
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
 
     const umi = getPlatformUmi().use(signerIdentity(createNoopSigner(user)));
 
-    // -- BUCKET --
+    // â€”â€” BUCKET â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
       genesisAccount,
       bucketIndex: 0,
@@ -125,17 +125,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // -- FEE WALLET --
+    // â€”â€” FEE WALLET'I BUCKET'TAN OKU â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const feeWalletStr = extractCreatorFeeWallet(bucket);
     console.log("BUCKET_FEE_WALLET:", feeWalletStr);
 
     const direction = isBuy ? SwapDirection.Buy : SwapDirection.Sell;
 
-    // -- QUOTE --
+    // â€”â€” QUOTE â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const quote = getSwapResult(bucket, amountBigInt, direction);
     const minOut = minOutWithSlippage(quote.amountOut);
 
-    // -- BASE MINT --
+    // â€”â€” BASE MINT â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const baseMintStr = extractBaseMint(bucket) ?? mintAddress ?? null;
     if (!baseMintStr) {
       return NextResponse.json(
@@ -145,12 +145,13 @@ export async function POST(req: NextRequest) {
     }
     const baseMint = publicKey(baseMintStr);
 
-    // -- USER ATAs --
+    // â€”â€” USER ATAs â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const [baseATA] = findAssociatedTokenPda(umi, { mint: baseMint, owner: user });
     const [quoteATA] = findAssociatedTokenPda(umi, { mint: wsol, owner: user });
 
-    // -- FEE ATA --
-    let feeAtaTxBase64: string | null = null;
+    // â€”â€” FEE ATA (bucket'tan gelen adresle) â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    let feeQuoteTokenAccount: ReturnType<typeof publicKey> | undefined = undefined;
+    let feeAtaBuilder = transactionBuilder();
 
     if (feeWalletStr) {
       const feeWallet = publicKey(feeWalletStr);
@@ -158,26 +159,29 @@ export async function POST(req: NextRequest) {
         mint: wsol,
         owner: feeWallet,
       });
+      feeQuoteTokenAccount = feeAta;
 
       const feeAtaAccount = await umi.rpc.getAccount(feeAta);
+let feeAtaTxBase64: string | null = null;
 
-      if (!feeAtaAccount.exists) {
-        console.log("FEE_ATA not found, building separate tx:", feeAta.toString());
-        const feeAtaBuilderTx = createAssociatedToken(umi, {
-          mint: wsol,
-          owner: feeWallet,
-          payer: user,
-        });
-        const feeAtaBuilt = await feeAtaBuilderTx.buildWithLatestBlockhash(umi);
-        feeAtaTxBase64 = Buffer.from(umi.transactions.serialize(feeAtaBuilt)).toString("base64");
-      } else {
-        console.log("FEE_ATA exists, fee will be collected:", feeAta.toString());
-      }
+if (!feeAtaAccount.exists) {
+  console.log("FEE_ATA not found, building separate tx:", feeAta.toString());
+  const feeAtaBuilderTx = createAssociatedToken(umi, {
+    mint: wsol,
+    owner: feeWallet,
+    payer: user,
+  });
+  const feeAtaBuiltTx = await feeAtaBuilderTx.buildWithLatestBlockhash(umi);
+  const feeAtaWeb3Tx = toWeb3JsTransaction(feeAtaBuiltTx);
+  feeAtaTxBase64 = Buffer.from(feeAtaWeb3Tx.serialize()).toString("base64");
+} else {
+  console.log("FEE_ATA exists, fee will be collected:", feeAta.toString());
+}
     } else {
-      console.warn("creatorFeeWallet not found in bucket — fee skipped");
+      console.warn("creatorFeeWallet not found in bucket â€” fee skipped");
     }
 
-    // -- BUILD SWAP --
+    // â€”â€” BUILD SWAP â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     const swapBuilder = swapBondingCurveV2(umi, {
       genesisAccount,
       bucket: bucketPda,
@@ -190,15 +194,16 @@ export async function POST(req: NextRequest) {
       swapDirection: direction,
       amount: amountBigInt,
       minAmountOutScaled: minOut,
+      
     });
 
-    const tx = await (await swapBuilder.setLatestBlockhash(umi)).buildAndSign(umi);
+    const combinedBuilder = feeAtaBuilder.add(swapBuilder);
+    const tx = await (await combinedBuilder.setLatestBlockhash(umi)).buildAndSign(umi);
     const serialized = Buffer.from(umi.transactions.serialize(tx)).toString("base64");
 
     return NextResponse.json({
       success: true,
       transaction: serialized,
-      ...(feeAtaTxBase64 ? { feeAtaTx: feeAtaTxBase64 } : {}),
       quote: {
         amountIn: quote.amountIn.toString(),
         amountOut: quote.amountOut.toString(),

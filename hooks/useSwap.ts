@@ -53,20 +53,29 @@ export function useSwap() {
         }
 
         // ✅ Backend'den gelen VersionedTransaction'ı deserialize et
-        const tx = VersionedTransaction.deserialize(
-          Buffer.from(data.transaction, "base64")
-        );
+        // Fee ATA tx varsa önce onu gönder
+if (data.feeAtaTx) {
+  const feeAtaTx = VersionedTransaction.deserialize(
+    Buffer.from(data.feeAtaTx, "base64")
+  );
+  const signedFeeAtaTx = await signTransaction!(feeAtaTx);
+  const feeSig = await connection.sendRawTransaction(signedFeeAtaTx.serialize(), {
+    skipPreflight: false,
+    preflightCommitment: "confirmed",
+  });
+  await connection.confirmTransaction(feeSig, "confirmed");
+}
 
-        // ✅ Kullanıcı cüzdanıyla imzala
-        const signedTx = await signTransaction!(tx);
-
-        // ✅ skipPreflight: true — bağımlı tx'lerde simulation false positive verir
-        const sig = await connection.sendRawTransaction(signedTx.serialize(), {
-          skipPreflight: true,
-          preflightCommitment: "confirmed",
-        });
-
-        await connection.confirmTransaction(sig, "confirmed");
+// Asıl swap tx
+const tx = VersionedTransaction.deserialize(
+  Buffer.from(data.transaction, "base64")
+);
+const signedTx = await signTransaction!(tx);
+const sig = await connection.sendRawTransaction(signedTx.serialize(), {
+  skipPreflight: true,
+  preflightCommitment: "confirmed",
+});
+await connection.confirmTransaction(sig, "confirmed");
 
         showToast(
           input.isBuy ? "Buy successful! 🚀" : "Sell successful! ✅",
