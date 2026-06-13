@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { publicKey, transactionBuilder, createNoopSigner, signerIdentity } from "@metaplex-foundation/umi";
 import { findAssociatedTokenPda, createAssociatedToken } from "@metaplex-foundation/mpl-toolbox";
 import { getPlatformUmi } from "@/app/lib/umi";
@@ -151,20 +151,6 @@ export async function POST(req: NextRequest) {
     console.log("USER_BASE_ATA:", baseATA.toString());
     console.log("USER_QUOTE_ATA:", quoteATA.toString());
 
-    // -- USER QUOTE ATA KONTROL (closed veya yok ise swap tx'e ekle) --
-    let quoteAtaBuilder = transactionBuilder();
-    const quoteAtaAccount = await umi.rpc.getAccount(quoteATA);
-    if (!quoteAtaAccount.exists) {
-      console.log("USER_QUOTE_ATA not found, creating in swap tx");
-      quoteAtaBuilder = createAssociatedToken(umi, {
-        mint: wsol,
-        owner: user,
-        payer: user,
-      });
-    } else {
-      console.log("USER_QUOTE_ATA exists");
-    }
-
     // -- FEE ATA --
     let feeAtaTxBase64: string | null = null;
 
@@ -190,11 +176,11 @@ export async function POST(req: NextRequest) {
         console.log("FEE_ATA exists, fee will be collected:", feeAta.toString());
       }
     } else {
-      console.warn("creatorFeeWallet not found in bucket — fee skipped");
+      console.warn("creatorFeeWallet not found in bucket â€” fee skipped");
     }
 
     // -- BUILD SWAP --
-    const swapIx = swapBondingCurveV2(umi, {
+    const swapBuilder = swapBondingCurveV2(umi, {
       genesisAccount,
       bucket: bucketPda,
       baseMint,
@@ -208,8 +194,7 @@ export async function POST(req: NextRequest) {
       minAmountOutScaled: minOut,
     });
 
-    const combinedBuilder = quoteAtaBuilder.add(swapIx);
-    const tx = await (await combinedBuilder.setLatestBlockhash(umi)).buildAndSign(umi);
+    const tx = await (await swapBuilder.setLatestBlockhash(umi)).buildAndSign(umi);
     const serialized = Buffer.from(umi.transactions.serialize(tx)).toString("base64");
 
     return NextResponse.json({
