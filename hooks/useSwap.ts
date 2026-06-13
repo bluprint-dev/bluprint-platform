@@ -2,12 +2,12 @@ import { useCallback, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
 import { useToast } from "@/app/components/ToastProvider";
+import { supabase } from "@/lib/supabase";
 
-// ✅ genesisAccount ve mint ayrı alanlar
 export type SwapInput = {
-  genesisAccount: string; // Metaplex Genesis launch account
-  mint: string;           // SPL token mint (display only)
-  amount: string;         // SOL (buy) veya token miktarı (sell)
+  genesisAccount: string;
+  mint: string;
+  amount: string;
   isBuy: boolean;
 };
 
@@ -30,7 +30,7 @@ export function useSwap() {
       setError("");
 
       try {
-        const amount = input.isBuy
+        const amountLamports = input.isBuy
           ? Math.floor(Number(input.amount) * 1_000_000_000).toString()
           : input.amount;
 
@@ -40,7 +40,7 @@ export function useSwap() {
           body: JSON.stringify({
             genesisAccount: input.genesisAccount,
             mintAddress: input.mint,
-            amount,
+            amount: amountLamports,
             userPublicKey: publicKey.toString(),
             isBuy: input.isBuy,
           }),
@@ -52,30 +52,56 @@ export function useSwap() {
           throw new Error(data.error ?? "SWAP_FAILED");
         }
 
-        // ✅ Backend'den gelen VersionedTransaction'ı deserialize et
-        // Fee ATA tx varsa önce onu gönder
-if (data.feeAtaTx) {
-  const feeAtaTx = VersionedTransaction.deserialize(
-    Buffer.from(data.feeAtaTx, "base64")
-  );
-  const signedFeeAtaTx = await signTransaction!(feeAtaTx);
-  const feeSig = await connection.sendRawTransaction(signedFeeAtaTx.serialize(), {
-    skipPreflight: false,
-    preflightCommitment: "confirmed",
-  });
-  await connection.confirmTransaction(feeSig, "confirmed");
-}
+        // Fee ATA tx varsa önce gönder
+        if (data.feeAtaTx) {
+          const feeAtaTx = VersionedTransaction.deserialize(
+            Buffer.from(data.feeAtaTx, "base64")
+          );
+          const signedFeeAtaTx = await signTransaction!(feeAtaTx);
+          const feeSig = await connection.sendRawTransaction(signedFeeAtaTx.serialize(), {
+            skipPreflight: false,
+            preflightCommitment: "confirmed",
+          });
+          await connection.confirmTransaction(feeSig, "confirmed");
+        }
 
-// Asıl swap tx
-const tx = VersionedTransaction.deserialize(
-  Buffer.from(data.transaction, "base64")
-);
-const signedTx = await signTransaction!(tx);
-const sig = await connection.sendRawTransaction(signedTx.serialize(), {
-  skipPreflight: true,
-  preflightCommitment: "confirmed",
-});
-await connection.confirmTransaction(sig, "confirmed");
+        // Asıl swap tx
+        const tx = VersionedTransaction.deserialize(
+          Buffer.from(data.transaction, "base64")
+        );
+        const signedTx = await signTransaction!(tx);
+        const sig = await connection.sendRawTransaction(signedTx.serialize(), {
+          skipPreflight: true,
+          preflightCommitment: "confirmed",
+        });
+        await connection.confirmTransaction(sig, "confirmed");
+
+        // ── Supabase'e trade kaydı ──────────────────────────────
+        try {
+          const amountSol = input.isBuy
+            ? Number(input.amount)
+            : Number(data.quote?.amountOut ?? 0) / 1_000_000_000;
+
+          const amountToken = input.isBuy
+            ? Number(data.quote?.amountOut ?? 0)
+            : Number(input.amount);
+
+          const price = amountToken > 0 ? amountSol / amountToken * 1_000_000_000 : 0;
+
+          await supabase.from("trades").insert({
+            mint: input.mint,
+            price,
+            amount_sol: amountSol,
+            amount_token: amountToken,
+            is_buy: input.isBuy,
+            wallet: publicKey.toString(),
+            tx_signature: sig,
+          });
+        } catch (dbErr) {
+          // DB hatası swap'ı engellemesin
+          console.warn("Trade log failed:", dbErr);
+        }
+        // ───────────────────────────────────────────────────────
 
         showToast(
           input.isBuy ? "Buy successful! 🚀" : "Sell successful! ✅",

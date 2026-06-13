@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -13,84 +13,6 @@ import { useBondingCurveInfo } from "@/hooks/useBondingCurveInfo";
 import { useSwap } from "@/hooks/useSwap";
 import { useDexStore } from "@/store/dexStore";
 import { filterTokens } from "@/lib/dex/normalizeToken";
-import { useTrades } from "@/hooks/useTrades";
-
-function timeAgo(dateStr: string) {
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return `${diff}s`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
-}
-
-function MiniChart({ trades }: { trades: Array<{ price: number; created_at: string; is_buy: boolean }> }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || trades.length < 2) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const pts = [...trades].reverse();
-    const prices = pts.map(t => t.price);
-    const minP = Math.min(...prices);
-    const maxP = Math.max(...prices);
-    const range = maxP - minP || 1;
-
-    const W = canvas.width;
-    const H = canvas.height;
-    const pad = 8;
-
-    ctx.clearRect(0, 0, W, H);
-
-    // gradient fill
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, "rgba(153,69,255,0.3)");
-    grad.addColorStop(1, "rgba(153,69,255,0)");
-
-    ctx.beginPath();
-    pts.forEach((t, i) => {
-      const x = pad + (i / (pts.length - 1)) * (W - pad * 2);
-      const y = H - pad - ((t.price - minP) / range) * (H - pad * 2);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.strokeStyle = "#9945FF";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // fill below
-    ctx.lineTo(W - pad, H);
-    ctx.lineTo(pad, H);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
-  }, [trades]);
-
-  if (trades.length < 2) {
-    return (
-      <div style={{
-        flex: 1, display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", gap: 8,
-      }}>
-        <div style={{ fontSize: 28, opacity: 0.3 }}>◈</div>
-        <p style={{ color: "rgba(153,69,255,0.35)", fontFamily: "monospace", fontSize: 10, letterSpacing: "0.12em" }}>
-          AWAITING_TRADES...
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={800}
-      height={280}
-      style={{ width: "100%", height: "100%", display: "block" }}
-    />
-  );
-}
 
 export default function DexPageContent() {
   const searchParams = useSearchParams();
@@ -113,8 +35,6 @@ export default function DexPageContent() {
   const { tokens, total, isLoading, isFetching, isError, error, refresh } = useDexTokens();
   const { swap, isSwapping, error: swapError, setError: setSwapError } = useSwap();
   const [mobileTradeOpen, setMobileTradeOpen] = useState(false);
-
-  const { trades, isLoading: isLoadingTrades } = useTrades(selectedMint);
 
   const filteredTokens = useMemo(() => {
     const base = filterTokens(tokens, search);
@@ -157,7 +77,7 @@ export default function DexPageContent() {
   const priceRaw = curveInfo?.price?.tokensPerSol ? Number(curveInfo.price.tokensPerSol) : null;
   const priceText = priceRaw && Number.isFinite(priceRaw)
     ? priceRaw.toLocaleString(undefined, { maximumFractionDigits: 4 })
-    : "—";
+    : "â€”";
 
   const tradePanelProps = {
     token: selectedToken,
@@ -172,7 +92,7 @@ export default function DexPageContent() {
   return (
     <div style={{ minHeight: "100vh", background: "#07070f", color: "#fff" }}>
 
-      {/* AMBIENT BG */}
+      {/* â”€â”€ AMBIENT BG â”€â”€ */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
         <div style={{
           position: "absolute", top: "-10%", left: "-5%",
@@ -189,7 +109,7 @@ export default function DexPageContent() {
       <div style={{ position: "relative", zIndex: 1 }}>
         <DexHeader onRefresh={() => refresh()} isRefreshing={isFetching} />
 
-        {/* MAIN 3-COLUMN LAYOUT */}
+        {/* â”€â”€ MAIN 3-COLUMN LAYOUT â”€â”€ */}
         <div style={{
           display: "grid",
           gridTemplateColumns: "280px 1fr 320px",
@@ -199,19 +119,20 @@ export default function DexPageContent() {
           overflow: "hidden",
         }} className="dex-grid">
 
-          {/* LEFT: TOKEN LIST */}
+          {/* â•â• LEFT: TOKEN LIST â•â• */}
           <div style={{
             borderRight: "1px solid rgba(153,69,255,0.1)",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
           }}>
+            {/* Search */}
             <div style={{ padding: "12px 12px 8px", borderBottom: "1px solid rgba(153,69,255,0.08)" }}>
               <div style={{ position: "relative" }}>
                 <span style={{
                   position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
                   color: "rgba(153,69,255,0.4)", fontSize: 12, pointerEvents: "none",
-                }}>⬡</span>
+                }}>â¬¡</span>
                 <input
                   value={searchInput}
                   onChange={e => { setSearchInput(e.target.value); setSearch(e.target.value); }}
@@ -231,6 +152,7 @@ export default function DexPageContent() {
               </div>
             </div>
 
+            {/* Header row */}
             <div style={{
               display: "grid", gridTemplateColumns: "42px 1fr 50px",
               gap: 8, padding: "8px 12px",
@@ -241,6 +163,7 @@ export default function DexPageContent() {
               ))}
             </div>
 
+            {/* Token list */}
             <div style={{ flex: 1, overflowY: "auto", padding: "4px 8px" }} className="custom-scroll">
               {isLoading ? (
                 <div style={{ padding: 20, textAlign: "center" }}>
@@ -248,45 +171,52 @@ export default function DexPageContent() {
                 </div>
               ) : filteredTokens.length === 0 ? (
                 <div style={{ padding: 20, textAlign: "center" }}>
-                  <span style={{ color: "rgba(153,69,255,0.2)", fontFamily: "monospace", fontSize: 11 }}>NO_TOKENS</span>
+                  <span style={{ color: "rgba(255,255,255,0.15)", fontFamily: "monospace", fontSize: 11 }}>No tokens found</span>
                 </div>
-              ) : (
-                filteredTokens.map(token => (
-                  <div
-                    key={token.mint}
-                    onClick={() => handleSelectToken(token)}
-                    style={{
-                      cursor: "pointer",
-                      borderRadius: 8,
-                      background: selectedMint === token.mint ? "rgba(153,69,255,0.1)" : "transparent",
-                      border: selectedMint === token.mint ? "1px solid rgba(153,69,255,0.2)" : "1px solid transparent",
-                      marginBottom: 2,
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    <TokenCard token={token} selected={selectedMint === token.mint} onSelect={() => handleSelectToken(token)} />
-                  </div>
-                ))
-              )}
+              ) : filteredTokens.map((token, i) => (
+                <TokenCard
+                  key={token.mint}
+                  token={token}
+                  selected={selectedToken?.mint === token.mint}
+                  index={i}
+                  onSelect={handleSelectToken}
+                />
+              ))}
+            </div>
+
+            {/* Footer count */}
+            <div style={{
+              padding: "8px 12px",
+              borderTop: "1px solid rgba(153,69,255,0.08)",
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+            }}>
+              <span style={{ color: "rgba(153,69,255,0.4)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.1em" }}>
+                {total} TOKENS
+              </span>
+              <Link href="/create" style={{
+                color: "#14F195", fontFamily: "monospace", fontSize: 9,
+                letterSpacing: "0.1em", textDecoration: "none",
+                padding: "3px 8px",
+                background: "rgba(20,241,149,0.06)",
+                border: "1px solid rgba(20,241,149,0.2)",
+                borderRadius: 4,
+              }}>+ LAUNCH</Link>
             </div>
           </div>
 
-          {/* CENTER: CHART + TRADES */}
-          <div style={{
-            borderRight: "1px solid rgba(153,69,255,0.1)",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}>
+          {/* â•â• CENTER: CHART + TRADES â•â• */}
+          <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", borderRight: "1px solid rgba(153,69,255,0.1)" }}>
+
             {selectedToken ? (
               <>
-                {/* Token header */}
+                {/* Token header bar */}
                 <div style={{
                   padding: "12px 20px",
                   borderBottom: "1px solid rgba(153,69,255,0.1)",
                   display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
                   background: "rgba(153,69,255,0.03)",
                 }}>
+                  {/* Avatar + name */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     {selectedToken.imageUrl ? (
                       <img src={selectedToken.imageUrl} alt={selectedToken.symbol}
@@ -310,11 +240,11 @@ export default function DexPageContent() {
                     </div>
                   </div>
 
+                  {/* Stats */}
                   <div style={{ display: "flex", gap: 20, marginLeft: 8, flexWrap: "wrap" }}>
                     {[
-                      { label: "PRICE", value: priceText ? `${priceText} ${selectedToken.symbol}/SOL` : "—" },
-                      { label: "CURVE", value: isLoadingCurve ? "···" : `${fillPercent.toFixed(2)}%` },
-                      { label: "TRADES", value: trades.length.toString() },
+                      { label: "PRICE", value: priceText ? `${priceText} ${selectedToken.symbol}/SOL` : "â€”" },
+                      { label: "CURVE", value: isLoadingCurve ? "Â·Â·Â·" : `${fillPercent.toFixed(2)}%` },
                     ].map(s => (
                       <div key={s.label}>
                         <div style={{ color: "rgba(255,255,255,0.25)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.1em" }}>{s.label}</div>
@@ -323,28 +253,33 @@ export default function DexPageContent() {
                     ))}
                   </div>
 
+                  {/* Live dot */}
                   <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
                     <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 8px #14F195", animation: "pulse 2s infinite" }} />
                     <span style={{ color: "rgba(255,255,255,0.3)", fontFamily: "monospace", fontSize: 10 }}>LIVE</span>
                   </div>
                 </div>
 
-                {/* CHART */}
-                <div style={{ flex: 1, overflow: "hidden", position: "relative", minHeight: 200 }}>
+                {/* Chart area */}
+                <div style={{ flex: 1, overflow: "hidden", position: "relative", minHeight: 280 }}>
                   <div style={{
                     position: "absolute", inset: 0,
                     backgroundImage: "linear-gradient(rgba(153,69,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(153,69,255,0.025) 1px, transparent 1px)",
                     backgroundSize: "48px 48px",
                   }} />
-                  <div style={{ position: "absolute", inset: 0, padding: 8 }}>
-                    <MiniChart trades={trades} />
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8,
+                  }}>
+                    <div style={{ fontSize: 28, filter: "drop-shadow(0 0 12px rgba(153,69,255,0.5))", opacity: 0.4 }}>â—ˆ</div>
+                    <p style={{ color: "rgba(153,69,255,0.35)", fontFamily: "monospace", fontSize: 10, letterSpacing: "0.12em" }}>CHART_COMING_SOON</p>
                   </div>
                 </div>
 
-                {/* RECENT TRADES */}
+                {/* Recent activity / trades */}
                 <div style={{
                   borderTop: "1px solid rgba(153,69,255,0.1)",
-                  height: 220, overflow: "hidden", display: "flex", flexDirection: "column",
+                  height: 200, overflow: "hidden", display: "flex", flexDirection: "column",
                 }}>
                   <div style={{
                     padding: "8px 16px",
@@ -353,13 +288,11 @@ export default function DexPageContent() {
                     background: "rgba(153,69,255,0.03)",
                   }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 6px #14F195", animation: "pulse 1.5s infinite" }} />
-                    <span style={{ color: "rgba(153,69,255,0.6)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.14em" }}>RECENT TRADES</span>
-                    <span style={{ marginLeft: "auto", color: "rgba(255,255,255,0.15)", fontFamily: "monospace", fontSize: 9 }}>{trades.length} tx</span>
+                    <span style={{ color: "rgba(153,69,255,0.6)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.14em" }}>RECENT ACTIVITY</span>
                   </div>
-
                   {/* Table header */}
                   <div style={{
-                    display: "grid", gridTemplateColumns: "55px 90px 1fr 60px 110px",
+                    display: "grid", gridTemplateColumns: "60px 1fr 1fr 80px 120px",
                     padding: "6px 16px",
                     borderBottom: "1px solid rgba(153,69,255,0.06)",
                   }}>
@@ -367,73 +300,20 @@ export default function DexPageContent() {
                       <span key={h} style={{ color: "rgba(153,69,255,0.3)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.1em" }}>{h}</span>
                     ))}
                   </div>
-
-                  <div style={{ flex: 1, overflowY: "auto" }} className="custom-scroll">
-                    {isLoadingTrades ? (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                        <span style={{ color: "rgba(153,69,255,0.3)", fontFamily: "monospace", fontSize: 10 }}>Loading...</span>
-                      </div>
-                    ) : trades.length === 0 ? (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                        <span style={{ color: "rgba(255,255,255,0.08)", fontFamily: "monospace", fontSize: 10, letterSpacing: "0.08em" }}>
-                          AWAITING_TRANSACTIONS...
-                        </span>
-                      </div>
-                    ) : (
-                      trades.map(trade => (
-                        <div key={trade.id} style={{
-                          display: "grid", gridTemplateColumns: "55px 90px 1fr 60px 110px",
-                          padding: "6px 16px",
-                          borderBottom: "1px solid rgba(153,69,255,0.04)",
-                          alignItems: "center",
-                          transition: "background 0.1s",
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(153,69,255,0.04)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                        >
-                          <span style={{
-                            fontFamily: "monospace", fontSize: 10, fontWeight: 700,
-                            color: trade.is_buy ? "#14F195" : "#ff2d95",
-                            letterSpacing: "0.06em",
-                          }}>
-                            {trade.is_buy ? "BUY" : "SELL"}
-                          </span>
-                          <span style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>
-                            {trade.amount_sol.toFixed(4)} SOL
-                          </span>
-                          <span style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
-                            {trade.amount_token > 1000
-                              ? `${(trade.amount_token / 1000).toFixed(1)}K`
-                              : trade.amount_token.toFixed(2)}
-                          </span>
-                          <span style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
-                            {timeAgo(trade.created_at)}
-                          </span>
-                          <a
-                            href={trade.tx_signature ? `https://solscan.io/tx/${trade.tx_signature}` : "#"}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              fontFamily: "monospace", fontSize: 10,
-                              color: "rgba(153,69,255,0.6)",
-                              textDecoration: "none",
-                              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                            }}
-                          >
-                            {trade.wallet.slice(0, 4)}...{trade.wallet.slice(-4)}
-                          </a>
-                        </div>
-                      ))
-                    )}
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ color: "rgba(255,255,255,0.08)", fontFamily: "monospace", fontSize: 10, letterSpacing: "0.08em" }}>
+                      AWAITING_TRANSACTIONS...
+                    </span>
                   </div>
                 </div>
               </>
             ) : (
+              /* No token selected */
               <div style={{
                 flex: 1, display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "center", gap: 16, padding: 40,
               }}>
-                <div style={{ fontSize: 48, filter: "drop-shadow(0 0 20px rgba(153,69,255,0.3))", opacity: 0.3 }}>◈</div>
+                <div style={{ fontSize: 48, filter: "drop-shadow(0 0 20px rgba(153,69,255,0.3))", opacity: 0.3 }}>â—ˆ</div>
                 <p style={{ color: "rgba(153,69,255,0.3)", fontFamily: "monospace", fontSize: 12, letterSpacing: "0.1em", textAlign: "center" }}>
                   SELECT A TOKEN<br />
                   <span style={{ color: "rgba(255,255,255,0.1)", fontSize: 10 }}>chart and activity will appear here</span>
@@ -442,7 +322,7 @@ export default function DexPageContent() {
             )}
           </div>
 
-          {/* RIGHT: TRADE PANEL */}
+          {/* â•â• RIGHT: TRADE PANEL â•â• */}
           <div style={{ overflowY: "auto", padding: 16 }} className="custom-scroll">
             <TradePanel {...tradePanelProps} />
           </div>
@@ -486,10 +366,12 @@ export default function DexPageContent() {
 
       <style>{`
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(153,69,255,0.2); border-radius: 2px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(153,69,255,0.4); }
+
         @media (max-width: 1024px) {
           .dex-grid { grid-template-columns: 1fr !important; height: auto !important; overflow: visible !important; }
           .mobile-trade-bar { display: block !important; }
