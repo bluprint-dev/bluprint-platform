@@ -1,4 +1,0 @@
-﻿
-app\create\page.tsx:289:          firstBuyAmount: 1,
-
-
