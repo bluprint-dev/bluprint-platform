@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { Trade } from "@/hooks/useTrades";
 
 type Props = {
   mint: string;
+  trades: Trade[];
 };
 
 type Candle = {
@@ -18,54 +20,54 @@ type Candle = {
 const INTERVALS = ["1m", "5m", "15m", "1H", "4H", "1D"] as const;
 type Interval = typeof INTERVALS[number];
 
-export default function TradeChart({ mint }: Props) {
+const INTERVAL_MS: Record<Interval, number> = {
+  "1m": 60_000,
+  "5m": 5 * 60_000,
+  "15m": 15 * 60_000,
+  "1H": 60 * 60_000,
+  "4H": 4 * 60 * 60_000,
+  "1D": 24 * 60 * 60_000,
+};
+
+function tradesToCandles(trades: Trade[], intervalMs: number): Candle[] {
+  const valid = trades.filter((t) => t.price > 0);
+  if (valid.length === 0) return [];
+
+  const sorted = [...valid].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  const buckets = new Map<number, { prices: number[]; volume: number }>();
+  for (const t of sorted) {
+    const ts = new Date(t.created_at).getTime();
+    const bucket = Math.floor(ts / intervalMs) * intervalMs;
+    if (!buckets.has(bucket)) buckets.set(bucket, { prices: [], volume: 0 });
+    buckets.get(bucket)!.prices.push(t.price);
+    buckets.get(bucket)!.volume += t.amount_sol;
+  }
+
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([ts, { prices, volume }]) => ({
+      time: Math.floor(ts / 1000),
+      open: prices[0],
+      high: Math.max(...prices),
+      low: Math.min(...prices),
+      close: prices[prices.length - 1],
+      volume,
+    }));
+}
+
+export default function TradeChart({ mint, trades }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const candleSeriesRef = useRef<any>(null);
   const volSeriesRef = useRef<any>(null);
   const initRef = useRef(false);
   const [interval, setInterval] = useState<Interval>("5m");
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
 
-  const fetchAndRender = useCallback(async (iv: Interval) => {
-    if (!candleSeriesRef.current || !volSeriesRef.current) return;
-    setLoading(true);
-    setError(false);
-    try {
-      const res = await fetch(`/api/birdeye/ohlcv?mint=${mint}&type=${iv}`);
-      const data = await res.json();
-      const items: Candle[] = (data?.data?.items ?? []).map((c: any) => ({
-        time: c.unixTime,
-        open: c.o,
-        high: c.h,
-        low: c.l,
-        close: c.c,
-        volume: c.v,
-      }));
-
-      if (items.length === 0) { setError(true); setLoading(false); return; }
-
-      candleSeriesRef.current.setData(items.map(c => ({
-        time: c.time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
-      })));
-      volSeriesRef.current.setData(items.map(c => ({
-        time: c.time,
-        value: c.volume,
-        color: c.close >= c.open ? "rgba(20,241,149,0.35)" : "rgba(255,45,149,0.35)",
-      })));
-      chartRef.current?.timeScale().fitContent();
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [mint]);
-
+  // Chart'ı bir kez kur
   useEffect(() => {
     if (!containerRef.current || initRef.current) return;
     initRef.current = true;
@@ -143,7 +145,7 @@ export default function TradeChart({ mint }: Props) {
       });
       ro.observe(containerRef.current);
 
-      fetchAndRender("5m");
+      setReady(true);
     });
 
     return () => {
@@ -155,33 +157,52 @@ export default function TradeChart({ mint }: Props) {
     };
   }, []);
 
+  // trades veya interval değişince candle'ları yeniden çiz
   useEffect(() => {
-    fetchAndRender(interval);
-    const iv = globalThis.setInterval(() => fetchAndRender(interval), 30_000);
-    return () => globalThis.clearInterval(iv);
-  }, [interval, fetchAndRender]);
+    if (!ready || !candleSeriesRef.current || !volSeriesRef.current) return;
+
+    const candles = tradesToCandles(trades, INTERVAL_MS[interval]);
+    if (candles.length === 0) return;
+
+    candleSeriesRef.current.setData(
+      candles.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))
+    );
+    volSeriesRef.current.setData(
+      candles.map((c) => ({
+        time: c.time,
+        value: c.volume,
+        color: c.close >= c.open ? "rgba(20,241,149,0.35)" : "rgba(255,45,149,0.35)",
+      }))
+    );
+    chartRef.current?.timeScale().fitContent();
+  }, [trades, interval, ready]);
+
+  const hasData = trades.some((t) => t.price > 0);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", minHeight: 320 }}>
       {/* Interval buttons */}
-      <div style={{
-        position: "absolute", top: 8, left: 8, zIndex: 10,
-        display: "flex", gap: 4,
-      }}>
-        {INTERVALS.map(iv => (
-          <button key={iv} onClick={() => setInterval(iv)} style={{
-            padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer",
-            fontFamily: "monospace", fontSize: 10, fontWeight: 700,
-            background: interval === iv ? "rgba(153,69,255,0.4)" : "rgba(153,69,255,0.08)",
-            color: interval === iv ? "#fff" : "rgba(255,255,255,0.35)",
-            transition: "all 0.15s",
-          }}>{iv}</button>
+      <div style={{ position: "absolute", top: 8, left: 8, zIndex: 10, display: "flex", gap: 4 }}>
+        {INTERVALS.map((iv) => (
+          <button
+            key={iv}
+            onClick={() => setInterval(iv)}
+            style={{
+              padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer",
+              fontFamily: "monospace", fontSize: 10, fontWeight: 700,
+              background: interval === iv ? "rgba(153,69,255,0.4)" : "rgba(153,69,255,0.08)",
+              color: interval === iv ? "#fff" : "rgba(255,255,255,0.35)",
+              transition: "all 0.15s",
+            }}
+          >
+            {iv}
+          </button>
         ))}
       </div>
 
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
-      {loading && (
+      {!ready && (
         <div style={{
           position: "absolute", inset: 0, display: "flex",
           alignItems: "center", justifyContent: "center",
@@ -193,12 +214,12 @@ export default function TradeChart({ mint }: Props) {
         </div>
       )}
 
-      {!loading && error && (
+      {ready && !hasData && (
         <div style={{
           position: "absolute", inset: 0, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center", gap: 12, pointerEvents: "none",
         }}>
-          <div style={{ fontSize: 28 }}>📊</div>
+          <div style={{ fontSize: 28, opacity: 0.3 }}>◈</div>
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "rgba(255,255,255,0.4)", fontFamily: "monospace", fontSize: 12, fontWeight: 700 }}>
               WAITING FOR TRADES
@@ -209,12 +230,6 @@ export default function TradeChart({ mint }: Props) {
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes skeletonPulse {
-          from { opacity: 0.3; } to { opacity: 0.8; }
-        }
-      `}</style>
     </div>
   );
 }
