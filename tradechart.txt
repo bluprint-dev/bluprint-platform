@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useCallback } from "react";
 import type { Trade } from "@/hooks/useTrades";
@@ -53,7 +53,11 @@ export default function TradeChart({ mint, trades }: Props) {
   const initRef = useRef(false);
 
   const renderCandles = useCallback(() => {
-    if (!candleSeriesRef.current || !volSeriesRef.current) return;
+console.log("TRADES:", trades);         // â† bunu ekle
+  console.log("CANDLES:", tradesToCandles(trades));  // â† bunu ekle
+
+
+   if (!candleSeriesRef.current || !volSeriesRef.current) return;
     const candles = tradesToCandles(trades);
     if (candles.length === 0) return;
 
@@ -83,6 +87,7 @@ export default function TradeChart({ mint, trades }: Props) {
     import("lightweight-charts").then((lc) => {
       if (!containerRef.current) return;
 
+      // v4 compat: CrosshairMode may be an enum or object
       const CrosshairMode = (lc as any).CrosshairMode ?? { Normal: 1 };
 
       const chart = lc.createChart(containerRef.current, {
@@ -114,10 +119,14 @@ export default function TradeChart({ mint, trades }: Props) {
         },
       });
 
+      // â”€â”€ v5 API: addSeries(SeriesType) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // v4 API: chart.addCandlestickSeries() / chart.addHistogramSeries()
+      // We support both by checking which API is available.
       let candleSeries: any;
       let volSeries: any;
 
       if (typeof (chart as any).addCandlestickSeries === "function") {
+        // lightweight-charts v4
         candleSeries = (chart as any).addCandlestickSeries({
           upColor: "#14F195",
           downColor: "#ff2d95",
@@ -131,6 +140,7 @@ export default function TradeChart({ mint, trades }: Props) {
           priceScaleId: "vol",
         });
       } else {
+        // lightweight-charts v5
         const { CandlestickSeries, HistogramSeries } = lc as any;
         candleSeries = chart.addSeries(CandlestickSeries, {
           upColor: "#14F195",
@@ -154,6 +164,7 @@ export default function TradeChart({ mint, trades }: Props) {
       candleSeriesRef.current = candleSeries;
       volSeriesRef.current = volSeries;
 
+      // Resize observer
       const ro = new ResizeObserver(() => {
         if (containerRef.current) {
           chart.applyOptions({
@@ -198,7 +209,7 @@ export default function TradeChart({ mint, trades }: Props) {
             background: "rgba(153,69,255,0.08)",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 22,
-          }}>📊</div>
+          }}>ğŸ“Š</div>
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "rgba(255,255,255,0.5)", fontFamily: "monospace", fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
               WAITING FOR TRADES
