@@ -184,7 +184,31 @@ export default function TradeChart({ mint, trades }: Props) {
         color: c.close >= c.open ? "rgba(20,241,149,0.35)" : "rgba(255,45,149,0.35)",
       }))
     );
-    chartRef.current?.timeScale().fitContent();
+    const chart = chartRef.current;
+    if (chart) {
+      const timeScale = chart.timeScale();
+      // Mum baÅŸlarÄ±na sÄ±kÄ±ÅŸmasÄ±n, saÄŸda biraz boÅŸluk bÄ±raksÄ±n (Birdeye tarzÄ±)
+      const rightOffsetBars = Math.max(5, Math.floor(candles.length * 0.5));
+      timeScale.applyOptions({ rightOffset: rightOffsetBars });
+      timeScale.fitContent();
+
+      // Az mum varsa Ã§ok fazla yakÄ±nlaÅŸmasÄ±n â€” minimum bir zaman aralÄ±ÄŸÄ± zorla
+      const intervalMs = INTERVAL_MS[interval];
+      const minBars = 20; // ekranda en az ~20 bar geniÅŸliÄŸinde alan gÃ¶ster
+      const minRangeSec = (minBars * intervalMs) / 1000;
+
+      const lastTime = candles[candles.length - 1].time;
+      const firstTime = candles[0].time;
+      const currentRangeSec = lastTime - firstTime;
+
+      if (currentRangeSec < minRangeSec) {
+        const extra = (minRangeSec - currentRangeSec) / 2;
+        timeScale.setVisibleRange({
+          from: firstTime - extra,
+          to: lastTime + extra + (intervalMs / 1000) * rightOffsetBars,
+        });
+      }
+    }
   }, [trades, interval, ready]);
 
   const hasData = trades.some((t) => t.price > 0);
