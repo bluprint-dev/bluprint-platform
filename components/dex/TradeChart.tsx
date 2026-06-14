@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import type { Trade } from "@/hooks/useTrades";
+import { useEffect, useRef, useState, useCallback } from "react";
 
-type OHLCCandle = {
+type Props = {
+  mint: string;
+};
+
+type Candle = {
   time: number;
   open: number;
   high: number;
@@ -12,69 +15,56 @@ type OHLCCandle = {
   volume: number;
 };
 
-type Props = {
-  mint: string;
-  trades: Trade[];
-};
+const INTERVALS = ["1m", "5m", "15m", "1H", "4H", "1D"] as const;
+type Interval = typeof INTERVALS[number];
 
-function tradesToCandles(trades: Trade[], intervalMs = 5 * 60 * 1000): OHLCCandle[] {
-  if (trades.length === 0) return [];
-  const sorted = [...trades].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
-  const buckets = new Map<number, { prices: number[]; volume: number }>();
-  for (const t of sorted) {
-    const ts = new Date(t.created_at).getTime();
-    const bucket = Math.floor(ts / intervalMs) * intervalMs;
-    if (!buckets.has(bucket)) buckets.set(bucket, { prices: [], volume: 0 });
-    if (t.price > 0) {
-      buckets.get(bucket)!.prices.push(t.price);
-      buckets.get(bucket)!.volume += t.amount_sol;
-    }
-  }
-  return Array.from(buckets.entries())
-    .sort(([a], [b]) => a - b)
-    .filter(([, { prices }]) => prices.length > 0)
-    .map(([ts, { prices, volume }]) => ({
-      time: Math.floor(ts / 1000),
-      open: prices[0],
-      high: Math.max(...prices),
-      low: Math.min(...prices),
-      close: prices[prices.length - 1],
-      volume,
-    }));
-}
-
-export default function TradeChart({ mint, trades }: Props) {
+export default function TradeChart({ mint }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const candleSeriesRef = useRef<any>(null);
   const volSeriesRef = useRef<any>(null);
   const initRef = useRef(false);
+  const [interval, setInterval] = useState<Interval>("5m");
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const renderCandles = useCallback(() => {
+  const fetchAndRender = useCallback(async (iv: Interval) => {
     if (!candleSeriesRef.current || !volSeriesRef.current) return;
-    const candles = tradesToCandles(trades);
-    if (candles.length === 0) return;
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await fetch(`/api/birdeye/ohlcv?mint=${mint}&type=${iv}`);
+      const data = await res.json();
+      const items: Candle[] = (data?.data?.items ?? []).map((c: any) => ({
+        time: c.unixTime,
+        open: c.o,
+        high: c.h,
+        low: c.l,
+        close: c.c,
+        volume: c.v,
+      }));
 
-    candleSeriesRef.current.setData(
-      candles.map((c) => ({
+      if (items.length === 0) { setError(true); setLoading(false); return; }
+
+      candleSeriesRef.current.setData(items.map(c => ({
         time: c.time,
         open: c.open,
         high: c.high,
         low: c.low,
         close: c.close,
-      }))
-    );
-    volSeriesRef.current.setData(
-      candles.map((c) => ({
+      })));
+      volSeriesRef.current.setData(items.map(c => ({
         time: c.time,
         value: c.volume,
         color: c.close >= c.open ? "rgba(20,241,149,0.35)" : "rgba(255,45,149,0.35)",
-      }))
-    );
-    chartRef.current?.timeScale().fitContent();
-  }, [trades]);
+      })));
+      chartRef.current?.timeScale().fitContent();
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [mint]);
 
   useEffect(() => {
     if (!containerRef.current || initRef.current) return;
@@ -82,7 +72,6 @@ export default function TradeChart({ mint, trades }: Props) {
 
     import("lightweight-charts").then((lc) => {
       if (!containerRef.current) return;
-
       const CrosshairMode = (lc as any).CrosshairMode ?? { Normal: 1 };
 
       const chart = lc.createChart(containerRef.current, {
@@ -119,36 +108,26 @@ export default function TradeChart({ mint, trades }: Props) {
 
       if (typeof (chart as any).addCandlestickSeries === "function") {
         candleSeries = (chart as any).addCandlestickSeries({
-          upColor: "#14F195",
-          downColor: "#ff2d95",
-          borderUpColor: "#14F195",
-          borderDownColor: "#ff2d95",
-          wickUpColor: "rgba(20,241,149,0.6)",
-          wickDownColor: "rgba(255,45,149,0.6)",
+          upColor: "#14F195", downColor: "#ff2d95",
+          borderUpColor: "#14F195", borderDownColor: "#ff2d95",
+          wickUpColor: "rgba(20,241,149,0.6)", wickDownColor: "rgba(255,45,149,0.6)",
         });
         volSeries = (chart as any).addHistogramSeries({
-          priceFormat: { type: "volume" },
-          priceScaleId: "vol",
+          priceFormat: { type: "volume" }, priceScaleId: "vol",
         });
       } else {
         const { CandlestickSeries, HistogramSeries } = lc as any;
         candleSeries = chart.addSeries(CandlestickSeries, {
-          upColor: "#14F195",
-          downColor: "#ff2d95",
-          borderUpColor: "#14F195",
-          borderDownColor: "#ff2d95",
-          wickUpColor: "rgba(20,241,149,0.6)",
-          wickDownColor: "rgba(255,45,149,0.6)",
+          upColor: "#14F195", downColor: "#ff2d95",
+          borderUpColor: "#14F195", borderDownColor: "#ff2d95",
+          wickUpColor: "rgba(20,241,149,0.6)", wickDownColor: "rgba(255,45,149,0.6)",
         });
         volSeries = chart.addSeries(HistogramSeries, {
-          priceFormat: { type: "volume" },
-          priceScaleId: "vol",
+          priceFormat: { type: "volume" }, priceScaleId: "vol",
         });
       }
 
-      chart.priceScale("vol").applyOptions({
-        scaleMargins: { top: 0.8, bottom: 0 },
-      });
+      chart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
 
       chartRef.current = chart;
       candleSeriesRef.current = candleSeries;
@@ -164,7 +143,7 @@ export default function TradeChart({ mint, trades }: Props) {
       });
       ro.observe(containerRef.current);
 
-      renderCandles();
+      fetchAndRender("5m");
     });
 
     return () => {
@@ -177,52 +156,63 @@ export default function TradeChart({ mint, trades }: Props) {
   }, []);
 
   useEffect(() => {
-    renderCandles();
-  }, [renderCandles]);
-
-  const candles = tradesToCandles(trades);
+    fetchAndRender(interval);
+    const iv = globalThis.setInterval(() => fetchAndRender(interval), 30_000);
+    return () => globalThis.clearInterval(iv);
+  }, [interval, fetchAndRender]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", minHeight: 320 }}>
+      {/* Interval buttons */}
+      <div style={{
+        position: "absolute", top: 8, left: 8, zIndex: 10,
+        display: "flex", gap: 4,
+      }}>
+        {INTERVALS.map(iv => (
+          <button key={iv} onClick={() => setInterval(iv)} style={{
+            padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer",
+            fontFamily: "monospace", fontSize: 10, fontWeight: 700,
+            background: interval === iv ? "rgba(153,69,255,0.4)" : "rgba(153,69,255,0.08)",
+            color: interval === iv ? "#fff" : "rgba(255,255,255,0.35)",
+            transition: "all 0.15s",
+          }}>{iv}</button>
+        ))}
+      </div>
+
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
-      {candles.length === 0 && (
+      {loading && (
         <div style={{
-          position: "absolute", inset: 0,
-          display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center", gap: 16,
-          pointerEvents: "none",
+          position: "absolute", inset: 0, display: "flex",
+          alignItems: "center", justifyContent: "center",
+          background: "rgba(7,7,15,0.6)", pointerEvents: "none",
         }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 12,
-            background: "rgba(153,69,255,0.08)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 22,
-          }}>📊</div>
+          <span style={{ color: "rgba(153,69,255,0.5)", fontFamily: "monospace", fontSize: 11 }}>
+            Loading chart...
+          </span>
+        </div>
+      )}
+
+      {!loading && error && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 12, pointerEvents: "none",
+        }}>
+          <div style={{ fontSize: 28 }}>📊</div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ color: "rgba(255,255,255,0.5)", fontFamily: "monospace", fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+            <div style={{ color: "rgba(255,255,255,0.4)", fontFamily: "monospace", fontSize: 12, fontWeight: 700 }}>
               WAITING FOR TRADES
             </div>
-            <div style={{ color: "rgba(153,69,255,0.4)", fontFamily: "monospace", fontSize: 10 }}>
-              Chart updates live as swaps happen
+            <div style={{ color: "rgba(153,69,255,0.3)", fontFamily: "monospace", fontSize: 10, marginTop: 4 }}>
+              Chart appears once trading begins
             </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 3, opacity: 0.12, marginTop: 8 }}>
-            {[30,45,25,60,40,70,35,55,42,65,50,38,72,48,58].map((h, i) => (
-              <div key={i} style={{
-                width: 8, height: h, borderRadius: 2,
-                background: i % 2 === 0 ? "#14F195" : "#9945FF",
-                animation: `skeletonPulse ${1 + (i * 0.1)}s ease-in-out infinite alternate`,
-              }} />
-            ))}
           </div>
         </div>
       )}
 
       <style>{`
         @keyframes skeletonPulse {
-          from { opacity: 0.3; }
-          to { opacity: 0.8; }
+          from { opacity: 0.3; } to { opacity: 0.8; }
         }
       `}</style>
     </div>
