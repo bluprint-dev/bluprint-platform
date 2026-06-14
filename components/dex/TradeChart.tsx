@@ -53,7 +53,11 @@ export default function TradeChart({ mint, trades }: Props) {
   const initRef = useRef(false);
 
   const renderCandles = useCallback(() => {
-    if (!candleSeriesRef.current || !volSeriesRef.current) return;
+console.log("TRADES:", trades);         // ← bunu ekle
+  console.log("CANDLES:", tradesToCandles(trades));  // ← bunu ekle
+
+
+   if (!candleSeriesRef.current || !volSeriesRef.current) return;
     const candles = tradesToCandles(trades);
     if (candles.length === 0) return;
 
