@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+﻿import { useCallback, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
 import { useToast } from "@/app/components/ToastProvider";
@@ -10,8 +10,6 @@ export type SwapInput = {
   amount: string;
   isBuy: boolean;
 };
-
-const TOKEN_DECIMALS = 1_000_000; // 6 decimal
 
 export function useSwap() {
   const { connection } = useConnection();
@@ -54,7 +52,7 @@ export function useSwap() {
           throw new Error(data.error ?? "SWAP_FAILED");
         }
 
-        // Fee ATA tx varsa önce gönder
+        // Fee ATA tx varsa Ã¶nce gÃ¶nder
         if (data.feeAtaTx) {
           const feeAtaTx = VersionedTransaction.deserialize(
             Buffer.from(data.feeAtaTx, "base64")
@@ -67,7 +65,7 @@ export function useSwap() {
           await connection.confirmTransaction(feeSig, "confirmed");
         }
 
-        // Asıl swap tx
+        // AsÄ±l swap tx
         const tx = VersionedTransaction.deserialize(
           Buffer.from(data.transaction, "base64")
         );
@@ -78,22 +76,17 @@ export function useSwap() {
         });
         await connection.confirmTransaction(sig, "confirmed");
 
-        // ── Supabase trade kaydı ──────────────────────────────────────
+        // â”€â”€ Supabase'e trade kaydÄ± â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         try {
-          // Buy: input.amount = SOL float, quote.amountOut = raw token (6 decimal)
-          // Sell: input.amount = raw token (6 decimal), quote.amountOut = lamports
           const amountSol = input.isBuy
             ? Number(input.amount)
             : Number(data.quote?.amountOut ?? 0) / 1_000_000_000;
 
           const amountToken = input.isBuy
-            ? Number(data.quote?.amountOut ?? 0) / TOKEN_DECIMALS
-            : Number(input.amount) / TOKEN_DECIMALS;
+            ? Number(data.quote?.amountOut ?? 0)
+            : Number(input.amount);
 
-          // SOL per token
-          const price = amountToken > 0 ? amountSol / amountToken : 0;
-
-          console.log("TRADE_INSERT:", { amountSol, amountToken, price });
+          const price = amountToken > 0 ? amountSol / amountToken * 1_000_000_000 : 0;
 
           await supabase.from("trades").insert({
             mint: input.mint,
@@ -105,12 +98,13 @@ export function useSwap() {
             tx_signature: sig,
           });
         } catch (dbErr) {
+          // DB hatasÄ± swap'Ä± engellemesin
           console.warn("Trade log failed:", dbErr);
         }
-        // ─────────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         showToast(
-          input.isBuy ? "Buy successful! 🚀" : "Sell successful! ✅",
+          input.isBuy ? "Buy successful! ğŸš€" : "Sell successful! âœ…",
           "success"
         );
 
