@@ -468,7 +468,7 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
               boxShadow: "0 0 8px rgba(153,69,255,0.6)",
             }} />
           </div>
-          <TradeChart mint={token.mint} />
+          <TradeChart mint={token.mint} trades={trades} />
         </div>
 
         {/* Tabs */}
