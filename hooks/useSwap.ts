@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
 import { useToast } from "@/app/components/ToastProvider";
-import { supabase } from "@/lib/supabase";
 
 export type SwapInput = {
   genesisAccount: string;
@@ -78,7 +77,7 @@ export function useSwap() {
         });
         await connection.confirmTransaction(sig, "confirmed");
 
-        // ── Supabase trade kaydı ──────────────────────────────────────
+        // ── Trade kaydı — kendi /api/trades/insert route'umuz üzerinden ──
         try {
           // Buy: input.amount = SOL float, quote.amountOut = raw token (6 decimal)
           // Sell: input.amount = raw token (6 decimal), quote.amountOut = lamports
@@ -93,16 +92,18 @@ export function useSwap() {
           // SOL per token
           const price = amountToken > 0 ? amountSol / amountToken : 0;
 
-          console.log("TRADE_INSERT:", { amountSol, amountToken, price });
-
-          await supabase.from("trades").insert({
-            mint: input.mint,
-            price,
-            amount_sol: amountSol,
-            amount_token: amountToken,
-            is_buy: input.isBuy,
-            wallet: publicKey.toString(),
-            tx_signature: sig,
+          await fetch("/api/trades/insert", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mint: input.mint,
+              price,
+              amount_sol: amountSol,
+              amount_token: amountToken,
+              is_buy: input.isBuy,
+              wallet: publicKey.toString(),
+              tx_signature: sig,
+            }),
           });
         } catch (dbErr) {
           console.warn("Trade log failed:", dbErr);

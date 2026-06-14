@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useCallback, useEffect, useState } from "react";
 
 export type Trade = {
   id: number;
@@ -17,45 +16,32 @@ export function useTrades(mint: string | null) {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!mint) { setTrades([]); return; }
-
-    let cancelled = false;
-
-    const fetchTrades = async () => {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from("trades")
-        .select("*")
-        .eq("mint", mint)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (!cancelled) {
-        setTrades(error ? [] : (data ?? []));
-        setIsLoading(false);
-      }
-    };
-
-    fetchTrades();
-
-    // Realtime subscription — yeni trade gelince otomatik güncelle
-    const channel = supabase
-      .channel(`trades:${mint}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "trades", filter: `mint=eq.${mint}` },
-        (payload: { new: Trade }) => {
-          setTrades((prev) => [payload.new, ...prev].slice(0, 50));
-        }
-      )
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
+  const fetchTrades = useCallback(async () => {
+    if (!mint) {
+      setTrades([]);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/trades?mint=${encodeURIComponent(mint)}`);
+      const json = await res.json();
+      setTrades(json.success ? (json.trades ?? []) : []);
+    } catch {
+      setTrades([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, [mint]);
+
+  useEffect(() => {
+    if (!mint) {
+      setTrades([]);
+      return;
+    }
+    fetchTrades();
+    const timer = setInterval(fetchTrades, 5000);
+    return () => clearInterval(timer);
+  }, [mint, fetchTrades]);
 
   return { trades, isLoading };
 }

@@ -1,0 +1,54 @@
+import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    const {
+      mint,
+      price,
+      amount_sol,
+      amount_token,
+      is_buy,
+      wallet,
+      tx_signature,
+    } = body;
+
+    if (
+      !mint ||
+      price === undefined ||
+      amount_sol === undefined ||
+      amount_token === undefined
+    ) {
+      return NextResponse.json(
+        { success: false, error: "MISSING_FIELDS" },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await supabase.from("trades").insert({
+      mint,
+      price,
+      amount_sol,
+      amount_token,
+      is_buy: !!is_buy,
+      wallet: wallet ?? null,
+      tx_signature: tx_signature ?? null,
+    });
+
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    return NextResponse.json(
+      { success: false, error: String(e) },
+      { status: 500 }
+    );
+  }
+}
