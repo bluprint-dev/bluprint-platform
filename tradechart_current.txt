@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import type { Trade } from "@/hooks/useTrades";
@@ -113,11 +113,6 @@ export default function TradeChart({ mint, trades }: Props) {
           upColor: "#14F195", downColor: "#ff2d95",
           borderUpColor: "#14F195", borderDownColor: "#ff2d95",
           wickUpColor: "rgba(20,241,149,0.6)", wickDownColor: "rgba(255,45,149,0.6)",
-          priceFormat: {
-            type: "price",
-            precision: 10,
-            minMove: 0.0000000001,
-          },
         });
         volSeries = (chart as any).addHistogramSeries({
           priceFormat: { type: "volume" }, priceScaleId: "vol",
@@ -128,11 +123,6 @@ export default function TradeChart({ mint, trades }: Props) {
           upColor: "#14F195", downColor: "#ff2d95",
           borderUpColor: "#14F195", borderDownColor: "#ff2d95",
           wickUpColor: "rgba(20,241,149,0.6)", wickDownColor: "rgba(255,45,149,0.6)",
-          priceFormat: {
-            type: "price",
-            precision: 10,
-            minMove: 0.0000000001,
-          },
         });
         volSeries = chart.addSeries(HistogramSeries, {
           priceFormat: { type: "volume" }, priceScaleId: "vol",
