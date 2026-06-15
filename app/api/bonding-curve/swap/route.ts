@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { publicKey, transactionBuilder, createNoopSigner, signerIdentity } from "@metaplex-foundation/umi";
 import { findAssociatedTokenPda, createAssociatedToken, syncNative, transferSol } from "@metaplex-foundation/mpl-toolbox";
 import { getPlatformUmi } from "@/app/lib/umi";
-import { Connection, VersionedTransaction } from "@solana/web3.js";
 
 import {
   findBondingCurveBucketV2Pda,
@@ -14,7 +13,6 @@ import {
 } from "@metaplex-foundation/genesis";
 
 const WSOL_MINT = "So11111111111111111111111111111111111111112";
-
 const RATE_LIMIT_MS = 3000;
 
 function toBigIntSafe(value: unknown): bigint {
@@ -75,34 +73,6 @@ function extractCreatorFeeWallet(bucket: unknown): string | null {
   }
 }
 
-// -- Polling confirm (backend tarafÄ±nda) --
-async function confirmWithPolling(
-  connection: Connection,
-  signature: string,
-  timeoutMs = 90_000
-): Promise<void> {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const { value } = await connection.getSignatureStatuses([signature], {
-      searchTransactionHistory: true,
-    });
-    const status = value?.[0];
-    if (status) {
-      if (status.err) {
-        throw new Error("Transaction failed on-chain: " + JSON.stringify(status.err));
-      }
-      if (
-        status.confirmationStatus === "confirmed" ||
-        status.confirmationStatus === "finalized"
-      ) {
-        return;
-      }
-    }
-    await new Promise((r) => setTimeout(r, 2000));
-  }
-  throw new Error("Transaction not confirmed in 90s");
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -113,8 +83,6 @@ export async function POST(req: NextRequest) {
       amount,
       userPublicKey,
       isBuy,
-      signedTransaction,      // frontend'den imzalÄ± tx base64
-      signedFeeAtaTx,         // frontend'den imzalÄ± fee ATA tx base64 (opsiyonel)
     } = body;
 
     if (!genesisAccountRaw || !userPublicKey || !amount) {
@@ -150,7 +118,6 @@ export async function POST(req: NextRequest) {
     const wsol = publicKey(WSOL_MINT);
 
     const umi = getPlatformUmi().use(signerIdentity(createNoopSigner(user)));
-    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!, "confirmed");
 
     // -- BUCKET --
     const [bucketPda] = findBondingCurveBucketV2Pda(umi, { genesisAccount, bucketIndex: 0 });
@@ -180,56 +147,7 @@ export async function POST(req: NextRequest) {
     const [baseATA] = findAssociatedTokenPda(umi, { mint: baseMint, owner: user });
     const [quoteATA] = findAssociatedTokenPda(umi, { mint: wsol, owner: user });
 
-    // -- EÄER imzalÄ± tx geldiyse: gÃ¶nder + confirm + trade kaydet --
-    if (signedTransaction) {
-      // Fee ATA tx varsa Ã¶nce gÃ¶nder
-      if (signedFeeAtaTx) {
-        const feeTxBuf = Buffer.from(signedFeeAtaTx, "base64");
-        const feeTx = VersionedTransaction.deserialize(feeTxBuf);
-        const feeSig = await connection.sendRawTransaction(feeTx.serialize(), {
-          skipPreflight: false,
-          preflightCommitment: "confirmed",
-        });
-        await confirmWithPolling(connection, feeSig);
-      }
-
-      // AsÄ±l swap tx
-      const txBuf = Buffer.from(signedTransaction, "base64");
-      const tx = VersionedTransaction.deserialize(txBuf);
-      const sig = await connection.sendRawTransaction(tx.serialize(), {
-        skipPreflight: false,
-        preflightCommitment: "confirmed",
-      });
-      await confirmWithPolling(connection, sig);
-
-      // Trade kaydÄ± â€” backend'den yazÄ±lÄ±yor, kullanÄ±cÄ± sayfayÄ± kapasa da kaybolmaz
-      try {
-        const TOKEN_DECIMALS = 1_000_000;
-        const amountSol = isBuy
-          ? Number(amount) / 1_000_000_000
-          : Number(quote.amountOut) / 1_000_000_000;
-        const amountToken = isBuy
-          ? Number(quote.amountOut) / TOKEN_DECIMALS
-          : Number(amount) / TOKEN_DECIMALS;
-        const price = amountToken > 0 ? amountSol / amountToken : 0;
-
-        await supabase.from("trades").insert({
-          mint: baseMintStr,
-          price,
-          amount_sol: amountSol,
-          amount_token: amountToken,
-          is_buy: !!isBuy,
-          wallet: userPublicKey,
-          tx_signature: sig,
-        });
-      } catch (dbErr) {
-        console.warn("Trade log failed:", dbErr);
-      }
-
-      return NextResponse.json({ success: true, signature: sig });
-    }
-
-    // -- Ä°mzasÄ±z istek: tx build et, frontend'e gÃ¶nder --
+    // -- WRAP SOL (sadece buy'da) --
     let wrapBuilder = transactionBuilder();
     if (isBuy) {
       const quoteAtaAccount = await umi.rpc.getAccount(quoteATA);
@@ -245,6 +163,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // -- FEE ATA --
     let feeAtaTxBase64: string | null = null;
     if (feeWalletStr) {
       const feeWallet = publicKey(feeWalletStr);
@@ -257,6 +176,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // -- BUILD SWAP --
     const swapIx = swapBondingCurveV2(umi, {
       genesisAccount,
       bucket: bucketPda,
