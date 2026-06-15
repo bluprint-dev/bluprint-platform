@@ -80,26 +80,26 @@ export default function TradeChart({ mint, trades }: Props) {
         width: containerRef.current.offsetWidth,
         height: containerRef.current.offsetHeight,
         layout: {
-          background: { color: "transparent" } as any,
-          textColor: "rgba(255,255,255,0.5)",
-          fontFamily: "'Courier New', monospace",
-          fontSize: 10,
+          background: { color: "#131722" } as any,
+          textColor: "#b2b5be",
+          fontFamily: "'Trebuchet MS', Roboto, sans-serif",
+          fontSize: 12,
         },
         grid: {
-          vertLines: { color: "rgba(153,69,255,0.06)" },
-          horzLines: { color: "rgba(153,69,255,0.06)" },
+          vertLines: { color: "#1e222d" },
+          horzLines: { color: "#1e222d" },
         },
         crosshair: {
           mode: CrosshairMode.Normal,
-          vertLine: { color: "rgba(153,69,255,0.5)", labelBackgroundColor: "#1a0a2e" },
-          horzLine: { color: "rgba(153,69,255,0.5)", labelBackgroundColor: "#1a0a2e" },
+          vertLine: { color: "#758696", labelBackgroundColor: "#2a2e39", style: 3 },
+          horzLine: { color: "#758696", labelBackgroundColor: "#2a2e39", style: 3 },
         },
         rightPriceScale: {
-          borderColor: "rgba(153,69,255,0.1)",
+          borderColor: "#2a2e39",
           scaleMargins: { top: 0.1, bottom: 0.25 },
         },
         timeScale: {
-          borderColor: "rgba(153,69,255,0.1)",
+          borderColor: "#2a2e39",
           timeVisible: true,
           secondsVisible: false,
         },
@@ -110,9 +110,9 @@ export default function TradeChart({ mint, trades }: Props) {
 
       if (typeof (chart as any).addCandlestickSeries === "function") {
         candleSeries = (chart as any).addCandlestickSeries({
-          upColor: "#14F195", downColor: "#ff2d95",
-          borderUpColor: "#14F195", borderDownColor: "#ff2d95",
-          wickUpColor: "rgba(20,241,149,0.6)", wickDownColor: "rgba(255,45,149,0.6)",
+          upColor: "#26a69a", downColor: "#ef5350",
+          borderUpColor: "#26a69a", borderDownColor: "#ef5350",
+          wickUpColor: "#26a69a", wickDownColor: "#ef5350",
           priceFormat: {
             type: "price",
             precision: 10,
@@ -125,9 +125,9 @@ export default function TradeChart({ mint, trades }: Props) {
       } else {
         const { CandlestickSeries, HistogramSeries } = lc as any;
         candleSeries = chart.addSeries(CandlestickSeries, {
-          upColor: "#14F195", downColor: "#ff2d95",
-          borderUpColor: "#14F195", borderDownColor: "#ff2d95",
-          wickUpColor: "rgba(20,241,149,0.6)", wickDownColor: "rgba(255,45,149,0.6)",
+          upColor: "#26a69a", downColor: "#ef5350",
+          borderUpColor: "#26a69a", borderDownColor: "#ef5350",
+          wickUpColor: "#26a69a", wickDownColor: "#ef5350",
           priceFormat: {
             type: "price",
             precision: 10,
@@ -181,7 +181,7 @@ export default function TradeChart({ mint, trades }: Props) {
       candles.map((c) => ({
         time: c.time,
         value: c.volume,
-        color: c.close >= c.open ? "rgba(20,241,149,0.35)" : "rgba(255,45,149,0.35)",
+        color: c.close >= c.open ? "rgba(38,166,154,0.5)" : "rgba(239,83,80,0.5)",
       }))
     );
     const chart = chartRef.current;
@@ -222,10 +222,10 @@ export default function TradeChart({ mint, trades }: Props) {
             key={iv}
             onClick={() => setInterval(iv)}
             style={{
-              padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer",
-              fontFamily: "monospace", fontSize: 10, fontWeight: 700,
-              background: interval === iv ? "rgba(153,69,255,0.4)" : "rgba(153,69,255,0.08)",
-              color: interval === iv ? "#fff" : "rgba(255,255,255,0.35)",
+              padding: "3px 10px", borderRadius: 3, border: "none", cursor: "pointer",
+              fontFamily: "'Trebuchet MS', Roboto, sans-serif", fontSize: 12, fontWeight: 500,
+              background: interval === iv ? "#2a2e39" : "transparent",
+              color: interval === iv ? "#d1d4dc" : "#787b86",
               transition: "all 0.15s",
             }}
           >
