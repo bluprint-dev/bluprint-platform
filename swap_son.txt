@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { publicKey, transactionBuilder, createNoopSigner, signerIdentity } from "@metaplex-foundation/umi";
 import { findAssociatedTokenPda, createAssociatedToken, syncNative, transferSol } from "@metaplex-foundation/mpl-toolbox";
 import { getPlatformUmi } from "@/app/lib/umi";
@@ -15,7 +15,9 @@ import {
 
 const WSOL_MINT = "So11111111111111111111111111111111111111112";
 
-const RATE_LIMIT_MS = 3000;
+// -- Rate limiting --
+const swapQueue = new Map<string, number>();
+const RATE_LIMIT_MS = 3000; // kullanÄ±cÄ± baÅŸÄ±na 3 saniyede 1 swap
 
 function toBigIntSafe(value: unknown): bigint {
   try {
@@ -124,25 +126,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // -- Rate limiting (Supabase) --
-    const { supabase } = await import("@/lib/supabase");
-    const { data: lastTrade } = await supabase
-      .from("trades")
-      .select("created_at")
-      .eq("wallet", userPublicKey)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (lastTrade?.created_at) {
-      const diff = Date.now() - new Date(lastTrade.created_at).getTime();
-      if (diff < RATE_LIMIT_MS) {
-        return NextResponse.json(
-          { success: false, error: "RATE_LIMITED", retryAfter: RATE_LIMIT_MS - diff },
-          { status: 429 }
-        );
-      }
+    // -- Rate limiting --
+    const now = Date.now();
+    const lastSwap = swapQueue.get(userPublicKey) ?? 0;
+    if (now - lastSwap < RATE_LIMIT_MS) {
+      return NextResponse.json(
+        { success: false, error: "RATE_LIMITED", retryAfter: RATE_LIMIT_MS - (now - lastSwap) },
+        { status: 429 }
+      );
     }
+    swapQueue.set(userPublicKey, now);
 
     const amountBigInt = toBigIntSafe(amount);
     const genesisAccount = publicKey(genesisAccountRaw);
@@ -213,6 +206,7 @@ export async function POST(req: NextRequest) {
           : Number(amount) / TOKEN_DECIMALS;
         const price = amountToken > 0 ? amountSol / amountToken : 0;
 
+        const { supabase } = await import("@/lib/supabase");
         await supabase.from("trades").insert({
           mint: baseMintStr,
           price,
