@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { publicKey, transactionBuilder, createNoopSigner, signerIdentity } from "@metaplex-foundation/umi";
 import { findAssociatedTokenPda, createAssociatedToken, syncNative, transferSol } from "@metaplex-foundation/mpl-toolbox";
 import { getPlatformUmi } from "@/app/lib/umi";
-import { Connection, VersionedTransaction } from "@solana/web3.js";
 
 import {
   findBondingCurveBucketV2Pda,
@@ -14,10 +13,6 @@ import {
 } from "@metaplex-foundation/genesis";
 
 const WSOL_MINT = "So11111111111111111111111111111111111111112";
-
-// -- Rate limiting --
-const swapQueue = new Map<string, number>();
-const RATE_LIMIT_MS = 3000; // kullanıcı başına 3 saniyede 1 swap
 
 function toBigIntSafe(value: unknown): bigint {
   try {
@@ -55,18 +50,21 @@ function extractBaseMint(bucket: unknown): string | null {
 function extractCreatorFeeWallet(bucket: unknown): string | null {
   try {
     const b = bucket as any;
+
     const creatorFee = b?.extensions?.creatorFee;
     if (creatorFee?.__option === "Some" && creatorFee?.value?.wallet) {
       const wallet = creatorFee.value.wallet;
       if (typeof wallet === "string") return wallet;
       if (wallet?.toString) return wallet.toString();
     }
+
     const wallet =
       b?.creatorFeeWallet ??
       b?.feeWallet ??
       b?.bucket?.creatorFeeWallet ??
       b?.bucket?.feeWallet ??
       null;
+
     if (!wallet) return null;
     if (wallet.__option === "Some" && wallet.value) return wallet.value.toString();
     if (typeof wallet === "string") return wallet;
@@ -77,37 +75,10 @@ function extractCreatorFeeWallet(bucket: unknown): string | null {
   }
 }
 
-// -- Polling confirm (backend tarafında) --
-async function confirmWithPolling(
-  connection: Connection,
-  signature: string,
-  timeoutMs = 90_000
-): Promise<void> {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const { value } = await connection.getSignatureStatuses([signature], {
-      searchTransactionHistory: true,
-    });
-    const status = value?.[0];
-    if (status) {
-      if (status.err) {
-        throw new Error("Transaction failed on-chain: " + JSON.stringify(status.err));
-      }
-      if (
-        status.confirmationStatus === "confirmed" ||
-        status.confirmationStatus === "finalized"
-      ) {
-        return;
-      }
-    }
-    await new Promise((r) => setTimeout(r, 2000));
-  }
-  throw new Error("Transaction not confirmed in 90s");
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    console.log("SWAP_REQUEST_BODY:", body);
 
     const {
       genesisAccount: genesisAccountRaw,
@@ -115,8 +86,6 @@ export async function POST(req: NextRequest) {
       amount,
       userPublicKey,
       isBuy,
-      signedTransaction,      // frontend'den imzalı tx base64
-      signedFeeAtaTx,         // frontend'den imzalı fee ATA tx base64 (opsiyonel)
     } = body;
 
     if (!genesisAccountRaw || !userPublicKey || !amount) {
@@ -126,131 +95,109 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // -- Rate limiting --
-    const now = Date.now();
-    const lastSwap = swapQueue.get(userPublicKey) ?? 0;
-    if (now - lastSwap < RATE_LIMIT_MS) {
-      return NextResponse.json(
-        { success: false, error: "RATE_LIMITED", retryAfter: RATE_LIMIT_MS - (now - lastSwap) },
-        { status: 429 }
-      );
-    }
-    swapQueue.set(userPublicKey, now);
-
     const amountBigInt = toBigIntSafe(amount);
     const genesisAccount = publicKey(genesisAccountRaw);
     const user = publicKey(userPublicKey);
     const wsol = publicKey(WSOL_MINT);
 
     const umi = getPlatformUmi().use(signerIdentity(createNoopSigner(user)));
-    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!, "confirmed");
 
     // -- BUCKET --
-    const [bucketPda] = findBondingCurveBucketV2Pda(umi, { genesisAccount, bucketIndex: 0 });
+    const [bucketPda] = findBondingCurveBucketV2Pda(umi, {
+      genesisAccount,
+      bucketIndex: 0,
+    });
 
     let bucket;
     try {
       bucket = await fetchBondingCurveBucketV2(umi, bucketPda);
     } catch (e) {
-      return NextResponse.json({ success: false, error: "BUCKET_FETCH_FAILED" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "BUCKET_FETCH_FAILED" },
+        { status: 400 }
+      );
     }
 
     if (!bucket || !isSwappable(bucket)) {
-      return NextResponse.json({ success: false, error: "NOT_SWAPPABLE" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "NOT_SWAPPABLE" },
+        { status: 400 }
+      );
     }
 
+    // -- FEE WALLET --
     const feeWalletStr = extractCreatorFeeWallet(bucket);
+    console.log("BUCKET_FEE_WALLET:", feeWalletStr);
+
     const direction = isBuy ? SwapDirection.Buy : SwapDirection.Sell;
+
+    // -- QUOTE --
     const quote = getSwapResult(bucket, amountBigInt, direction);
     const minOut = minOutWithSlippage(quote.amountOut);
 
+    // -- BASE MINT --
     const baseMintStr = extractBaseMint(bucket) ?? mintAddress ?? null;
     if (!baseMintStr) {
-      return NextResponse.json({ success: false, error: "MISSING_BASE_MINT" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "MISSING_BASE_MINT" },
+        { status: 400 }
+      );
     }
     const baseMint = publicKey(baseMintStr);
 
+    // -- USER ATAs --
     const [baseATA] = findAssociatedTokenPda(umi, { mint: baseMint, owner: user });
     const [quoteATA] = findAssociatedTokenPda(umi, { mint: wsol, owner: user });
+    console.log("USER_BASE_ATA:", baseATA.toString());
+    console.log("USER_QUOTE_ATA:", quoteATA.toString());
 
-    // -- EĞER imzalı tx geldiyse: gönder + confirm + trade kaydet --
-    if (signedTransaction) {
-      // Fee ATA tx varsa önce gönder
-      if (signedFeeAtaTx) {
-        const feeTxBuf = Buffer.from(signedFeeAtaTx, "base64");
-        const feeTx = VersionedTransaction.deserialize(feeTxBuf);
-        const feeSig = await connection.sendRawTransaction(feeTx.serialize(), {
-          skipPreflight: false,
-          preflightCommitment: "confirmed",
-        });
-        await confirmWithPolling(connection, feeSig);
-      }
-
-      // Asıl swap tx
-      const txBuf = Buffer.from(signedTransaction, "base64");
-      const tx = VersionedTransaction.deserialize(txBuf);
-      const sig = await connection.sendRawTransaction(tx.serialize(), {
-        skipPreflight: false,
-        preflightCommitment: "confirmed",
-      });
-      await confirmWithPolling(connection, sig);
-
-      // Trade kaydı — backend'den yazılıyor, kullanıcı sayfayı kapasa da kaybolmaz
-      try {
-        const TOKEN_DECIMALS = 1_000_000;
-        const amountSol = isBuy
-          ? Number(amount) / 1_000_000_000
-          : Number(quote.amountOut) / 1_000_000_000;
-        const amountToken = isBuy
-          ? Number(quote.amountOut) / TOKEN_DECIMALS
-          : Number(amount) / TOKEN_DECIMALS;
-        const price = amountToken > 0 ? amountSol / amountToken : 0;
-
-        const { supabase } = await import("@/lib/supabase");
-        await supabase.from("trades").insert({
-          mint: baseMintStr,
-          price,
-          amount_sol: amountSol,
-          amount_token: amountToken,
-          is_buy: !!isBuy,
-          wallet: userPublicKey,
-          tx_signature: sig,
-        });
-      } catch (dbErr) {
-        console.warn("Trade log failed:", dbErr);
-      }
-
-      return NextResponse.json({ success: true, signature: sig });
-    }
-
-    // -- İmzasız istek: tx build et, frontend'e gönder --
+    // -- WRAP SOL (sadece buy'da) --
     let wrapBuilder = transactionBuilder();
     if (isBuy) {
       const quoteAtaAccount = await umi.rpc.getAccount(quoteATA);
       if (!quoteAtaAccount.exists) {
+        console.log("USER_QUOTE_ATA not found, creating + wrapping SOL");
         wrapBuilder = wrapBuilder
           .add(createAssociatedToken(umi, { mint: wsol, owner: user, payer: user }))
           .add(transferSol(umi, { source: umi.identity, destination: quoteATA, amount: { basisPoints: amountBigInt, identifier: "SOL", decimals: 9 } }))
           .add(syncNative(umi, { account: quoteATA }));
       } else {
+        console.log("USER_QUOTE_ATA exists, wrapping SOL");
         wrapBuilder = wrapBuilder
           .add(transferSol(umi, { source: umi.identity, destination: quoteATA, amount: { basisPoints: amountBigInt, identifier: "SOL", decimals: 9 } }))
           .add(syncNative(umi, { account: quoteATA }));
       }
     }
 
+    // -- FEE ATA --
     let feeAtaTxBase64: string | null = null;
+
     if (feeWalletStr) {
       const feeWallet = publicKey(feeWalletStr);
-      const [feeAta] = findAssociatedTokenPda(umi, { mint: wsol, owner: feeWallet });
+      const [feeAta] = findAssociatedTokenPda(umi, {
+        mint: wsol,
+        owner: feeWallet,
+      });
+
       const feeAtaAccount = await umi.rpc.getAccount(feeAta);
+
       if (!feeAtaAccount.exists) {
-        const feeAtaBuilderTx = createAssociatedToken(umi, { mint: wsol, owner: feeWallet, payer: user });
+        console.log("FEE_ATA not found, building separate tx:", feeAta.toString());
+        const feeAtaBuilderTx = createAssociatedToken(umi, {
+          mint: wsol,
+          owner: feeWallet,
+          payer: user,
+        });
         const feeAtaBuilt = await feeAtaBuilderTx.buildWithLatestBlockhash(umi);
         feeAtaTxBase64 = Buffer.from(umi.transactions.serialize(feeAtaBuilt)).toString("base64");
+      } else {
+        console.log("FEE_ATA exists, fee will be collected:", feeAta.toString());
       }
+    } else {
+      console.warn("creatorFeeWallet not found in bucket â€” fee skipped");
     }
 
+    // -- BUILD SWAP --
     const swapIx = swapBondingCurveV2(umi, {
       genesisAccount,
       bucket: bucketPda,

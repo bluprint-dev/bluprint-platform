@@ -21,8 +21,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     ],
     []
   );
-  
-  const endpoint = process.env.NEXT_PUBLIC_RPC_URL || "http://localhost:8899";
+
+  const endpoint = process.env.NEXT_PUBLIC_RPC_URL!;
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -40,7 +41,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <I18nProvider>
       <QueryClientProvider client={queryClient}>
-        <ConnectionProvider endpoint={endpoint}>
+        <ConnectionProvider
+          endpoint={endpoint}
+          config={{ commitment: "confirmed", wsEndpoint: endpoint.replace("https", "wss") }}
+        >
           <WalletProvider wallets={wallets} autoConnect>
             <WalletModalProvider>
               <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
