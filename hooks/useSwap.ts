@@ -12,6 +12,34 @@ export type SwapInput = {
 
 const TOKEN_DECIMALS = 1_000_000; // 6 decimal
 
+// confirmTransaction yerine polling tabanlı güvenilir confirm
+async function confirmWithPolling(
+  connection: any,
+  signature: string,
+  timeoutMs = 90_000
+): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const { value } = await connection.getSignatureStatuses([signature], {
+      searchTransactionHistory: true,
+    });
+    const status = value?.[0];
+    if (status) {
+      if (status.err) {
+        throw new Error("Transaction failed on-chain: " + JSON.stringify(status.err));
+      }
+      if (
+        status.confirmationStatus === "confirmed" ||
+        status.confirmationStatus === "finalized"
+      ) {
+        return; // başarılı
+      }
+    }
+    await new Promise((r) => setTimeout(r, 2000)); // 2 saniyede bir kontrol
+  }
+  throw new Error("Transaction not confirmed in time — check explorer manually.");
+}
+
 export function useSwap() {
   const { connection } = useConnection();
   const { publicKey, signTransaction, connected } = useWallet();
@@ -63,7 +91,7 @@ export function useSwap() {
             skipPreflight: false,
             preflightCommitment: "confirmed",
           });
-          await connection.confirmTransaction(feeSig, "confirmed");
+          await confirmWithPolling(connection, feeSig);
         }
 
         // Asıl swap tx
@@ -75,12 +103,12 @@ export function useSwap() {
           skipPreflight: true,
           preflightCommitment: "confirmed",
         });
-        await connection.confirmTransaction(sig, "confirmed");
 
-        // ── Trade kaydı — kendi /api/trades/insert route'umuz üzerinden ──
+        // 90 saniyeye kadar polling ile bekle
+        await confirmWithPolling(connection, sig);
+
+        // Trade kaydı
         try {
-          // Buy: input.amount = SOL float, quote.amountOut = raw token (6 decimal)
-          // Sell: input.amount = raw token (6 decimal), quote.amountOut = lamports
           const amountSol = input.isBuy
             ? Number(input.amount)
             : Number(data.quote?.amountOut ?? 0) / 1_000_000_000;
@@ -89,7 +117,6 @@ export function useSwap() {
             ? Number(data.quote?.amountOut ?? 0) / TOKEN_DECIMALS
             : Number(input.amount) / TOKEN_DECIMALS;
 
-          // SOL per token
           const price = amountToken > 0 ? amountSol / amountToken : 0;
 
           await fetch("/api/trades/insert", {
@@ -108,7 +135,6 @@ export function useSwap() {
         } catch (dbErr) {
           console.warn("Trade log failed:", dbErr);
         }
-        // ─────────────────────────────────────────────────────────────
 
         showToast(
           input.isBuy ? "Buy successful! 🚀" : "Sell successful! ✅",
