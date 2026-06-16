@@ -8,6 +8,7 @@ import {
   fetchBondingCurveBucketV2,
   getSwapResult,
   swapBondingCurveV2,
+  claimBondingCurveCreatorFeeV2,
   SwapDirection,
   isSwappable,
 } from "@metaplex-foundation/genesis";
@@ -164,26 +165,19 @@ export async function POST(req: NextRequest) {
     }
 
     // -- FEE ATA --
-    // -- FEE ATA --
-let feeAtaTxBase64: string | null = null;
-let feeQuoteTokenAccount: ReturnType<typeof publicKey> | undefined = undefined;
-
-if (feeWalletStr) {
-  const feeWallet = publicKey(feeWalletStr);
-  const [feeAta] = findAssociatedTokenPda(umi, { mint: wsol, owner: feeWallet });
-  feeQuoteTokenAccount = feeAta; // swap'a söyle
-
-  const feeAtaAccount = await umi.rpc.getAccount(feeAta);
-  if (!feeAtaAccount.exists) {
-    const feeAtaBuilderTx = createAssociatedToken(umi, { mint: wsol, owner: feeWallet, payer: user });
-    const feeAtaBuilt = await feeAtaBuilderTx.buildWithLatestBlockhash(umi);
-    feeAtaTxBase64 = Buffer.from(umi.transactions.serialize(feeAtaBuilt)).toString("base64");
-  }
-}
+    let feeAtaTxBase64: string | null = null;
+    if (feeWalletStr) {
+      const feeWallet = publicKey(feeWalletStr);
+      const [feeAta] = findAssociatedTokenPda(umi, { mint: wsol, owner: feeWallet });
+      const feeAtaAccount = await umi.rpc.getAccount(feeAta);
+      if (!feeAtaAccount.exists) {
+        const feeAtaBuilderTx = createAssociatedToken(umi, { mint: wsol, owner: feeWallet, payer: user });
+        const feeAtaBuilt = await feeAtaBuilderTx.buildWithLatestBlockhash(umi);
+        feeAtaTxBase64 = Buffer.from(umi.transactions.serialize(feeAtaBuilt)).toString("base64");
+      }
+    }
 
     // -- BUILD SWAP --
-    console.log("FEE_WALLET:", feeWalletStr);
-console.log("FEE_ATA:", feeQuoteTokenAccount?.toString());
     const swapIx = swapBondingCurveV2(umi, {
       genesisAccount,
       bucket: bucketPda,
@@ -196,13 +190,38 @@ console.log("FEE_ATA:", feeQuoteTokenAccount?.toString());
       swapDirection: direction,
       amount: amountBigInt,
       minAmountOutScaled: minOut,
-      ...(feeQuoteTokenAccount ? { feeQuoteTokenAccount } : {}),
-
     });
 
     const combinedBuilder = wrapBuilder.add(swapIx);
     const tx = await (await combinedBuilder.setLatestBlockhash(umi)).buildAndSign(umi);
     const serialized = Buffer.from(umi.transactions.serialize(tx)).toString("base64");
+
+    // -- AUTO CLAIM (swap response'u döndükten sonra arka planda çalışır) --
+    if (feeWalletStr) {
+      setImmediate(async () => {
+        try {
+          const platformUmi = getPlatformUmi();
+          const feeWallet = publicKey(feeWalletStr);
+
+          // creatorFeeAccrued > 0 mu kontrol et
+          const freshBucket = await fetchBondingCurveBucketV2(platformUmi, bucketPda);
+          const accrued = (freshBucket as any)?.creatorFeeAccrued ?? BigInt(0);
+          if (BigInt(accrued.toString()) === BigInt(0)) return;
+
+          await claimBondingCurveCreatorFeeV2(platformUmi, {
+            genesisAccount,
+            bucket: bucketPda,
+            baseMint,
+            quoteMint: wsol,
+            creatorFeeWallet: feeWallet,
+          }).sendAndConfirm(platformUmi);
+
+          console.log("CREATOR_FEE_CLAIMED: success");
+        } catch (claimErr) {
+          console.warn("CREATOR_FEE_CLAIM_FAILED:", claimErr instanceof Error ? claimErr.message : claimErr);
+        }
+      });
+    }
 
     return NextResponse.json({
       success: true,
