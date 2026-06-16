@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import {
   genesis,
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 🔴 SAFE STATE (CRITICAL FOR 500 ELIMINATION)
+    // ğŸ”´ SAFE STATE (CRITICAL FOR 500 ELIMINATION)
     if (!bucket) {
       return NextResponse.json({
         success: true,
@@ -94,11 +94,7 @@ export async function GET(req: NextRequest) {
     const swappable = isSwappable(bucket);
     const soldOut = isSoldOut(bucket);
     const firstBuyPending = isFirstBuyPending(bucket);
-    const baseAlloc = BigInt((bucket as any).bucket?.baseTokenAllocation ?? 0);
-const baseBal = BigInt((bucket as any).bucket?.baseTokenBalance ?? 0);
-const fillPercent = baseAlloc > 0
-  ? Number((baseAlloc - baseBal) * BigInt(10000) / baseAlloc) / 100
-  : 0;
+    const fillPercent = getFillPercentage(bucket);
     const graduated = await isGraduated(umi, bucket);
 
     // ----------------------------
@@ -123,7 +119,7 @@ const fillPercent = baseAlloc > 0
       baseReserves = reserves.baseReserves.toString();
       quoteReserves = reserves.quoteReserves.toString();
     } catch {
-      // silent fallback → UI crash yok
+      // silent fallback â†’ UI crash yok
     }
 
     // ----------------------------
