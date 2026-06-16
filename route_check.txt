@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { publicKey, transactionBuilder, createNoopSigner, signerIdentity } from "@metaplex-foundation/umi";
 import { findAssociatedTokenPda, createAssociatedToken, syncNative, transferSol } from "@metaplex-foundation/mpl-toolbox";
 import { getPlatformUmi } from "@/app/lib/umi";
@@ -164,22 +164,17 @@ export async function POST(req: NextRequest) {
     }
 
     // -- FEE ATA --
-    // -- FEE ATA --
-let feeAtaTxBase64: string | null = null;
-let feeQuoteTokenAccount: ReturnType<typeof publicKey> | undefined = undefined;
-
-if (feeWalletStr) {
-  const feeWallet = publicKey(feeWalletStr);
-  const [feeAta] = findAssociatedTokenPda(umi, { mint: wsol, owner: feeWallet });
-  feeQuoteTokenAccount = feeAta; // swap'a söyle
-
-  const feeAtaAccount = await umi.rpc.getAccount(feeAta);
-  if (!feeAtaAccount.exists) {
-    const feeAtaBuilderTx = createAssociatedToken(umi, { mint: wsol, owner: feeWallet, payer: user });
-    const feeAtaBuilt = await feeAtaBuilderTx.buildWithLatestBlockhash(umi);
-    feeAtaTxBase64 = Buffer.from(umi.transactions.serialize(feeAtaBuilt)).toString("base64");
-  }
-}
+    let feeAtaTxBase64: string | null = null;
+    if (feeWalletStr) {
+      const feeWallet = publicKey(feeWalletStr);
+      const [feeAta] = findAssociatedTokenPda(umi, { mint: wsol, owner: feeWallet });
+      const feeAtaAccount = await umi.rpc.getAccount(feeAta);
+      if (!feeAtaAccount.exists) {
+        const feeAtaBuilderTx = createAssociatedToken(umi, { mint: wsol, owner: feeWallet, payer: user });
+        const feeAtaBuilt = await feeAtaBuilderTx.buildWithLatestBlockhash(umi);
+        feeAtaTxBase64 = Buffer.from(umi.transactions.serialize(feeAtaBuilt)).toString("base64");
+      }
+    }
 
     // -- BUILD SWAP --
     const swapIx = swapBondingCurveV2(umi, {
