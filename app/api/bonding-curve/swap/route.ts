@@ -182,6 +182,8 @@ if (feeWalletStr) {
 }
 
     // -- BUILD SWAP --
+    console.log("FEE_WALLET:", feeWalletStr);
+console.log("FEE_ATA:", feeQuoteTokenAccount?.toString());
     const swapIx = swapBondingCurveV2(umi, {
       genesisAccount,
       bucket: bucketPda,
@@ -194,6 +196,8 @@ if (feeWalletStr) {
       swapDirection: direction,
       amount: amountBigInt,
       minAmountOutScaled: minOut,
+      ...(feeQuoteTokenAccount ? { feeQuoteTokenAccount } : {}),
+
     });
 
     const combinedBuilder = wrapBuilder.add(swapIx);
