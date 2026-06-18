@@ -45,7 +45,6 @@ const FAKE_WALLETS = [
   "KoEb...9iGl","LnDa...7hFk","MmCz...5gEj","NlBx...2fDi","OkAw...8eCh",
   "PjZv...4dBg","QiYu...1cAf","RhXt...7bZe","SgWs...3aYd","TfVr...9zXc",
 ];
-const FAKE_TOKENS_LIST = ["$LUK","$BONK2","$WIF3","$PEPE2","$MOON","$CHAD","$FROG","$BULL","$PUMP","$BASED","$DOGE3","$ORCA2","$BLUP","$NEIRO","$GOAT","$GIGA"];
 
 type FeedKind = "trade" | "launch" | "referral" | "milestone" | "deposit";
 
@@ -54,53 +53,95 @@ interface FeedItem {
   wallet: string;
   kind: FeedKind;
   amount: number;
-  token: string;
   milestone?: number;
   reward?: number;
 }
 
-function rndAmt(min: number, max: number) {
-  return parseFloat((Math.random() * (max - min) + min).toFixed(2));
-}
-function pickItem<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
-
-const PRESET_FEED: FeedItem[] = Array.from({ length: 50 }, (_, i) => {
-  const kinds: FeedKind[] = ["trade","trade","trade","launch","referral","milestone","deposit","trade","trade"];
-  const kind = kinds[Math.floor(Math.random() * kinds.length)];
-  return {
-    id: i,
-    wallet: FAKE_WALLETS[Math.floor(Math.random() * FAKE_WALLETS.length)],
-    kind,
-    amount: rndAmt(0.05, 5.5),
-    token: FAKE_TOKENS_LIST[Math.floor(Math.random() * FAKE_TOKENS_LIST.length)],
-    milestone: [100, 250, 500, 1000][Math.floor(Math.random() * 4)],
-    reward: rndAmt(0.5, 3.0),
-  };
-});
-
+// Coin ismi YOK — sadece cüzdan adresi + eylem
 function feedLine(item: FeedItem): { action: string; value: string } {
   switch (item.kind) {
-    case "trade":    return { action: `${item.token} made a trade`,        value: `${item.amount} SOL` };
-    case "launch":   return { action: `${item.token} launched token`,    value: `0.05 SOL` };
-    case "referral": return { action: `claimed referral`,                 value: `${item.amount} SOL` };
-    case "milestone":return { action: `${item.milestone} milestone reached`, value: `+${item.reward} SOL earned` };
-    case "deposit":  return { action: `deposited`,                value: `${item.amount} SOL` };
+    case "trade":     return { action: "made a trade",                         value: `${item.amount.toFixed(2)} SOL` };
+    case "launch":    return { action: "launched a new token",                 value: "0.15 SOL" };
+    case "referral":  return { action: "claimed referral reward",              value: `${item.amount.toFixed(2)} SOL` };
+    case "milestone": return { action: `hit ${item.milestone} referrals`,      value: `+${item.reward?.toFixed(2)} SOL earned` };
+    case "deposit":   return { action: "deposited to pool",                    value: `${item.amount.toFixed(2)} SOL` };
   }
 }
 
+// Para patlaması partikelleri
+interface Coin { id: number; x: number; y: number; vx: number; vy: number; }
+
+function CoinBurst() {
+  const [coins, setCoins] = useState<Coin[]>([]);
+  useEffect(() => {
+    const burst: Coin[] = Array.from({ length: 8 }, (_, i) => ({
+      id: i,
+      x: 50 + Math.random() * 40 - 20,
+      y: 50,
+      vx: (Math.random() - 0.5) * 60,
+      vy: -(Math.random() * 40 + 20),
+    }));
+    setCoins(burst);
+    const t = setTimeout(() => setCoins([]), 900);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden", borderRadius: 10 }}>
+      {coins.map(c => (
+        <motion.div key={c.id}
+          initial={{ x: c.x, y: c.y, opacity: 1, scale: 1 }}
+          animate={{ x: c.x + c.vx, y: c.y + c.vy, opacity: 0, scale: 0.4 }}
+          transition={{ duration: 0.85, ease: "easeOut" }}
+          style={{ position: "absolute", fontSize: 10 }}
+        >💰</motion.div>
+      ))}
+    </div>
+  );
+}
+
+// Değişken aralıklar: 1 / 2 / 3 / 4 / 6 saniye (rastgele sırayla)
+const INTERVALS_MS = [1000, 2000, 3000, 4000, 6000];
+let _feedCounter = 0;
+
 function LiveActivityFeed() {
-  const [shown, setShown] = useState<FeedItem[]>(PRESET_FEED.slice(0, 6));
-  const [cursor, setCursor] = useState(6);
+  const [current, setCurrent] = useState<FeedItem | null>(null);
+  const [bursting, setBursting] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showNext = () => {
+    const kind: FeedKind = (["trade","trade","trade","launch","referral","milestone","deposit","trade","trade"] as FeedKind[])[
+      Math.floor(Math.random() * 9)
+    ];
+    const amount = parseFloat((Math.random() * 5 + 0.05).toFixed(2));
+    const item: FeedItem = {
+      id: ++_feedCounter,
+      wallet: FAKE_WALLETS[Math.floor(Math.random() * FAKE_WALLETS.length)],
+      kind,
+      amount,
+      milestone: [100, 250, 500, 1000][Math.floor(Math.random() * 4)],
+      reward: parseFloat((Math.random() * 2.5 + 0.5).toFixed(2)),
+    };
+    setCurrent(item);
+
+    // Para patlaması sadece milestone ve referral'da
+    if (kind === "milestone" || kind === "referral") {
+      setBursting(true);
+      setTimeout(() => setBursting(false), 900);
+    }
+
+    // Sonraki çağrı için rastgele aralık
+    const delay = INTERVALS_MS[Math.floor(Math.random() * INTERVALS_MS.length)];
+    timeoutRef.current = setTimeout(() => {
+      // Önce kartı çıkar (exit animasyonu), sonra yenisini göster
+      setCurrent(null);
+      setTimeout(showNext, 400);
+    }, delay + 2500); // kartı 2.5sn göster, sonra sonraki aralık kadar bekle
+  };
 
   useEffect(() => {
-    const iv = setInterval(() => {
-      setCursor(c => {
-        const next = c % PRESET_FEED.length;
-        setShown(prev => [PRESET_FEED[next], ...prev].slice(0, 8));
-        return next + 1;
-      });
-    }, 2600);
-    return () => clearInterval(iv);
+    // İlk gösterim 1.5sn sonra
+    timeoutRef.current = setTimeout(showNext, 1500);
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
   }, []);
 
   const dotColor = (k: FeedKind) =>
@@ -109,36 +150,37 @@ function LiveActivityFeed() {
   return (
     <div className="live-feed" style={{
       position: "fixed", bottom: 20, right: 20, zIndex: 999,
-      display: "flex", flexDirection: "column", gap: 5,
       width: 288, pointerEvents: "none",
     }}>
-      <AnimatePresence initial={false}>
-        {shown.map(item => {
-          const { action, value } = feedLine(item);
+      <AnimatePresence>
+        {current && (() => {
+          const { action, value } = feedLine(current);
           return (
-            <motion.div key={item.id}
+            <motion.div key={current.id}
               className="live-feed-item"
-              initial={{ opacity: 0, x: 50, scale: 0.93 }}
+              initial={{ opacity: 0, x: 60, scale: 0.92 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 50, scale: 0.88 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              exit={{ opacity: 0, x: 60, scale: 0.88 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               style={{
+                position: "relative",
                 display: "flex", alignItems: "center", gap: 8,
                 background: "rgba(8,3,18,0.95)", backdropFilter: "blur(20px)",
-                border: "1px solid rgba(20,241,149,0.12)", borderRadius: 10,
+                border: "1px solid rgba(20,241,149,0.14)", borderRadius: 10,
                 padding: "7px 11px",
-                boxShadow: "0 2px 12px rgba(0,0,0,0.6)",
+                boxShadow: "0 2px 16px rgba(0,0,0,0.7)",
               }}
             >
+              {bursting && <CoinBurst />}
               <div style={{
                 width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
-                background: dotColor(item.kind),
-                boxShadow: `0 0 5px ${dotColor(item.kind)}`,
+                background: dotColor(current.kind),
+                boxShadow: `0 0 5px ${dotColor(current.kind)}`,
               }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", gap: 4, alignItems: "baseline", flexWrap: "wrap" }}>
                   <span className="live-feed-text" style={{ fontFamily: F.mono, fontSize: 10, color: "#a78bfa", fontWeight: 700, whiteSpace: "nowrap" }}>
-                    {item.wallet}
+                    {current.wallet}
                   </span>
                   <span className="live-feed-text" style={{ fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.42)", whiteSpace: "nowrap" }}>
                     {action}
@@ -150,7 +192,7 @@ function LiveActivityFeed() {
               </div>
             </motion.div>
           );
-        })}
+        })()}
       </AnimatePresence>
     </div>
   );
@@ -361,6 +403,21 @@ export default function HomePage() {
         .cta-pulse { animation: urgentFlash 2s ease-in-out infinite; }
         .cta-pulse:hover { animation: none !important; transform: translateY(-3px); box-shadow: 0 12px 48px rgba(20,241,149,0.6) !important; }
 
+        @media (max-width: 768px) {
+          .hero-grid {
+            grid-template-columns: 1fr !important;
+            gap: 32px !important;
+            padding: 72px 20px 48px !important;
+          }
+          .hero-logo-col {
+            display: none !important;
+          }
+          .koth-inner {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 16px !important;
+          }
+        }
         @media (max-width: 640px) {
           .live-feed {
             width: 180px !important;
