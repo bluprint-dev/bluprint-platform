@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { Home, Sparkles, LineChart, Users, Wallet, X, Menu, Zap, Coins, Trophy } from "lucide-react";
+import { Home, Sparkles, LineChart, Users, Wallet, X, MoreVertical, Zap, Coins, Trophy } from "lucide-react";
 
 const F = {
   display: "var(--font-outfit), 'Outfit', sans-serif",
@@ -218,7 +218,10 @@ export default function Sidebar() {
   return (
     <>
       {/* DESKTOP */}
-      <div style={{ width: "100%", height: "100%" }}>
+      <div
+        className="hidden md:block"
+        style={{ position: "fixed", left: 0, top: 36, bottom: 0, width: 224, zIndex: 30 }}
+      >
         <SidebarContent />
       </div>
 
@@ -234,7 +237,7 @@ export default function Sidebar() {
           </Link>
           <button onClick={() => setIsMobileOpen(!isMobileOpen)}
             style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(153,69,255,0.08)", border: "1px solid rgba(153,69,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-            {isMobileOpen ? <X size={16} color="#fff" /> : <Menu size={16} color="#fff" />}
+            {isMobileOpen ? <X size={16} color="#fff" /> : <MoreVertical size={16} color="#fff" />}
           </button>
         </div>
       </div>
