@@ -155,7 +155,7 @@ export default function CreatePage() {
     setTxSig("");
 
     try {
-      // â”€â”€ ADIM 1: GÃ¶rsel â†’ Pinata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── ADIM 1: Görsel → Pinata ──
       let imageUrl = "";
       if (imageFile) {
         const fd = new FormData();
@@ -168,7 +168,7 @@ export default function CreatePage() {
 
       setLaunchStatus("creating");
 
-      // â”€â”€ ADIM 2: Metadata JSON â†’ Pinata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── ADIM 2: Metadata JSON → Pinata ──
       const metaRes = await fetch("/api/irys/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -187,14 +187,14 @@ export default function CreatePage() {
         throw new Error("Metadata upload failed: " + (metaJson.error || "unknown"));
       }
 
-      // â”€â”€ ADIM 3: Backend'den transaction'larÄ± al â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── ADIM 3: Backend'den transaction'ları al ──
       const launchRes = await fetch("/api/bonding-curve/launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
           symbol: form.symbol.trim().toUpperCase(),
-          image: imageUrl,                          // âœ… Direkt gÃ¶rsel URL
+          image: imageUrl,                          // ✅ Direkt görsel URL
           description: form.description.trim(),
           website: form.website.trim() || undefined,
           twitter: form.twitter.trim() || undefined,
@@ -209,7 +209,7 @@ export default function CreatePage() {
 
       const { transactions: serializedTxs, mintAddress, genesisAccount } = launchJson;
 
-      // â”€â”€ ADIM 4: Transaction'larÄ± deserialize et â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── ADIM 4: Transaction'ları deserialize et ──
       const txObjects = (serializedTxs as string[]).map((b64: string) => {
         const buf = Buffer.from(b64, "base64");
         try {
@@ -219,7 +219,7 @@ export default function CreatePage() {
         }
       });
 
-      // â”€â”€ ADIM 5: 0.15 SOL platform fee TX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── ADIM 5: 0.15 SOL platform fee TX ──
       const { blockhash: feeBlockhash, lastValidBlockHeight: feeLastValid } =
         await connection.getLatestBlockhash("confirmed");
 
@@ -236,11 +236,11 @@ export default function CreatePage() {
 
       const allTxs = [...txObjects, feeTx];
 
-      // â”€â”€ ADIM 6: KullanÄ±cÄ± cÃ¼zdanÄ±yla tek seferde imzala â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── ADIM 6: Kullanıcı cüzdanıyla tek seferde imzala ──
       setLaunchStatus("signing");
       const signedTxs = await signAllTransactions(allTxs as any[]);
 
-      // â”€â”€ ADIM 7: Ä°mzalÄ± transaction'larÄ± sÄ±rayla gÃ¶nder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── ADIM 7: İmzalı transaction'ları sırayla gönder ──
       setLaunchStatus("confirming");
 
       let lastSig = "";
@@ -253,7 +253,7 @@ export default function CreatePage() {
           : (signedTx as Transaction).serialize();
 
         const sig = await connection.sendRawTransaction(raw, {
-          skipPreflight: true,          // âœ… BaÄŸÄ±mlÄ± TX'lerde simulation false positive verir
+          skipPreflight: true,          // ✅ Bağımlı TX'lerde simulation false positive verir
           preflightCommitment: "confirmed",
         });
         lastSig = sig;
@@ -269,13 +269,13 @@ export default function CreatePage() {
         );
       }
 
-      // â”€â”€ ADIM 8: Genesis API'ye register â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── ADIM 8: Genesis API'ye register ──
       const createLaunchInput = {
         wallet: publicKey.toBase58(),
         token: {
           name: form.name.trim(),
           symbol: form.symbol.trim().toUpperCase(),
-          image: imageUrl,                          // âœ… GÃ¶rsel URL
+          image: imageUrl,                          // ✅ Görsel URL
           description: form.description.trim(),
           externalLinks: {
             website: form.website.trim() || undefined,
@@ -285,7 +285,7 @@ export default function CreatePage() {
         },
         launchType: "bondingCurve" as const,
         launch: {
-          creatorFeeWallet: BONDING_CURVE_FEE_WALLET, // âœ… launch/route.ts ile aynÄ±
+          creatorFeeWallet: BONDING_CURVE_FEE_WALLET, // ✅ launch/route.ts ile aynı
           firstBuyAmount: 0,
         },
       };
@@ -312,7 +312,7 @@ export default function CreatePage() {
         console.warn("Register failed:", registerJson);
       }
 
-      // â”€â”€ ADIM 9: Track + referral â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── ADIM 9: Track + referral ──
       fetch("/api/track-launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -367,15 +367,15 @@ export default function CreatePage() {
     creating: "CREATING TOKEN...",
     signing: "WAITING FOR SIGNATURE...",
     confirming: "CONFIRMING ON-CHAIN...",
-    done: "ğŸš€ LAUNCHED!",
+    done: "🚀 LAUNCHED!",
     error: "TRY AGAIN",
   };
 
   const promoIndicator = {
     idle: null,
     checking: <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>checking...</span>,
-    valid: <span style={{ color: "#14F195", fontSize: 12, fontWeight: 600 }}>âœ“ Valid code</span>,
-    invalid: <span style={{ color: "#ff6b6b", fontSize: 12 }}>âœ— Invalid code</span>,
+    valid: <span style={{ color: "#14F195", fontSize: 12, fontWeight: 600 }}>✓ Valid code</span>,
+    invalid: <span style={{ color: "#ff6b6b", fontSize: 12 }}>✗ Invalid code</span>,
   }[promoStatus];
 
   return (
@@ -443,7 +443,7 @@ export default function CreatePage() {
 
         {launchStatus === "done" ? (
           <div style={{ maxWidth: 540, margin: "0 auto", textAlign: "center", padding: "60px 20px" }}>
-            <div className="success-icon" style={{ fontSize: 64, marginBottom: 24 }}>ğŸš€</div>
+            <div className="success-icon" style={{ fontSize: 64, marginBottom: 24 }}>🚀</div>
             <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: 32, fontWeight: 900, color: "#14F195", margin: "0 0 16px" }} className="glow-text-green">
               Token Launched!
             </h1>
@@ -453,7 +453,7 @@ export default function CreatePage() {
             {txSig && (
               <a href={`https://solscan.io/tx/${txSig}`} target="_blank" rel="noopener noreferrer"
                 style={{ color: "#9945FF", fontSize: 13, display: "block", margin: "16px 0 32px", wordBreak: "break-all" }}>
-                View on Solscan â†—
+                View on Solscan ↗
               </a>
             )}
             <button className="launch-btn" style={{ maxWidth: 280, margin: "0 auto" }}
@@ -525,7 +525,7 @@ export default function CreatePage() {
                       <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, margin: "0 0 4px" }}>
                         Drag & drop or <span style={{ color: "#9945FF", fontWeight: 600 }}>browse</span>
                       </p>
-                      <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12, margin: 0 }}>PNG, JPG, GIF, WebP â€” recommended 500Ã—500</p>
+                      <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12, margin: 0 }}>PNG, JPG, GIF, WebP — recommended 500×500</p>
                     </div>
                   )}
                 </div>
@@ -533,7 +533,7 @@ export default function CreatePage() {
                 <div style={{ marginBottom: 20 }}>
                   <div className="accordion-trigger" onClick={() => setSocialOpen(o => !o)}>
                     <span>Social Links (Optional)</span>
-                    <span className={`accordion-chevron${socialOpen ? " open" : ""}`}>â–¾</span>
+                    <span className={`accordion-chevron${socialOpen ? " open" : ""}`}>▾</span>
                   </div>
                   {socialOpen && (
                     <div style={{ paddingTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -554,7 +554,7 @@ export default function CreatePage() {
                 <div style={{ marginBottom: 28 }}>
                   <div className="accordion-trigger" onClick={() => setPromoOpen(o => !o)}>
                     <span>Promo / Referral Code (Optional)</span>
-                    <span className={`accordion-chevron${promoOpen ? " open" : ""}`}>â–¾</span>
+                    <span className={`accordion-chevron${promoOpen ? " open" : ""}`}>▾</span>
                   </div>
                   {promoOpen && (
                     <div style={{ paddingTop: 16 }}>
@@ -572,7 +572,7 @@ export default function CreatePage() {
                   )}
                 </div>
 
-                {/* â”€â”€ Fee section â”€â”€ */}
+                {/* ── Fee section ── */}
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <div className="fee-badge">
@@ -655,9 +655,9 @@ export default function CreatePage() {
                     )}
                     {(form.website || form.twitter || form.telegram) && (
                       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-                        {form.website && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>ğŸŒ Web</div>}
-                        {form.twitter && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>âœ• Twitter</div>}
-                        {form.telegram && <div style={{ background: "rgba(29,155,240,0.1)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(41,182,246,0.7)", fontWeight: 600 }}>âœˆ Telegram</div>}
+                        {form.website && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>🌐 Web</div>}
+                        {form.twitter && <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>✕ Twitter</div>}
+                        {form.telegram && <div style={{ background: "rgba(29,155,240,0.1)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "rgba(41,182,246,0.7)", fontWeight: 600 }}>✈ Telegram</div>}
                       </div>
                     )}
                     <div style={{ borderTop: "1px solid rgba(153,69,255,0.12)", paddingTop: 16 }}>
@@ -681,7 +681,7 @@ export default function CreatePage() {
                 ].map(({ done, text }) => (
                   <div key={text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 18, height: 18, borderRadius: "50%", background: done ? "rgba(20,241,149,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${done ? "rgba(20,241,149,0.5)" : "rgba(255,255,255,0.1)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: done ? "#14F195" : "rgba(255,255,255,0.2)", transition: "all 0.3s" }}>
-                      {done ? "âœ“" : ""}
+                      {done ? "✓" : ""}
                     </div>
                     <span style={{ fontSize: 13, color: done ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.25)", transition: "color 0.3s" }}>
                       {text}
