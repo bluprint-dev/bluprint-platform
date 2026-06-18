@@ -21,8 +21,8 @@ const mono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BluPrint - Pink Whale Launchpad",
-  description: "Launch your meme coin on Solana in seconds.",
+  title: "BluPrint — #1 Solana Launchpad",
+  description: "The fastest algorithmic bonding curve launchpad on Solana. Launch, trade, and migrate to Raydium in seconds.",
   icons: { icon: "/favicon.ico" },
 };
 
@@ -34,12 +34,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         style={{ margin: 0, padding: 0, background: "#0A0A0F", color: "#fff", fontFamily: "var(--font-outfit), system-ui, sans-serif" }}
       >
         <Providers>
-          {/* MarqueeBanner â€” fixed top */}
+          {/* MarqueeBanner Ã¢â‚¬â€ fixed top */}
           <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 20 }}>
             <MarqueeBanner />
           </div>
 
-          {/* Sidebar — desktop fixed column + mobile header/drawer, handled internally by Sidebar.tsx */}
+          {/* Sidebar â€” desktop fixed column + mobile header/drawer, handled internally by Sidebar.tsx */}
           <Sidebar />
 
           {/* Main content */}
