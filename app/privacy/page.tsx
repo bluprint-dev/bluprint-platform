@@ -1,57 +1,119 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import Footer from "../components/Footer";
-
 export default function PrivacyPage() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const lastUpdated = "June 18, 2026";
 
   return (
     <div className="relative min-h-screen">
-      
-      <div className="pt-28 max-w-4xl mx-auto px-4 pb-16">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 text-center">
-          Privacy Policy
-        </h1>
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-md border border-gray-200 dark:border-gray-800 p-6 md:p-8 space-y-4 text-gray-700 dark:text-gray-300">
-          <p><strong>Effective Date:</strong> May 1, 2026</p>
-          <p>BluPrint (“we”, “our”, “us”) provides tools to create and manage Solana tokens. This Privacy Policy explains how we collect, use, and protect your information.</p>
-          
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-4">Information We Collect</h2>
-          <ul className="list-disc pl-6 space-y-1">
-            <li>Wallet address (when you connect Phantom or other wallets)</li>
-            <li>Transaction data (token creation, fees)</li>
-            <li>Basic analytics (page visits, usage patterns)</li>
-            <li>Optional data (token name, symbol, description, logo uploads)</li>
-          </ul>
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-24 left-10 h-[420px] w-[420px] rounded-full bg-[#ff2d95]/10 blur-[120px]" />
+        <div className="absolute top-[10%] right-10 h-[360px] w-[360px] rounded-full bg-[#7c3aed]/10 blur-[140px]" />
+      </div>
 
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-4">How We Use Information</h2>
-          <ul className="list-disc pl-6 space-y-1">
-            <li>To provide token creation services</li>
-            <li>To process transactions and fees</li>
-            <li>To improve platform performance and security</li>
-            <li>To prevent fraud, abuse, and malicious activity</li>
-          </ul>
+      <div className="relative max-w-3xl mx-auto px-6 py-16">
+        <h1 className="text-3xl font-black text-white tracking-tight mb-2">Privacy Policy</h1>
+        <p className="text-xs text-gray-500 font-mono mb-10">Last updated: {lastUpdated}</p>
 
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-4">Data Security</h2>
-          <p>We implement strong industry-standard security practices to protect user data and ensure a safe experience.</p>
+        <div className="space-y-8 text-sm text-gray-400 leading-relaxed">
+          <section className="space-y-3">
+            <h2 className="text-white text-base font-bold">1. Overview</h2>
+            <p>
+              BluPrint ("we", "us", "the platform") provides tools for creating and trading
+              tokens on the Solana blockchain. This Privacy Policy explains what information
+              we collect, how we use it, and what choices you have. By using BluPrint, you
+              agree to the practices described here.
+            </p>
+          </section>
 
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-4">Third-Party Services</h2>
-          <p>We may use trusted third-party providers such as RPC endpoints, IPFS (Pinata), and analytics tools to deliver our services.</p>
+          <section className="space-y-3">
+            <h2 className="text-white text-base font-bold">2. Information We Collect</h2>
+            <p>
+              BluPrint is designed to require minimal personal information. We may collect:
+            </p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Public wallet addresses you connect to the platform.</li>
+              <li>On-chain transaction data, which is inherently public on the Solana blockchain and not controlled by us.</li>
+              <li>Basic technical data such as IP address, browser type, and device information, collected automatically for security and analytics purposes.</li>
+              <li>Any information you voluntarily provide, such as an email address if you contact support.</li>
+            </ul>
+            <p>
+              We do not require KYC, do not collect your name, and do not have access to your
+              private keys, seed phrases, or wallet funds at any time.
+            </p>
+          </section>
 
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-4">User Responsibility</h2>
-          <p>Users are fully responsible for how they use the platform and the tokens they create.</p>
+          <section className="space-y-3">
+            <h2 className="text-white text-base font-bold">3. How We Use Information</h2>
+            <p>We use collected data to:</p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Operate, maintain, and improve the platform.</li>
+              <li>Detect, investigate, and prevent fraudulent or abusive activity.</li>
+              <li>Comply with applicable laws and respond to legal requests where required.</li>
+              <li>Communicate with you if you contact us directly.</li>
+            </ul>
+            <p>We do not sell your data to third parties.</p>
+          </section>
 
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-4">Your Control</h2>
-          <p>You control your wallet and transactions at all times. BluPrint never has access to your private keys or funds.</p>
+          <section className="space-y-3">
+            <h2 className="text-white text-base font-bold">4. Blockchain Data</h2>
+            <p>
+              Any transaction you make through BluPrint is recorded on the Solana blockchain,
+              which is a public, permanent, and decentralized ledger. We have no ability to
+              alter, delete, or hide this data once it is confirmed on-chain. You should
+              understand that wallet addresses and transaction history are publicly visible
+              to anyone, independent of this platform.
+            </p>
+          </section>
 
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-4">Changes</h2>
-          <p>We may update this policy periodically. Continued use of the platform means you accept these changes.</p>
+          <section className="space-y-3">
+            <h2 className="text-white text-base font-bold">5. Third-Party Services</h2>
+            <p>
+              BluPrint may rely on third-party infrastructure such as RPC providers, hosting
+              services, or analytics tools to operate. These providers may independently
+              collect technical data (such as IP addresses) as part of delivering their
+              services. We are not responsible for the privacy practices of third parties not
+              under our direct control, including wallet providers and blockchain explorers.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-white text-base font-bold">6. Data Retention &amp; Security</h2>
+            <p>
+              We retain technical and usage data only for as long as necessary for the
+              purposes described above. We apply reasonable technical and organizational
+              measures to protect data we hold, but no method of transmission or storage is
+              completely secure, and we cannot guarantee absolute security.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-white text-base font-bold">7. Your Choices</h2>
+            <p>
+              You can disconnect your wallet from the platform at any time. Because most
+              activity occurs on a public blockchain, certain data (such as past transactions)
+              cannot be deleted or modified by us, as it is not stored on our servers.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-white text-base font-bold">8. Changes to This Policy</h2>
+            <p>
+              We may update this Privacy Policy from time to time. Continued use of the
+              platform after changes are posted constitutes acceptance of the revised policy.
+              We encourage you to review this page periodically.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-white text-base font-bold">9. Contact</h2>
+            <p>
+              For privacy-related questions, contact us at{" "}
+              <a href="mailto:hello@bluprint.fun" className="text-[#ff2d95] hover:underline">
+                hello@bluprint.fun
+              </a>
+              .
+            </p>
+          </section>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Providers from "./providers";
 import Sidebar from "./components/Sidebar";
 import MarqueeBanner from "./components/MarqueeBanner";
 import ChatbaseEmbed from "./components/ChatbaseEmbed";
+import Footer from "./components/Footer";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -49,9 +50,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* Main content */}
           <main
             className="md:ml-56"
-            style={{ minHeight: "100vh", paddingTop: 36, position: "relative", zIndex: 10 }}
+            style={{ minHeight: "100vh", paddingTop: 36, position: "relative", zIndex: 10, display: "flex", flexDirection: "column" }}
           >
-            {children}
+            <div style={{ flex: 1 }}>{children}</div>
+            <Footer />
           </main>
 
           <ChatbaseEmbed />

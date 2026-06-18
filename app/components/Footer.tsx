@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Github, Twitter, MessageCircle, Rocket, Mail, ArrowUpRight, Sparkles } from "lucide-react";
+import { Twitter, MessageCircle, Rocket, Mail, ArrowUpRight, Sparkles } from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -74,9 +74,8 @@ export default function Footer() {
               <div className="space-y-3">
                 <h4 className="text-white text-xs font-bold uppercase tracking-wider">Social</h4>
                 <ul className="space-y-2">
-                  <li><a href="#" className="text-sm text-gray-400 hover:text-[#ff2d95] transition inline-flex items-center gap-2"><Twitter className="w-4 h-4" /> X</a></li>
-                  <li><a href="#" className="text-sm text-gray-400 hover:text-[#ff2d95] transition inline-flex items-center gap-2"><MessageCircle className="w-4 h-4" /> Telegram</a></li>
-                  <li><a href="#" className="text-sm text-gray-400 hover:text-[#ff2d95] transition inline-flex items-center gap-2"><Github className="w-4 h-4" /> GitHub</a></li>
+                  <li><a href="https://x.com/BluprintFun" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-400 hover:text-[#ff2d95] transition inline-flex items-center gap-2"><Twitter className="w-4 h-4" /> X</a></li>
+                  <li><Link href="/" className="text-sm text-gray-400 hover:text-[#ff2d95] transition inline-flex items-center gap-2"><MessageCircle className="w-4 h-4" /> Telegram</Link></li>
                 </ul>
               </div>
 
