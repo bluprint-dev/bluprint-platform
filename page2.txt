@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -169,11 +169,11 @@ function useViewerCount() {
 
 /* â”€â”€ Slots Counter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function SlotsCounter() {
-  const [slots, setSlots] = useState(() => Math.floor(Math.random() * 200) + 80);
+  const [slots, setSlots] = useState(33);
   useEffect(() => {
     const iv = setInterval(() => {
-      setSlots(s => Math.min(500, Math.max(1, s + Math.floor(Math.random() * 11) - 5)));
-    }, 4000);
+      setSlots(s => Math.max(1, s - (Math.random() > 0.7 ? 1 : 0)));
+    }, 8000);
     return () => clearInterval(iv);
   }, []);
   return (
@@ -192,7 +192,7 @@ function SlotsCounter() {
         fontFamily: F.mono, fontSize: 11, fontWeight: 700,
         color: "rgba(255,120,120,0.9)", letterSpacing: "0.1em",
       }}>
-        <span style={{ color: "#ff5050", fontSize: 14 }}>{slots}</span> PEOPLE ARE BROWSING THE SITE RIGHT NOW
+        ONLY <span style={{ color: "#ff5050", fontSize: 14 }}>{slots}</span> EARLY ACCESS SLOTS LEFT AT 0.05 SOL
       </span>
     </div>
   );
@@ -424,7 +424,7 @@ export default function HomePage() {
                 letterSpacing: "0.06em", position: "relative", overflow: "hidden",
               }}>
                 <span style={{ position: "absolute", left: 0, right: 0, height: "30%", background: "linear-gradient(transparent,rgba(255,255,255,0.08),transparent)", animation: "scanline 2s linear infinite", pointerEvents: "none" }} />
-                🚀 LAUNCH TOKEN · 0.15 SOL
+                ğŸš€ LAUNCH TOKEN Â· 0.05 SOL
               </Link>
               <Link href="/dex" style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
@@ -727,7 +727,7 @@ export default function HomePage() {
               <img src="/favicon.ico" alt="BluPrint" style={{ width: 38, height: 38, objectFit: "contain", filter: "drop-shadow(0 0 12px rgba(153,69,255,0.4))" }} />
               <div>
                 <p style={{ margin: 0, fontFamily: F.display, fontSize: 17, fontWeight: 800, color: "#fff" }}>BluPrint</p>
-                <p style={{ margin: 0, fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em" }}>The most profitable launchpad in Solana</p>
+                <p style={{ margin: 0, fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em" }}>Solana's fastest bonding-curve launchpad</p>
               </div>
             </div>
             <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>

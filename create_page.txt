@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
@@ -31,7 +31,7 @@ type LaunchStatus =
   | "done"
   | "error";
 
-const CREATION_FEE_SOL = 0.15;
+const CREATION_FEE_SOL = 0.05;
 const PLATFORM_WALLET = new PublicKey("A692UafMRPEofwLsnD1NjWF9usiePRTJAd4Cpz8m6Y5X");
 const BONDING_CURVE_FEE_WALLET = "AimBpCdpPmTB5QeJ6WwgrBzNmMsjR3MvNe9zgNhzomZ6";
 
@@ -219,7 +219,7 @@ export default function CreatePage() {
         }
       });
 
-      // â”€â”€ ADIM 5: 0.15 SOL platform fee TX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // â”€â”€ ADIM 5: 0.05 SOL platform fee TX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const { blockhash: feeBlockhash, lastValidBlockHeight: feeLastValid } =
         await connection.getLatestBlockhash("confirmed");
 
@@ -582,7 +582,7 @@ export default function CreatePage() {
                       Creation Fee: {CREATION_FEE_SOL} SOL
                     </div>
                     <span style={{ fontSize: 11, color: "rgba(20,241,149,0.6)", fontWeight: 600, paddingLeft: 4 }}>
-                      🚀 Referral is live — launch now and start earning SOL!
+                      ğŸ¯ Special launch price for the first 100 users only!
                     </span>
                     <p className="fee-note">
                       * {CREATION_FEE_SOL} SOL is the BluPrint platform fee. Metaplex protocol fees (rent, storage,
