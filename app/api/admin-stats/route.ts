@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, KEYS } from '@/app/lib/redis';
+import { redis } from '@/app/lib/redis';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = "https://tfdmcuowasuakmcznpol.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmZG1jdW93YXN1YWttY3pucG9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDEyMTUsImV4cCI6MjA5NjkxNzIxNX0.Ueem2OCrzG7kGNXCkTf5bfBk5JM1u5UEh2z4cvaPe5Y";
 
 const ADMIN_WALLETS = [
   "aJCqEsDgSXhkLUYAnq4tA2T3LfG7rMbfcdJapf9af9x",
@@ -10,11 +14,8 @@ function verifyAdminToken(req: NextRequest): boolean {
   const authHeader = req.headers.get('Authorization');
   if (authHeader?.startsWith('Bearer ')) {
     try {
-      const token = authHeader.slice(7);
-      const decoded = JSON.parse(atob(token));
-      if (decoded.exp > Date.now() && ADMIN_WALLETS.includes(decoded.publicKey)) {
-        return true;
-      }
+      const decoded = JSON.parse(atob(authHeader.slice(7)));
+      if (decoded.exp > Date.now() && ADMIN_WALLETS.includes(decoded.publicKey)) return true;
     } catch {}
   }
   const wallet = req.headers.get('x-wallet-address');
@@ -28,79 +29,91 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Token sayısı
-    const tokenCount = Number(await redis.get(KEYS.tokenCount) || 0);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    // Kullanıcılar
-    const users = await redis.smembers(KEYS.users);
-    const totalUsers = users.length;
+    // Redis verileri
+    const [tokenCount, users, pendingKeys, countKeys, recentMints] = await Promise.all([
+      redis.get('token:count'),
+      redis.smembers('users'),
+      redis.keys('ref:earnings:*:pending'),
+      redis.keys('ref:count:*'),
+      redis.lrange('recent_tokens', 0, 29),
+    ]);
 
-    // Son 24 saatte aktif kullanıcılar (track-token key'inden)
-    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-    const recentTokenMints = await redis.lrange('recent_tokens', 0, 99);
-    let activeUsers = 0;
-    const seenWallets = new Set<string>();
+    // Referral kazançları
+    let totalReferralEarnings = 0;
+    if (pendingKeys.length > 0) {
+      const vals = await Promise.all(pendingKeys.map(k => redis.get(k)));
+      totalReferralEarnings = vals.reduce((sum: number, v) => sum + Number(v || 0), 0);
+    }
 
-    for (const mint of recentTokenMints) {
+    // Referral yapan kişi sayısı
+    let totalReferralUsers = 0;
+    if (countKeys.length > 0) {
+      const vals = await Promise.all(countKeys.map(k => redis.get(k)));
+      totalReferralUsers = vals.filter(v => Number(v) > 0).length;
+    }
+
+    // Top kazanan cüzdanlar
+    const topReferrers: { wallet: string; earnings: number; referrals: number }[] = [];
+    if (pendingKeys.length > 0) {
+      const entries = await Promise.all(
+        pendingKeys.map(async (k) => {
+          const wallet = k.replace('ref:earnings:', '').replace(':pending', '');
+          const [earnings, refs] = await Promise.all([
+            redis.get(k),
+            redis.get(`ref:count:${wallet}`),
+          ]);
+          return { wallet, earnings: Number(earnings || 0), referrals: Number(refs || 0) };
+        })
+      );
+      topReferrers.push(...entries.sort((a, b) => b.earnings - a.earnings).slice(0, 10));
+    }
+
+    // Supabase: swap verileri
+    const { data: allTrades } = await supabase
+      .from('trades')
+      .select('created_at, amount_sol, type')
+      .order('created_at', { ascending: false });
+
+    const trades = allTrades || [];
+    const todayTrades = trades.filter(t => new Date(t.created_at) >= today);
+    const totalSwapVolume = trades.reduce((s, t) => s + Number(t.amount_sol || 0), 0);
+    const dailySwapVolume = todayTrades.reduce((s, t) => s + Number(t.amount_sol || 0), 0);
+    const dailySwapCount = todayTrades.length;
+
+    // Son tokenlar
+    const recentTokens: { mint: string; name: string; symbol: string; createdAt: number }[] = [];
+    for (const mint of recentMints.slice(0, 10)) {
       const mintStr = typeof mint === 'string' ? mint : String(mint);
       try {
         const meta = await redis.get(`token:metadata:${mintStr}`);
-        const data = meta
-          ? (typeof meta === 'string' ? JSON.parse(meta) : meta)
-          : null;
-        if (data?.createdAt && data.createdAt > oneDayAgo && data.creator && !seenWallets.has(data.creator)) {
-          seenWallets.add(data.creator);
-          activeUsers++;
-        }
+        const data = meta ? (typeof meta === 'string' ? JSON.parse(meta) : meta) : null;
+        if (data) recentTokens.push({ mint: mintStr, name: data.name || '?', symbol: data.symbol || '?', createdAt: data.createdAt });
       } catch {}
     }
 
-    // Referral istatistikleri — gerçek key'ler: ref:earnings:*:pending, ref:count:*
-    let totalReferrals = 0;
-    let totalPaidOut = 0;
-
-    const pendingKeys = await redis.keys('ref:earnings:*:pending');
-    for (const key of pendingKeys) {
-      const val = Number(await redis.get(key) || 0);
-      totalPaidOut += val;
-    }
-
-    const countKeys = await redis.keys('ref:count:*');
-    for (const key of countKeys) {
-      const val = Number(await redis.get(key) || 0);
-      totalReferrals += val;
-    }
-
-    const totalRevenue = tokenCount * 0.10;
-    const netProfit = totalRevenue - totalPaidOut;
-
-    // Büyüme hesabı (track-token listesinden)
-    const allTokens = await redis.lrange(KEYS.tokens, 0, -1);
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    let thisWeek = 0;
-    let lastWeek = 0;
-    for (const t of allTokens) {
-      const data = typeof t === 'string' ? JSON.parse(t) : t;
-      const ts = new Date(data.createdAt).getTime();
-      if (ts > oneDayAgo) thisWeek++;
-      else if (ts > weekAgo) lastWeek++;
-    }
-    const dailyGrowth = lastWeek > 0 ? Math.floor((thisWeek - lastWeek) / lastWeek * 100) : 0;
-    const weeklyGrowth = Math.min(100, Math.abs(dailyGrowth));
+    // Platform geliri: token başına 0.1 SOL
+    const totalTokens = Number(tokenCount || 0);
+    const platformRevenue = totalTokens * 0.1;
 
     return NextResponse.json({
       success: true,
       stats: {
-        totalTokens: tokenCount,
-        totalUsers,
-        activeUsers,
-        totalEarnings: totalRevenue + totalPaidOut,
-        totalReferrals,
-        totalPaidOut,
-        netProfit,
-        dailyGrowth,
-        weeklyGrowth,
+        totalTokens,
+        totalUsers: users.length,
+        totalReferralUsers,
+        totalReferralEarnings: +totalReferralEarnings.toFixed(4),
+        platformRevenue: +platformRevenue.toFixed(4),
+        totalSwapVolume: +totalSwapVolume.toFixed(4),
+        dailySwapVolume: +dailySwapVolume.toFixed(4),
+        dailySwapCount,
+        totalTrades: trades.length,
       },
+      topReferrers,
+      recentTokens,
     });
   } catch (error: any) {
     console.error('Admin stats error:', error);
