@@ -14,12 +14,12 @@ const F = {
 };
 
 const menuItems = [
-  { href: "/",                label: "Home",    icon: Home      },
-  { href: "/create",          label: "Create",  icon: Sparkles  },
-  { href: "/dex",             label: "DEX",     icon: LineChart  },
-  { href: "/referral",        label: "Refer",   icon: Users     },
-  { href: "/creator-rewards", label: "Rewards", icon: Coins     },
-  { href: "/kol-rewards",     label: "KOL",     icon: Trophy    },
+  { href: "/",                label: "Home",            icon: Home      },
+  { href: "/create",          label: "Create",          icon: Sparkles  },
+  { href: "/dex",             label: "DEX",              icon: LineChart  },
+  { href: "/referral",        label: "Refer",            icon: Users     },
+  { href: "/creator-rewards", label: "Creator Rewards",  icon: Coins,   disabled: true },
+  { href: "/kol-rewards",     label: "KOL",              icon: Trophy    },
 ];
 
 function shortenAddress(address: string) {
@@ -77,8 +77,38 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href;
+
+            if (item.disabled) {
+              return (
+                <div
+                  key={item.href}
+                  className="sidebar-item sidebar-item-disabled"
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    background: "transparent",
+                    border: "1px solid transparent",
+                    cursor: "not-allowed",
+                  }}
+                >
+                  <Icon size={17} color="rgba(255,255,255,0.18)" />
+                  <span style={{ fontFamily: F.display, fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.22)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                    {item.label}
+                  </span>
+                  <span className="coming-soon-badge" style={{ flexShrink: 0 }}>
+                    COMING SOON
+                  </span>
+                </div>
+              );
+            }
+
             return (
               <Link key={item.href} href={item.href} onClick={onLinkClick}
+                className="sidebar-item"
                 style={{
                   position: "relative",
                   display: "flex",
@@ -87,7 +117,6 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
                   padding: "10px 12px",
                   borderRadius: 12,
                   textDecoration: "none",
-                  transition: "all 0.2s",
                   background: active ? "linear-gradient(135deg,rgba(153,69,255,0.14),rgba(20,241,149,0.05))" : "transparent",
                   border: active ? "1px solid rgba(153,69,255,0.22)" : "1px solid transparent",
                 }}>
@@ -140,6 +169,40 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
 
       <style>{`
         @keyframes sbPing { 0%{transform:scale(1);opacity:0.8} 75%{transform:scale(2.5);opacity:0} 100%{transform:scale(1);opacity:0} }
+
+        @keyframes comingSoonBlink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.35; }
+        }
+
+        .sidebar-item {
+          transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .sidebar-item:not(.sidebar-item-disabled):hover {
+          transform: translateY(-2px);
+          background: rgba(153,69,255,0.08) !important;
+          border-color: rgba(153,69,255,0.25) !important;
+          box-shadow: 0 4px 16px rgba(153,69,255,0.18), 0 0 12px rgba(153,69,255,0.12);
+        }
+
+        .sidebar-item-disabled {
+          opacity: 0.7;
+        }
+
+        .coming-soon-badge {
+          font-family: ${F.mono};
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          color: #9945FF;
+          background: rgba(153,69,255,0.1);
+          border: 1px solid rgba(153,69,255,0.3);
+          border-radius: 6px;
+          padding: 3px 6px;
+          white-space: nowrap;
+          animation: comingSoonBlink 1.4s ease-in-out infinite;
+        }
       `}</style>
     </div>
   );
