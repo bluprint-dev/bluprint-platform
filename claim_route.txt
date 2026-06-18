@@ -1,4 +1,4 @@
-// app/api/claim-referral/route.ts
+﻿// app/api/claim-referral/route.ts
 // Transfers pending earnings from treasury to user wallet.
 // Key standard (matches create-token & referral-earnings):
 //   ref:earnings:{wallet}:pending  -> incrbyfloat
@@ -8,7 +8,7 @@
 //   - Redis NX lock (10s TTL) prevents double-claim
 //   - State updated ONLY after on-chain confirmation
 //   - Minimum claim: 0.01 SOL (avoid dust txs)
-//   - Treasury key via REFERRAL_TREASURY_SECRET_KEY env (bs58 encoded keypair)
+//   - Treasury key via PLATFORM_SECRET_KEY env (bs58 encoded keypair)
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -27,10 +27,8 @@ export const runtime = 'nodejs';
 const MIN_CLAIM = 0.01; // SOL
 
 function getTreasury(): Keypair {
-  const secret = process.env.REFERRAL_TREASURY_SECRET_KEY;
-  if (!secret) {
-    throw new Error('REFERRAL_TREASURY_SECRET_KEY env değişkeni tanımlı değil');
-  }
+  const secret = process.env.PLATFORM_SECRET_KEY!;
+  // bs58 encoded (same as umi.ts)
   return Keypair.fromSecretKey(bs58.decode(secret));
 }
 
@@ -42,7 +40,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Wallet required' }, { status: 400 });
     }
 
-    // ── Lock (anti double-claim) ──────────────────────────────
+    // â”€â”€ Lock (anti double-claim) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const lockKey = `lock:claim:${wallet}`;
     const locked = await redis.set(lockKey, '1', { nx: true, ex: 10 });
     if (!locked) {
@@ -50,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // ── Read current pending ──────────────────────────────
+      // â”€â”€ Read current pending â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const pendingRaw = await redis.get(`ref:earnings:${wallet}:pending`) as string | null;
       const pending = parseFloat(pendingRaw ?? '0') || 0;
 
@@ -61,7 +59,7 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
       }
 
-      // ── On-chain transfer ──────────────────────────────
+      // â”€â”€ On-chain transfer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL!, 'confirmed');
       const treasury = getTreasury();
       const toPubkey = new PublicKey(wallet);
@@ -89,7 +87,7 @@ export async function POST(req: NextRequest) {
 
       await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
 
-      // ── Update Redis ONLY after confirmed ──────────────────────────────
+      // â”€â”€ Update Redis ONLY after confirmed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // Deduct pending, add to claimed (atomic via pipeline)
       await Promise.all([
         redis.incrbyfloat(`ref:earnings:${wallet}:pending`, -pending),
