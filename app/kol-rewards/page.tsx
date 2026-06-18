@@ -10,12 +10,12 @@ const MILESTONES = [
   { followers: 200,  reward: 5,   label: "+5 SOL",   color: "#a855f7" },
   { followers: 300,  reward: 5,   label: "+5 SOL",   color: "#b06cff" },
   { followers: 400,  reward: 5,   label: "+5 SOL",   color: "#bc83ff" },
-  { followers: 500,  reward: 10,  label: "+10 SOL",  color: "#c99aff" },
-  { followers: 600,  reward: 10,  label: "+10 SOL",  color: "#5eead4" },
-  { followers: 700,  reward: 10,  label: "+10 SOL",  color: "#2dd4bf" },
-  { followers: 800,  reward: 15,  label: "+15 SOL",  color: "#14e8aa" },
-  { followers: 900,  reward: 15,  label: "+15 SOL",  color: "#14F195" },
-  { followers: 1000, reward: 20,  label: "+20 SOL 👑", color: "#FFD700", isVip: true },
+  { followers: 500,  reward: 10,  label: "+5 SOL",  color: "#c99aff" },
+  { followers: 600,  reward: 10,  label: "+5 SOL",  color: "#5eead4" },
+  { followers: 700,  reward: 10,  label: "+5 SOL",  color: "#2dd4bf" },
+  { followers: 800,  reward: 15,  label: "+5 SOL",  color: "#14e8aa" },
+  { followers: 900,  reward: 15,  label: "+5 SOL",  color: "#14F195" },
+  { followers: 1000, reward: 20,  label: "+5 SOL 👑", color: "#FFD700", isVip: true },
 ];
 
 // winding path: alternates left→right, right→left across rows

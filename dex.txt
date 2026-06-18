@@ -37,6 +37,16 @@ function fmtPrice(p: number) {
   return p.toFixed(6);
 }
 
+function fmtMcap(mcapSol: number, solPrice = 145) {
+  const usd = mcapSol * solPrice;
+  if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(2)}M`;
+  if (usd >= 1_000) return `$${(usd / 1_000).toFixed(1)}K`;
+  return `$${usd.toFixed(0)}`;
+}
+
+const SOL_PRICE_USD = 145;
+const TOTAL_SUPPLY = 1_000_000_000;
+
 // â”€â”€â”€ TOKEN AVATAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TokenAvatar({ token, size = 48 }: { token: DexToken; size?: number }) {
@@ -63,7 +73,7 @@ function TokenAvatar({ token, size = 48 }: { token: DexToken; size?: number }) {
   );
 }
 
-// â”€â”€â”€ TOKEN CARD (pump.fun style) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ TOKEN CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean; onClick: () => void }) {
   const [hovered, setHovered] = useState(false);
@@ -75,51 +85,32 @@ function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean;
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: hovered
-          ? "rgba(153,69,255,0.1)"
-          : isNew
-          ? "rgba(153,69,255,0.06)"
-          : "rgba(255,255,255,0.025)",
-        border: isNew
-          ? "1px solid rgba(153,69,255,0.5)"
-          : hovered
-          ? "1px solid rgba(153,69,255,0.3)"
-          : "1px solid rgba(255,255,255,0.05)",
-        borderRadius: 16,
-        cursor: "pointer",
-        overflow: "hidden",
+        background: hovered ? "rgba(153,69,255,0.1)" : isNew ? "rgba(153,69,255,0.06)" : "rgba(255,255,255,0.025)",
+        border: isNew ? "1px solid rgba(153,69,255,0.5)" : hovered ? "1px solid rgba(153,69,255,0.3)" : "1px solid rgba(255,255,255,0.05)",
+        borderRadius: 16, cursor: "pointer", overflow: "hidden",
         transition: "all 0.18s cubic-bezier(0.4,0,0.2,1)",
         transform: hovered ? "translateY(-4px) scale(1.01)" : "translateY(0) scale(1)",
-        boxShadow: hovered
-          ? "0 16px 48px rgba(153,69,255,0.2), 0 0 0 1px rgba(153,69,255,0.1)"
-          : isNew
-          ? "0 0 24px rgba(153,69,255,0.12)"
-          : "none",
+        boxShadow: hovered ? "0 16px 48px rgba(153,69,255,0.2), 0 0 0 1px rgba(153,69,255,0.1)" : isNew ? "0 0 24px rgba(153,69,255,0.12)" : "none",
         animation: isNew ? "cardSlideIn 0.45s cubic-bezier(0.16,1,0.3,1)" : undefined,
         position: "relative",
       }}
     >
-      {/* Token image */}
       <div style={{ position: "relative", width: "100%", paddingBottom: "68%", background: "rgba(153,69,255,0.05)" }}>
         {token.imageUrl ? (
           <img src={token.imageUrl} alt={token.name} style={{
-            position: "absolute", inset: 0, width: "100%", height: "100%",
-            objectFit: "cover",
-            filter: hovered ? "brightness(1.1)" : "brightness(1)",
-            transition: "filter 0.2s",
+            position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover",
+            filter: hovered ? "brightness(1.1)" : "brightness(1)", transition: "filter 0.2s",
           }} loading="lazy" />
         ) : (
           <div style={{
             position: "absolute", inset: 0,
-            background: `linear-gradient(145deg, rgba(153,69,255,0.15), rgba(20,241,149,0.08))`,
+            background: "linear-gradient(145deg, rgba(153,69,255,0.15), rgba(20,241,149,0.08))",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 52, fontWeight: 900, color: "rgba(153,69,255,0.35)",
           }}>
             {token.symbol.charAt(0)}
           </div>
         )}
-
-        {/* Badges */}
         {isNew && (
           <div style={{
             position: "absolute", top: 8, left: 8,
@@ -135,31 +126,22 @@ function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean;
             position: "absolute", top: 8, right: 8,
             background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)",
             borderRadius: 6, padding: "3px 7px",
-            fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,0.55)",
-            letterSpacing: "0.06em",
+            fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,0.55)", letterSpacing: "0.06em",
           }}>{fmtAge(age)}</div>
         )}
-
-        {/* Hover overlay */}
         <div style={{
           position: "absolute", inset: 0,
           background: "linear-gradient(to top, rgba(7,7,15,0.9) 0%, transparent 60%)",
-          opacity: hovered ? 1 : 0.7,
-          transition: "opacity 0.2s",
+          opacity: hovered ? 1 : 0.7, transition: "opacity 0.2s",
         }} />
       </div>
-
-      {/* Info */}
       <div style={{ padding: "12px 14px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <span style={{
             color: "#fff", fontWeight: 700, fontSize: 14,
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
-            textShadow: hovered ? "0 0 20px rgba(153,69,255,0.5)" : "none",
-            transition: "text-shadow 0.2s",
-          }}>
-            {token.name}
-          </span>
+            textShadow: hovered ? "0 0 20px rgba(153,69,255,0.5)" : "none", transition: "text-shadow 0.2s",
+          }}>{token.name}</span>
           <span style={{
             color: "#14F195", fontFamily: "monospace", fontSize: 10, fontWeight: 700,
             background: "rgba(20,241,149,0.1)", border: "1px solid rgba(20,241,149,0.2)",
@@ -174,68 +156,88 @@ function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean;
   );
 }
 
-// â”€â”€â”€ LIVE TRADE ROW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ LIVE TRADE ROW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TradeRow({ trade, isNew }: { trade: Trade; isNew: boolean }) {
   const age = Date.now() - new Date(trade.created_at).getTime();
+  const mcapSol = trade.price * TOTAL_SUPPLY;
+
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "52px 80px 80px 50px 90px",
-        padding: "9px 16px",
+        gridTemplateColumns: "48px 1fr 1fr 48px 1fr 80px",
+        padding: "10px 20px",
         borderBottom: "1px solid rgba(153,69,255,0.04)",
         alignItems: "center",
+        gap: 8,
         background: isNew
-          ? trade.is_buy ? "rgba(20,241,149,0.05)" : "rgba(255,45,149,0.04)"
+          ? trade.is_buy ? "rgba(20,241,149,0.04)" : "rgba(255,45,149,0.03)"
           : "transparent",
-        transition: "background 1.2s ease",
-        animation: isNew ? "tradeSlideIn 0.4s cubic-bezier(0.16,1,0.3,1)" : undefined,
+        transition: "background 1.5s ease",
+        animation: isNew ? "tradeSlideIn 0.35s cubic-bezier(0.16,1,0.3,1)" : undefined,
       }}
-      onMouseEnter={e => (e.currentTarget.style.background = "rgba(153,69,255,0.05)")}
+      onMouseEnter={e => (e.currentTarget.style.background = "rgba(153,69,255,0.04)")}
       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
     >
-      <span style={{
-        fontFamily: "monospace", fontSize: 11, fontWeight: 800,
-        color: trade.is_buy ? "#14F195" : "#ff2d95",
-        textShadow: trade.is_buy ? "0 0 10px rgba(20,241,149,0.4)" : "0 0 10px rgba(255,45,149,0.4)",
-        letterSpacing: "0.04em",
+      {/* Type */}
+      <div style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        padding: "3px 0", borderRadius: 5,
+        background: trade.is_buy ? "rgba(20,241,149,0.1)" : "rgba(255,45,149,0.1)",
+        border: `1px solid ${trade.is_buy ? "rgba(20,241,149,0.2)" : "rgba(255,45,149,0.2)"}`,
       }}>
-        {trade.is_buy ? "â–² BUY" : "â–¼ SELL"}
-      </span>
+        <span style={{
+          fontFamily: "monospace", fontSize: 9, fontWeight: 800,
+          color: trade.is_buy ? "#14F195" : "#ff2d95",
+          letterSpacing: "0.06em",
+        }}>
+          {trade.is_buy ? "BUY" : "SELL"}
+        </span>
+      </div>
 
+      {/* SOL */}
       <span style={{ fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>
-        {trade.amount_sol.toFixed(4)} <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9 }}>SOL</span>
+        {trade.amount_sol.toFixed(4)}
+        <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 9, marginLeft: 3 }}>SOL</span>
       </span>
 
-      <span style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.55)" }}>
+      {/* Tokens */}
+      <span style={{ fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
         {fmt(trade.amount_token, 0)}
       </span>
 
-      <span style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
+      {/* Age */}
+      <span style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "right" }}>
         {fmtAge(age)}
       </span>
 
+      {/* MCAP */}
+      <span style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(153,69,255,0.7)", fontWeight: 600 }}>
+        {mcapSol > 0 ? fmtMcap(mcapSol) : "â€”"}
+      </span>
+
+      {/* Wallet */}
       <a
         href={trade.tx_signature ? `https://solscan.io/tx/${trade.tx_signature}` : "#"}
         target="_blank" rel="noopener noreferrer"
         style={{
           fontFamily: "monospace", fontSize: 10,
-          color: "rgba(153,69,255,0.6)",
+          color: "rgba(153,69,255,0.45)",
           textDecoration: "none",
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           transition: "color 0.15s",
         }}
         onMouseEnter={e => ((e.target as HTMLElement).style.color = "#9945FF")}
-        onMouseLeave={e => ((e.target as HTMLElement).style.color = "rgba(153,69,255,0.6)")}
+        onMouseLeave={e => ((e.target as HTMLElement).style.color = "rgba(153,69,255,0.45)")}
       >
-        {trade.wallet.slice(0, 4)}Â·Â·Â·{trade.wallet.slice(-4)}â†—
+        {trade.wallet.slice(0, 4)}Â·Â·Â·{trade.wallet.slice(-4)} â†—
       </a>
     </div>
   );
 }
 
-// â”€â”€â”€ HOLDERS TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ HOLDERS TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function HoldersTab({ mint }: { mint: string }) {
   const [holders, setHolders] = useState<{ address: string; amount: number; pct: number }[]>([]);
@@ -256,7 +258,7 @@ function HoldersTab({ mint }: { mint: string }) {
       .then(data => {
         const accounts = data?.result?.value ?? [];
         const total = accounts.reduce((s: number, a: any) => s + Number(a.uiAmount ?? 0), 0);
-        setHolders(accounts.slice(0, 20).map((a: any) => ({
+        setHolders(accounts.slice(0, 20).map((a: any, i: number) => ({
           address: a.address,
           amount: Number(a.uiAmount ?? 0),
           pct: total > 0 ? (Number(a.uiAmount ?? 0) / total) * 100 : 0,
@@ -268,12 +270,12 @@ function HoldersTab({ mint }: { mint: string }) {
 
   if (loading) {
     return (
-      <div style={{ padding: "24px 16px" }}>
-        {[...Array(5)].map((_, i) => (
+      <div style={{ padding: "16px 20px" }}>
+        {[...Array(6)].map((_, i) => (
           <div key={i} style={{
-            height: 36, borderRadius: 8, marginBottom: 8,
-            background: `rgba(153,69,255,${0.03 + i * 0.01})`,
-            animation: `shimmer 1.5s ${i * 0.1}s ease-in-out infinite alternate`,
+            height: 44, borderRadius: 10, marginBottom: 6,
+            background: `rgba(153,69,255,${0.03 + i * 0.005})`,
+            animation: `shimmer 1.5s ${i * 0.08}s ease-in-out infinite alternate`,
           }} />
         ))}
       </div>
@@ -282,49 +284,120 @@ function HoldersTab({ mint }: { mint: string }) {
 
   if (holders.length === 0) {
     return (
-      <div style={{ padding: 32, textAlign: "center" }}>
-        <div style={{ fontSize: 24, marginBottom: 8, opacity: 0.3 }}>â—ˆ</div>
-        <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 11 }}>
-          No holder data available yet
+      <div style={{ padding: "40px 20px", textAlign: "center" }}>
+        <div style={{ fontSize: 28, marginBottom: 10, opacity: 0.15 }}>â—ˆ</div>
+        <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 11, letterSpacing: "0.06em" }}>
+          No holder data available
         </div>
       </div>
     );
   }
 
+  const top3Colors = ["#14F195", "#9945FF", "#0ea5e9"];
+
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 90px 60px", padding: "8px 16px", borderBottom: "1px solid rgba(153,69,255,0.06)" }}>
+      {/* Header */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "32px 1fr 100px 140px",
+        padding: "8px 20px 10px",
+        borderBottom: "1px solid rgba(153,69,255,0.06)",
+        gap: 8,
+      }}>
         {["#", "WALLET", "TOKENS", "SHARE"].map(h => (
-          <span key={h} style={{ color: "rgba(153,69,255,0.35)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.1em" }}>{h}</span>
+          <span key={h} style={{
+            color: "rgba(153,69,255,0.3)", fontFamily: "monospace",
+            fontSize: 9, letterSpacing: "0.12em", fontWeight: 700,
+          }}>{h}</span>
         ))}
       </div>
-      {holders.map((h, i) => (
-        <div key={h.address} style={{
-          display: "grid", gridTemplateColumns: "28px 1fr 90px 60px",
-          padding: "8px 16px", borderBottom: "1px solid rgba(153,69,255,0.03)",
-          alignItems: "center",
-        }}
-          onMouseEnter={e => (e.currentTarget.style.background = "rgba(153,69,255,0.04)")}
-          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-        >
-          <span style={{ color: "rgba(153,69,255,0.4)", fontFamily: "monospace", fontSize: 10 }}>{i + 1}</span>
-          <a href={`https://solscan.io/account/${h.address}`} target="_blank" rel="noopener noreferrer"
-            style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(153,69,255,0.7)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {h.address.slice(0, 4)}Â·Â·Â·{h.address.slice(-4)}
-          </a>
-          <span style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.6)" }}>
-            {fmt(h.amount, 0)}
-          </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <div style={{ flex: 1, height: 3, borderRadius: 2, background: "rgba(153,69,255,0.1)", overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${h.pct}%`, background: i === 0 ? "#14F195" : "rgba(153,69,255,0.7)", borderRadius: 2 }} />
+
+      {holders.map((h, i) => {
+        const rankColor = i < 3 ? top3Colors[i] : "rgba(255,255,255,0.15)";
+        const isTop = i < 3;
+
+        return (
+          <div
+            key={h.address}
+            style={{
+              display: "grid", gridTemplateColumns: "32px 1fr 100px 140px",
+              padding: "10px 20px",
+              borderBottom: "1px solid rgba(153,69,255,0.03)",
+              alignItems: "center",
+              gap: 8,
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(153,69,255,0.04)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+          >
+            {/* Rank */}
+            <div style={{
+              width: 22, height: 22, borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: isTop ? `${rankColor}15` : "transparent",
+              border: isTop ? `1px solid ${rankColor}40` : "1px solid rgba(255,255,255,0.05)",
+            }}>
+              <span style={{
+                fontFamily: "monospace", fontSize: 9, fontWeight: 800,
+                color: isTop ? rankColor : "rgba(255,255,255,0.2)",
+              }}>{i + 1}</span>
             </div>
-            <span style={{ fontFamily: "monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", minWidth: 32, textAlign: "right" }}>
-              {h.pct.toFixed(1)}%
+
+            {/* Wallet */}
+            <a
+              href={`https://solscan.io/account/${h.address}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{
+                fontFamily: "monospace", fontSize: 11,
+                color: isTop ? rankColor : "rgba(255,255,255,0.5)",
+                textDecoration: "none",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                fontWeight: isTop ? 700 : 400,
+                transition: "opacity 0.15s",
+              }}
+              onMouseEnter={e => ((e.target as HTMLElement).style.opacity = "0.7")}
+              onMouseLeave={e => ((e.target as HTMLElement).style.opacity = "1")}
+            >
+              {h.address.slice(0, 6)}Â·Â·Â·{h.address.slice(-4)} â†—
+            </a>
+
+            {/* Token amount */}
+            <span style={{
+              fontFamily: "monospace", fontSize: 11,
+              color: "rgba(255,255,255,0.6)", fontWeight: 500,
+            }}>
+              {fmt(h.amount, 0)}
             </span>
+
+            {/* Bar + % */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                flex: 1, height: 4, borderRadius: 2,
+                background: "rgba(255,255,255,0.04)",
+                overflow: "hidden", position: "relative",
+              }}>
+                <div style={{
+                  height: "100%",
+                  width: `${Math.min(h.pct, 100)}%`,
+                  background: isTop
+                    ? `linear-gradient(90deg, ${rankColor}88, ${rankColor})`
+                    : "linear-gradient(90deg, rgba(153,69,255,0.3), rgba(153,69,255,0.6))",
+                  borderRadius: 2,
+                  boxShadow: isTop ? `0 0 6px ${rankColor}60` : "none",
+                  transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)",
+                }} />
+              </div>
+              <span style={{
+                fontFamily: "monospace", fontSize: 10, fontWeight: 700,
+                color: isTop ? rankColor : "rgba(255,255,255,0.3)",
+                minWidth: 38, textAlign: "right",
+              }}>
+                {h.pct.toFixed(2)}%
+              </span>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -342,7 +415,6 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
   const { swap, isSwapping, error: swapError } = useSwap();
   const { trades, isLoading: isLoadingTrades } = useTrades(token.mint);
 
-  // Detect new trades for animation
   useEffect(() => {
     const currentIds = new Set(trades.map(t => t.id));
     const newIds = new Set<number>();
@@ -362,6 +434,9 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
 
   const fillPercent = curveInfo?.lifecycle?.fillPercent ?? 0;
   const latestPrice = trades.length > 0 ? trades[0].price : 0;
+  const mcapSol = latestPrice * TOTAL_SUPPLY;
+  const quoteReserves = curveInfo?.reserves?.quoteReserves ?? "0";
+  const volumeSol = trades.reduce((s, t) => s + t.amount_sol, 0);
 
   return (
     <div style={{ display: "flex", height: "calc(100vh - 64px)", overflow: "hidden", background: "#07070f" }}>
@@ -369,84 +444,142 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
       {/* LEFT: Chart + Tabs */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
 
-        {/* Top bar */}
+        {/* â”€â”€ TOP BAR â”€â”€ */}
         <div style={{
-          padding: "10px 16px", borderBottom: "1px solid rgba(153,69,255,0.1)",
-          display: "flex", alignItems: "center", gap: 12, flexShrink: 0,
-          background: "rgba(0,0,0,0.4)", backdropFilter: "blur(12px)",
+          padding: "0 20px",
+          borderBottom: "1px solid rgba(153,69,255,0.08)",
+          display: "flex", alignItems: "center", gap: 14, flexShrink: 0,
+          height: 60,
+          background: "rgba(7,7,15,0.95)", backdropFilter: "blur(20px)",
         }}>
+          {/* Back */}
           <button onClick={onBack} style={{
-            background: "rgba(153,69,255,0.08)", border: "1px solid rgba(153,69,255,0.18)",
-            borderRadius: 8, padding: "6px 12px", color: "rgba(153,69,255,0.7)",
-            fontFamily: "monospace", fontSize: 11, cursor: "pointer", flexShrink: 0,
+            background: "transparent",
+            border: "1px solid rgba(153,69,255,0.15)",
+            borderRadius: 8, padding: "6px 12px",
+            color: "rgba(153,69,255,0.6)",
+            fontFamily: "monospace", fontSize: 10, cursor: "pointer", flexShrink: 0,
+            letterSpacing: "0.06em", fontWeight: 700,
             transition: "all 0.15s",
+            display: "flex", alignItems: "center", gap: 5,
           }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(153,69,255,0.15)";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(153,69,255,0.4)";
               (e.currentTarget as HTMLButtonElement).style.color = "#9945FF";
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(153,69,255,0.06)";
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(153,69,255,0.08)";
-              (e.currentTarget as HTMLButtonElement).style.color = "rgba(153,69,255,0.7)";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(153,69,255,0.15)";
+              (e.currentTarget as HTMLButtonElement).style.color = "rgba(153,69,255,0.6)";
+              (e.currentTarget as HTMLButtonElement).style.background = "transparent";
             }}
-          >â† Back</button>
+          >
+            â† BACK
+          </button>
 
-          <TokenAvatar token={token} size={34} />
+          {/* Divider */}
+          <div style={{ width: 1, height: 28, background: "rgba(153,69,255,0.1)" }} />
 
+          {/* Token identity */}
+          <TokenAvatar token={token} size={32} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "#fff", fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{token.name}</span>
-              <span style={{ color: "rgba(153,69,255,0.9)", fontFamily: "monospace", fontSize: 10, background: "rgba(153,69,255,0.1)", border: "1px solid rgba(153,69,255,0.2)", padding: "1px 7px", borderRadius: 5, flexShrink: 0 }}>${token.symbol}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{
+                color: "#fff", fontWeight: 700, fontSize: 14,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                letterSpacing: "-0.01em",
+              }}>{token.name}</span>
+              <span style={{
+                color: "#14F195", fontFamily: "monospace", fontSize: 9, fontWeight: 800,
+                background: "rgba(20,241,149,0.08)", border: "1px solid rgba(20,241,149,0.18)",
+                padding: "2px 7px", borderRadius: 5, flexShrink: 0, letterSpacing: "0.08em",
+              }}>${token.symbol}</span>
             </div>
-            <span style={{ color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 9 }}>{token.mint.slice(0, 8)}Â·Â·Â·{token.mint.slice(-6)}</span>
+            <div style={{ color: "rgba(255,255,255,0.18)", fontFamily: "monospace", fontSize: 9, marginTop: 1 }}>
+              {token.mint.slice(0, 8)}Â·Â·Â·{token.mint.slice(-6)}
+            </div>
           </div>
 
+          {/* Divider */}
+          <div style={{ width: 1, height: 28, background: "rgba(153,69,255,0.08)", marginLeft: 4 }} />
+
           {/* Stats */}
-          <div style={{ display: "flex", gap: 20, marginLeft: 8 }}>
-            <div>
-              <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.08em", marginBottom: 1 }}>PRICE</div>
-              <div style={{ color: "#fff", fontFamily: "monospace", fontSize: 12, fontWeight: 700 }}>
-                {latestPrice > 0 ? fmtPrice(latestPrice) : "â€”"}
-                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, marginLeft: 3 }}>SOL</span>
+          <div style={{ display: "flex", gap: 0, flex: 1 }}>
+            {[
+              {
+                label: "PRICE",
+                value: latestPrice > 0 ? fmtPrice(latestPrice) : "â€”",
+                sub: "SOL",
+                color: "#fff",
+              },
+              {
+                label: "MCAP",
+                value: mcapSol > 0 ? fmtMcap(mcapSol) : "â€”",
+                sub: undefined,
+                color: "#14F195",
+              },
+              {
+                label: "LIQUIDITY",
+                value: Number(quoteReserves) > 0 ? `${(Number(quoteReserves) / 1e9).toFixed(2)}` : "â€”",
+                sub: "SOL",
+                color: "#9945FF",
+              },
+              {
+                label: "VOLUME",
+                value: volumeSol > 0 ? `${volumeSol.toFixed(2)}` : "â€”",
+                sub: "SOL",
+                color: "rgba(255,255,255,0.7)",
+              },
+              {
+                label: "TRADES",
+                value: String(trades.length),
+                sub: newTradeIds.size > 0 ? `+${newTradeIds.size} new` : undefined,
+                color: "rgba(255,255,255,0.7)",
+              },
+            ].map(({ label, value, sub, color }) => (
+              <div key={label} style={{
+                padding: "0 18px",
+                borderRight: "1px solid rgba(153,69,255,0.06)",
+              }}>
+                <div style={{
+                  color: "rgba(153,69,255,0.4)", fontFamily: "monospace",
+                  fontSize: 8, letterSpacing: "0.12em", fontWeight: 700, marginBottom: 3,
+                }}>{label}</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                  <span style={{
+                    color, fontFamily: "monospace",
+                    fontSize: 12, fontWeight: 700,
+                  }}>{value}</span>
+                  {sub && <span style={{
+                    color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 8,
+                  }}>{sub}</span>}
+                </div>
               </div>
-            </div>
-            <div>
-              <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.08em", marginBottom: 1 }}>CURVE</div>
-              <div style={{
-                fontFamily: "monospace", fontSize: 12, fontWeight: 700,
-                color: fillPercent > 80 ? "#14F195" : fillPercent > 50 ? "#f59e0b" : "rgba(255,255,255,0.7)",
-              }}>{fillPercent.toFixed(1)}%</div>
-            </div>
-            <div>
-              <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.08em", marginBottom: 1 }}>TRADES</div>
-              <div style={{ color: "rgba(255,255,255,0.7)", fontFamily: "monospace", fontSize: 12, fontWeight: 700 }}>
-                {trades.length}
-                {newTradeIds.size > 0 && (
-                  <span style={{ color: "#14F195", fontSize: 9, marginLeft: 4, animation: "badgePulse 1s infinite" }}>+{newTradeIds.size}</span>
-                )}
-              </div>
-            </div>
+            ))}
           </div>
 
           {/* Links */}
-          <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexShrink: 0 }}>
             {[
               { label: "Solscan", href: `https://solscan.io/token/${token.mint}` },
               { label: "Birdeye", href: `https://birdeye.so/token/${token.mint}?chain=solana` },
             ].map(({ label, href }) => (
               <a key={label} href={href} target="_blank" rel="noopener noreferrer" style={{
                 padding: "5px 10px", borderRadius: 7,
-                border: "1px solid rgba(153,69,255,0.15)",
-                color: "rgba(153,69,255,0.55)", fontFamily: "monospace", fontSize: 10,
-                textDecoration: "none", transition: "all 0.15s",
+                border: "1px solid rgba(153,69,255,0.12)",
+                color: "rgba(153,69,255,0.45)", fontFamily: "monospace", fontSize: 9,
+                textDecoration: "none", transition: "all 0.15s", letterSpacing: "0.04em",
+                fontWeight: 600,
               }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(153,69,255,0.4)";
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(153,69,255,0.35)";
                   (e.currentTarget as HTMLAnchorElement).style.color = "#9945FF";
+                  (e.currentTarget as HTMLAnchorElement).style.background = "rgba(153,69,255,0.06)";
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(153,69,255,0.15)";
-                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(153,69,255,0.55)";
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(153,69,255,0.12)";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(153,69,255,0.45)";
+                  (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
                 }}
               >{label} â†—</a>
             ))}
@@ -455,86 +588,92 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
 
         {/* Chart */}
         <div style={{ flex: 1, overflow: "hidden", minHeight: 0, background: "#08080f", position: "relative" }}>
-          {/* Bonding curve bar */}
-          <div style={{
-            position: "absolute", top: 0, left: 0, right: 0, height: 2, zIndex: 10,
-            background: "rgba(153,69,255,0.1)",
-          }}>
-            <div style={{
-              height: "100%",
-              width: `${fillPercent}%`,
-              background: fillPercent > 80 ? "#14F195" : "linear-gradient(90deg, #9945FF, #14F195)",
-              transition: "width 0.8s ease",
-              boxShadow: "0 0 8px rgba(153,69,255,0.6)",
-            }} />
-          </div>
           <TradeChart mint={token.mint} trades={trades} />
         </div>
 
-        {/* Tabs */}
-        <div style={{ flexShrink: 0, borderTop: "1px solid rgba(153,69,255,0.08)", background: "rgba(0,0,0,0.35)" }}>
-          {/* Tab buttons */}
-          <div style={{ display: "flex", borderBottom: "1px solid rgba(153,69,255,0.06)" }}>
+        {/* â”€â”€ TABS â”€â”€ */}
+        <div style={{ flexShrink: 0, borderTop: "1px solid rgba(153,69,255,0.07)", background: "rgba(5,5,12,0.98)" }}>
+
+          {/* Tab bar */}
+          <div style={{
+            display: "flex", alignItems: "center",
+            borderBottom: "1px solid rgba(153,69,255,0.06)",
+            padding: "0 4px",
+          }}>
             {(["Trades", "Holders"] as const).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                padding: "10px 22px", border: "none", cursor: "pointer",
-                fontFamily: "monospace", fontSize: 11, fontWeight: 700, letterSpacing: "0.07em",
+                padding: "12px 20px",
+                border: "none", cursor: "pointer",
+                fontFamily: "monospace", fontSize: 10, fontWeight: 800,
+                letterSpacing: "0.1em",
                 background: "transparent",
-                color: activeTab === tab ? "#14F195" : "rgba(255,255,255,0.25)",
-                borderBottom: activeTab === tab ? "2px solid #14F195" : "2px solid transparent",
+                color: activeTab === tab ? "#fff" : "rgba(255,255,255,0.2)",
+                borderBottom: activeTab === tab ? "2px solid #9945FF" : "2px solid transparent",
+                marginBottom: -1,
                 transition: "all 0.15s",
-                position: "relative",
+                display: "flex", alignItems: "center", gap: 7,
               }}>
-                {tab}
+                {tab.toUpperCase()}
                 {tab === "Trades" && trades.length > 0 && (
                   <span style={{
-                    marginLeft: 6, background: activeTab === "Trades" ? "#14F195" : "rgba(153,69,255,0.3)",
-                    color: activeTab === "Trades" ? "#000" : "rgba(255,255,255,0.6)",
+                    background: activeTab === "Trades" ? "rgba(153,69,255,0.2)" : "rgba(255,255,255,0.05)",
+                    color: activeTab === "Trades" ? "#9945FF" : "rgba(255,255,255,0.2)",
                     fontFamily: "monospace", fontSize: 9, fontWeight: 800,
-                    padding: "1px 5px", borderRadius: 4,
+                    padding: "1px 6px", borderRadius: 4,
+                    border: `1px solid ${activeTab === "Trades" ? "rgba(153,69,255,0.25)" : "transparent"}`,
                     transition: "all 0.15s",
                   }}>{trades.length}</span>
                 )}
               </button>
             ))}
-            {/* Live indicator */}
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", paddingRight: 16, gap: 5 }}>
+
+            {/* Live dot */}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", paddingRight: 20, gap: 6 }}>
               <div style={{
                 width: 5, height: 5, borderRadius: "50%", background: "#14F195",
-                boxShadow: "0 0 6px #14F195", animation: "badgePulse 1.5s infinite",
+                boxShadow: "0 0 8px #14F195", animation: "badgePulse 1.5s infinite",
               }} />
-              <span style={{ fontFamily: "monospace", fontSize: 9, color: "rgba(20,241,149,0.5)", letterSpacing: "0.08em" }}>LIVE</span>
+              <span style={{ fontFamily: "monospace", fontSize: 9, color: "rgba(20,241,149,0.4)", letterSpacing: "0.1em", fontWeight: 700 }}>LIVE</span>
             </div>
           </div>
 
           {/* Tab content */}
-          <div style={{ height: 240, overflowY: "auto" }} className="dex-scroll">
+          <div style={{ height: 260, overflowY: "auto" }} className="dex-scroll">
             {activeTab === "Trades" && (
               <>
                 {/* Column headers */}
-                <div style={{ display: "grid", gridTemplateColumns: "52px 80px 80px 50px 90px", padding: "7px 16px", borderBottom: "1px solid rgba(153,69,255,0.05)" }}>
-                  {["TYPE", "SOL", "TOKENS", "AGE", "MAKER"].map(h => (
-                    <span key={h} style={{ color: "rgba(153,69,255,0.3)", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.1em", fontWeight: 700 }}>{h}</span>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "48px 1fr 1fr 48px 1fr 80px",
+                  padding: "8px 20px",
+                  borderBottom: "1px solid rgba(153,69,255,0.05)",
+                  gap: 8,
+                }}>
+                  {["TYPE", "SOL", "TOKENS", "AGE", "MCAP", "MAKER"].map(h => (
+                    <span key={h} style={{
+                      color: "rgba(153,69,255,0.25)", fontFamily: "monospace",
+                      fontSize: 9, letterSpacing: "0.12em", fontWeight: 700,
+                    }}>{h}</span>
                   ))}
                 </div>
 
                 {isLoadingTrades ? (
-                  <div style={{ padding: "20px 16px" }}>
+                  <div style={{ padding: "16px 20px" }}>
                     {[...Array(4)].map((_, i) => (
                       <div key={i} style={{
-                        height: 34, borderRadius: 6, marginBottom: 6,
-                        background: `rgba(153,69,255,${0.03 + i * 0.01})`,
-                        animation: `shimmer 1.5s ${i * 0.12}s ease-in-out infinite alternate`,
+                        height: 38, borderRadius: 8, marginBottom: 6,
+                        background: `rgba(153,69,255,${0.03 + i * 0.008})`,
+                        animation: `shimmer 1.5s ${i * 0.1}s ease-in-out infinite alternate`,
                       }} />
                     ))}
                   </div>
                 ) : trades.length === 0 ? (
-                  <div style={{ padding: "32px 16px", textAlign: "center" }}>
-                    <div style={{ fontSize: 20, marginBottom: 8, opacity: 0.25 }}>ğŸ“‹</div>
-                    <div style={{ color: "rgba(255,255,255,0.25)", fontFamily: "monospace", fontSize: 11, fontWeight: 700, marginBottom: 4 }}>
+                  <div style={{ padding: "36px 20px", textAlign: "center" }}>
+                    <div style={{ fontSize: 22, marginBottom: 10, opacity: 0.15 }}>â—ˆ</div>
+                    <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 11, fontWeight: 700, marginBottom: 4, letterSpacing: "0.04em" }}>
                       No trades yet
                     </div>
-                    <div style={{ color: "rgba(153,69,255,0.3)", fontFamily: "monospace", fontSize: 10 }}>
+                    <div style={{ color: "rgba(153,69,255,0.25)", fontFamily: "monospace", fontSize: 10 }}>
                       Be the first to buy this token
                     </div>
                   </div>
@@ -555,10 +694,10 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
 
       {/* RIGHT: Trade Panel */}
       <div style={{
-        width: 300, flexShrink: 0,
-        borderLeft: "1px solid rgba(153,69,255,0.08)",
+        width: 308, flexShrink: 0,
+        borderLeft: "1px solid rgba(153,69,255,0.07)",
         overflowY: "auto", padding: 16,
-        background: "rgba(0,0,0,0.2)",
+        background: "rgba(4,4,10,0.98)",
       }} className="dex-scroll">
         <TradePanel
           token={token}
@@ -577,7 +716,7 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
   );
 }
 
-// â”€â”€â”€ MAIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ MAIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function DexPageContent() {
   const searchParams = useSearchParams();
@@ -594,7 +733,6 @@ export default function DexPageContent() {
     return [...base].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, 50);
   }, [tokens, search]);
 
-  // Detect new tokens
   useEffect(() => {
     const currentMints = new Set(filteredTokens.map(t => t.mint));
     const added = new Set<string>();
@@ -619,10 +757,9 @@ export default function DexPageContent() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#07070f", color: "#fff" }}>
-      {/* Ambient background */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: "-8%", left: "-4%", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle, rgba(153,69,255,0.05) 0%, transparent 70%)" }} />
-        <div style={{ position: "absolute", bottom: "5%", right: "-8%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(20,241,149,0.03) 0%, transparent 70%)" }} />
+        <div style={{ position: "absolute", top: "-8%", left: "-4%", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle, rgba(153,69,255,0.04) 0%, transparent 70%)" }} />
+        <div style={{ position: "absolute", bottom: "5%", right: "-8%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(20,241,149,0.02) 0%, transparent 70%)" }} />
       </div>
 
       <div style={{ position: "relative", zIndex: 1 }}>
@@ -643,22 +780,22 @@ export default function DexPageContent() {
                   placeholder="Search by name or symbol..."
                   style={{
                     width: "100%", height: 44, paddingLeft: 38, paddingRight: 16,
-                    background: "rgba(153,69,255,0.06)", border: "1px solid rgba(153,69,255,0.18)",
+                    background: "rgba(153,69,255,0.05)", border: "1px solid rgba(153,69,255,0.15)",
                     borderRadius: 12, color: "#fff", fontSize: 13, fontFamily: "monospace",
                     outline: "none", boxSizing: "border-box", transition: "border-color 0.15s",
                   }}
-                  onFocus={e => (e.target.style.borderColor = "rgba(153,69,255,0.4)")}
-                  onBlur={e => (e.target.style.borderColor = "rgba(153,69,255,0.18)")}
+                  onFocus={e => (e.target.style.borderColor = "rgba(153,69,255,0.35)")}
+                  onBlur={e => (e.target.style.borderColor = "rgba(153,69,255,0.15)")}
                 />
               </div>
 
               <div style={{
                 display: "flex", alignItems: "center", gap: 7,
                 padding: "0 14px", height: 44, borderRadius: 12,
-                background: "rgba(153,69,255,0.05)", border: "1px solid rgba(153,69,255,0.12)",
+                background: "rgba(153,69,255,0.04)", border: "1px solid rgba(153,69,255,0.1)",
               }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 8px #14F195", animation: "badgePulse 1.5s infinite" }} />
-                <span style={{ color: "rgba(255,255,255,0.4)", fontFamily: "monospace", fontSize: 11 }}>
+                <span style={{ color: "rgba(255,255,255,0.35)", fontFamily: "monospace", fontSize: 11 }}>
                   {filteredTokens.length} tokens
                 </span>
               </div>
@@ -666,38 +803,30 @@ export default function DexPageContent() {
 
             {/* Token grid */}
             {isLoading ? (
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
-                gap: 16,
-              }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
                 {[...Array(12)].map((_, i) => (
                   <div key={i} style={{
                     borderRadius: 16, overflow: "hidden",
-                    border: "1px solid rgba(153,69,255,0.06)",
+                    border: "1px solid rgba(153,69,255,0.05)",
                     animation: `shimmer 1.5s ${i * 0.08}s ease-in-out infinite alternate`,
                   }}>
-                    <div style={{ paddingBottom: "68%", background: "rgba(153,69,255,0.04)" }} />
+                    <div style={{ paddingBottom: "68%", background: "rgba(153,69,255,0.03)" }} />
                     <div style={{ padding: "12px 14px" }}>
-                      <div style={{ height: 14, borderRadius: 4, background: "rgba(153,69,255,0.06)", marginBottom: 8 }} />
-                      <div style={{ height: 10, borderRadius: 4, background: "rgba(153,69,255,0.04)", width: "60%" }} />
+                      <div style={{ height: 14, borderRadius: 4, background: "rgba(153,69,255,0.05)", marginBottom: 8 }} />
+                      <div style={{ height: 10, borderRadius: 4, background: "rgba(153,69,255,0.03)", width: "60%" }} />
                     </div>
                   </div>
                 ))}
               </div>
             ) : filteredTokens.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 80, gap: 12 }}>
-                <div style={{ fontSize: 36, opacity: 0.2 }}>â—ˆ</div>
+                <div style={{ fontSize: 36, opacity: 0.15 }}>â—ˆ</div>
                 <span style={{ color: "rgba(255,255,255,0.1)", fontFamily: "monospace", fontSize: 13 }}>
                   {search ? `No tokens matching "${search}"` : "No tokens yet"}
                 </span>
               </div>
             ) : (
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
-                gap: 16,
-              }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
                 {filteredTokens.map(token => (
                   <TokenCard
                     key={token.mint}
@@ -713,26 +842,20 @@ export default function DexPageContent() {
       </div>
 
       <style>{`
-        @keyframes badgePulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
+        @keyframes badgePulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
         @keyframes cardSlideIn {
-          from { opacity: 0; transform: translateY(-12px) scale(0.96); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          from { opacity:0; transform:translateY(-12px) scale(0.96); }
+          to   { opacity:1; transform:translateY(0) scale(1); }
         }
         @keyframes tradeSlideIn {
-          from { opacity: 0; transform: translateX(-8px); }
-          to { opacity: 1; transform: translateX(0); }
+          from { opacity:0; transform:translateX(-8px); }
+          to   { opacity:1; transform:translateX(0); }
         }
-        @keyframes shimmer {
-          from { opacity: 0.4; }
-          to { opacity: 0.7; }
-        }
-        .dex-scroll::-webkit-scrollbar { width: 3px; }
-        .dex-scroll::-webkit-scrollbar-track { background: transparent; }
-        .dex-scroll::-webkit-scrollbar-thumb { background: rgba(153,69,255,0.18); border-radius: 2px; }
-        input::placeholder { color: rgba(153,69,255,0.28); }
+        @keyframes shimmer { from{opacity:0.4} to{opacity:0.7} }
+        .dex-scroll::-webkit-scrollbar { width:3px; }
+        .dex-scroll::-webkit-scrollbar-track { background:transparent; }
+        .dex-scroll::-webkit-scrollbar-thumb { background:rgba(153,69,255,0.15); border-radius:2px; }
+        input::placeholder { color:rgba(153,69,255,0.25); }
       `}</style>
     </div>
   );
