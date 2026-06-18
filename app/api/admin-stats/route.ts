@@ -6,10 +6,28 @@ const ADMIN_WALLETS = [
   "2WyCLgg2vuvzmExak8WAeF9kBfvfcD4ahcKfm9P18gSc",
 ];
 
-export async function GET(req: NextRequest) {
-  // Cüzdan kontrolü
+function verifyAdminToken(req: NextRequest): boolean {
+  // Bearer token kontrolü (page.tsx'in gönderdiği)
+  const authHeader = req.headers.get('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.slice(7);
+      const decoded = JSON.parse(atob(token));
+      if (decoded.exp > Date.now() && ADMIN_WALLETS.includes(decoded.publicKey)) {
+        return true;
+      }
+    } catch {}
+  }
+
+  // Fallback: x-wallet-address (eski yöntem)
   const wallet = req.headers.get('x-wallet-address');
-  if (!wallet || !ADMIN_WALLETS.includes(wallet)) {
+  if (wallet && ADMIN_WALLETS.includes(wallet)) return true;
+
+  return false;
+}
+
+export async function GET(req: NextRequest) {
+  if (!verifyAdminToken(req)) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
