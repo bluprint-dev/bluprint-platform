@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { Home, Sparkles, LineChart, Users, Wallet, X, Menu, Zap, Coins } from "lucide-react";
+import { Home, Sparkles, LineChart, Users, Wallet, X, Menu, Zap, Coins, Trophy } from "lucide-react";
 
 const F = {
   display: "var(--font-outfit), 'Outfit', sans-serif",
@@ -19,6 +19,7 @@ const menuItems = [
   { href: "/dex",             label: "DEX",     icon: LineChart  },
   { href: "/referral",        label: "Refer",   icon: Users     },
   { href: "/creator-rewards", label: "Rewards", icon: Coins     },
+  { href: "/kol-rewards",     label: "KOL",     icon: Trophy    },
 ];
 
 function shortenAddress(address: string) {
