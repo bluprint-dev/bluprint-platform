@@ -7,7 +7,6 @@ const ADMIN_WALLETS = [
 ];
 
 function verifyAdminToken(req: NextRequest): boolean {
-  // Bearer token kontrolü (page.tsx'in gönderdiği)
   const authHeader = req.headers.get('Authorization');
   if (authHeader?.startsWith('Bearer ')) {
     try {
@@ -18,11 +17,8 @@ function verifyAdminToken(req: NextRequest): boolean {
       }
     } catch {}
   }
-
-  // Fallback: x-wallet-address (eski yöntem)
   const wallet = req.headers.get('x-wallet-address');
   if (wallet && ADMIN_WALLETS.includes(wallet)) return true;
-
   return false;
 }
 
@@ -32,36 +28,65 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // Token sayısı
     const tokenCount = Number(await redis.get(KEYS.tokenCount) || 0);
+
+    // Kullanıcılar
     const users = await redis.smembers(KEYS.users);
     const totalUsers = users.length;
 
+    // Son 24 saatte aktif kullanıcılar (track-token key'inden)
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-    const tokens = await redis.lrange(KEYS.tokens, 0, -1);
+    const recentTokenMints = await redis.lrange('recent_tokens', 0, 99);
     let activeUsers = 0;
+    const seenWallets = new Set<string>();
+
+    for (const mint of recentTokenMints) {
+      const mintStr = typeof mint === 'string' ? mint : String(mint);
+      try {
+        const meta = await redis.get(`token:metadata:${mintStr}`);
+        const data = meta
+          ? (typeof meta === 'string' ? JSON.parse(meta) : meta)
+          : null;
+        if (data?.createdAt && data.createdAt > oneDayAgo && data.creator && !seenWallets.has(data.creator)) {
+          seenWallets.add(data.creator);
+          activeUsers++;
+        }
+      } catch {}
+    }
+
+    // Referral istatistikleri — gerçek key'ler: ref:earnings:*:pending, ref:count:*
     let totalReferrals = 0;
     let totalPaidOut = 0;
 
-    for (const token of tokens) {
-      const t = typeof token === 'string' ? JSON.parse(token) : token;
-      if (new Date(t.createdAt).getTime() > oneDayAgo) {
-        activeUsers++;
-      }
+    const pendingKeys = await redis.keys('ref:earnings:*:pending');
+    for (const key of pendingKeys) {
+      const val = Number(await redis.get(key) || 0);
+      totalPaidOut += val;
     }
 
-    const allEarningsKeys = await redis.keys(`${KEYS.earnings}:*`);
-    for (const key of allEarningsKeys) {
-      const claimed = Number(await redis.hget(key, 'claimed') || 0);
-      totalPaidOut += claimed;
-      const referralsCount = await redis.scard(`${key}:referrals`);
-      totalReferrals += referralsCount;
+    const countKeys = await redis.keys('ref:count:*');
+    for (const key of countKeys) {
+      const val = Number(await redis.get(key) || 0);
+      totalReferrals += val;
     }
 
     const totalRevenue = tokenCount * 0.10;
     const netProfit = totalRevenue - totalPaidOut;
-    const yesterdayCount = Math.floor(tokenCount * 0.8);
-    const dailyGrowth = tokenCount > 0 ? Math.floor((tokenCount - yesterdayCount) / yesterdayCount * 100) : 0;
-    const weeklyGrowth = Math.min(100, dailyGrowth * 3);
+
+    // Büyüme hesabı (track-token listesinden)
+    const allTokens = await redis.lrange(KEYS.tokens, 0, -1);
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    let thisWeek = 0;
+    let lastWeek = 0;
+    for (const t of allTokens) {
+      const data = typeof t === 'string' ? JSON.parse(t) : t;
+      const ts = new Date(data.createdAt).getTime();
+      if (ts > oneDayAgo) thisWeek++;
+      else if (ts > weekAgo) lastWeek++;
+    }
+    const dailyGrowth = lastWeek > 0 ? Math.floor((thisWeek - lastWeek) / lastWeek * 100) : 0;
+    const weeklyGrowth = Math.min(100, Math.abs(dailyGrowth));
 
     return NextResponse.json({
       success: true,
