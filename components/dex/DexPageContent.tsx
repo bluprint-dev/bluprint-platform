@@ -115,6 +115,7 @@ const GLOBAL_STYLES = `
   @keyframes cardSlideIn   { from{opacity:0;transform:translateY(-10px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
   @keyframes tradeSlideIn  { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
   @keyframes currentPulse  { 0%,100%{box-shadow:0 0 10px rgba(153,69,255,0.7)} 50%{box-shadow:0 0 20px rgba(153,69,255,1),0 0 30px rgba(153,69,255,0.4)} }
+  @keyframes copyPop       { from{transform:scale(0.92)} to{transform:scale(1)} }
   @keyframes newBadge      { 0%{opacity:0;transform:scale(0.8)} 100%{opacity:1;transform:scale(1)} }
 
   .dex-scroll::-webkit-scrollbar       { width: 3px; }
@@ -487,6 +488,72 @@ function HoldersTab({ mint }: { mint: string }) {
   );
 }
 
+// ─── COPY ADDRESS BUTTON ─────────────────────────────────────────────────────
+
+function CopyAddressButton({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      style={{
+        display: "flex", alignItems: "center", gap: 6,
+        padding: "5px 12px", borderRadius: 7, cursor: "pointer",
+        fontFamily: "'Space Grotesk', sans-serif", fontSize: 9, fontWeight: 700,
+        letterSpacing: "0.06em",
+        border: copied ? "1px solid rgba(20,241,149,0.5)" : "1px solid rgba(153,69,255,0.25)",
+        background: copied ? "rgba(20,241,149,0.08)" : "rgba(153,69,255,0.07)",
+        color: copied ? "#14F195" : "rgba(153,69,255,0.7)",
+        boxShadow: copied
+          ? "0 0 12px rgba(20,241,149,0.25), 0 0 24px rgba(20,241,149,0.1)"
+          : "none",
+        transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
+        animation: copied ? "copyPop 0.25s cubic-bezier(0.16,1,0.3,1)" : undefined,
+        whiteSpace: "nowrap",
+      }}
+      onMouseEnter={e => {
+        if (!copied) {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(153,69,255,0.45)";
+          (e.currentTarget as HTMLButtonElement).style.color = "#9945FF";
+          (e.currentTarget as HTMLButtonElement).style.background = "rgba(153,69,255,0.12)";
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 12px rgba(153,69,255,0.2), 0 0 24px rgba(153,69,255,0.08)";
+        }
+      }}
+      onMouseLeave={e => {
+        if (!copied) {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(153,69,255,0.25)";
+          (e.currentTarget as HTMLButtonElement).style.color = "rgba(153,69,255,0.7)";
+          (e.currentTarget as HTMLButtonElement).style.background = "rgba(153,69,255,0.07)";
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+        }
+      }}
+    >
+      {copied ? (
+        <>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#14F195" strokeWidth={3}>
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          COPIED
+        </>
+      ) : (
+        <>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          COPY ADDRESS
+        </>
+      )}
+    </button>
+  );
+}
+
 // ─── TOKEN DETAIL ─────────────────────────────────────────────────────────────
 
 function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void }) {
@@ -606,7 +673,10 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
           </div>
 
           {/* Links */}
-          <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexShrink: 0, alignItems: "center" }}>
+            {/* Copy Address button */}
+            <CopyAddressButton address={token.mint} />
+
             {[
               { label: "Solscan", href: `https://solscan.io/token/${token.mint}` },
               { label: "Birdeye", href: `https://birdeye.so/token/${token.mint}?chain=solana` },
@@ -821,19 +891,12 @@ export default function DexPageContent() {
                 BluPrint
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                {/* favicon.ico instead of B */}
+                {/* favicon.ico */}
                 <img
                   src="/favicon.ico"
                   alt="BluPrint"
                   style={{ width: 36, height: 36, borderRadius: 8, objectFit: "contain" }}
                 />
-                <h1 style={{
-                  fontFamily: "'Orbitron', monospace",
-                  fontSize: "clamp(22px, 4vw, 34px)",
-                  fontWeight: 900, color: "#fff", margin: 0, lineHeight: 1.1,
-                }}>
-                  DEX <span style={{ color: "#14F195" }} className="glow-text-green">TERMINAL</span>
-                </h1>
               </div>
               <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, margin: 0, maxWidth: 420 }}>
                 Browse, trade, and track every token launched on BluPrint — live.
@@ -851,7 +914,7 @@ export default function DexPageContent() {
                   className="dex-input"
                   value={searchInput}
                   onChange={e => { setSearchInput(e.target.value); setSearch(e.target.value); }}
-                  placeholder="Search by name or symbol..."
+                  placeholder="Search by name, symbol or address..."
                   style={{ paddingLeft: 40, height: 46 }}
                   onFocus={e => (e.target.style.borderColor = "rgba(153,69,255,0.5)")}
                   onBlur={e  => (e.target.style.borderColor = "rgba(153,69,255,0.25)")}
