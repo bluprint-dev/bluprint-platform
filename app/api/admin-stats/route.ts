@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     let totalPaidOut = 0;
 
     for (const token of tokens) {
-      const t = JSON.parse(token);
+      const t = typeof token === 'string' ? JSON.parse(token) : token;
       if (new Date(t.createdAt).getTime() > oneDayAgo) {
         activeUsers++;
       }
