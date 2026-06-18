@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import bs58 from "bs58";
 
 interface EarningsData {
   pending: number;
@@ -18,14 +19,14 @@ interface EarningsData {
 }
 
 const MILESTONES = [
-  { referrals: 5, bonus: 0.05, label: "+0.05◎" },
-  { referrals: 10, bonus: 0.1, label: "+0.1◎" },
-  { referrals: 25, bonus: 0.25, label: "+0.25◎" },
-  { referrals: 50, bonus: 0.5, label: "+0.5◎" },
-  { referrals: 100, bonus: 1, label: "+1◎" },
-  { referrals: 250, bonus: 2.5, label: "+2.5◎" },
-  { referrals: 500, bonus: 5, label: "+5◎" },
-  { referrals: 1000, bonus: 10, label: "10◎ + VIP", isVip: true },
+  { referrals: 5, bonus: 0.05, label: "+0.05◎" },
+  { referrals: 10, bonus: 0.1, label: "+0.1◎" },
+  { referrals: 25, bonus: 0.25, label: "+0.25◎" },
+  { referrals: 50, bonus: 0.5, label: "+0.5◎" },
+  { referrals: 100, bonus: 1, label: "+1◎" },
+  { referrals: 250, bonus: 2.5, label: "+2.5◎" },
+  { referrals: 500, bonus: 5, label: "+5◎" },
+  { referrals: 1000, bonus: 10, label: "10◎ + VIP", isVip: true },
 ];
 
 function getNextMilestone(count: number) {
@@ -54,7 +55,7 @@ function getProgressPercent(count: number) {
 }
 
 export default function ReferralPage() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signMessage } = useWallet();
   const [data, setData] = useState<EarningsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -91,14 +92,27 @@ export default function ReferralPage() {
 
   const handleClaim = async () => {
     if (!wallet || !data || data.pending <= 0) return;
+
+    if (!signMessage) {
+      setClaimError("Your wallet doesn't support message signing. Try Phantom or Solflare.");
+      return;
+    }
+
     setClaiming(true);
     setClaimError("");
     setClaimSuccess(false);
     try {
+      // Cuzdan sahipligini kanitlamak icin mesaji imzala (backend bunu dogruluyor)
+      const timestamp = Date.now();
+      const message = `Claim referral rewards for ${wallet} at ${timestamp}`;
+      const encodedMessage = new TextEncoder().encode(message);
+      const signedBytes = await signMessage(encodedMessage);
+      const signature = bs58.encode(signedBytes);
+
       const res = await fetch("/api/claim-referral", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet }),
+        body: JSON.stringify({ wallet, timestamp, signature }),
       });
       const json = await res.json();
       if (json.success) {
@@ -107,8 +121,12 @@ export default function ReferralPage() {
       } else {
         setClaimError(json.error || "Claim failed");
       }
-    } catch {
-      setClaimError("Network error");
+    } catch (err: any) {
+      if (err?.message?.toLowerCase().includes("user rejected")) {
+        setClaimError("Signature request was cancelled");
+      } else {
+        setClaimError("Network error");
+      }
     }
     setClaiming(false);
   };
@@ -448,7 +466,7 @@ export default function ReferralPage() {
                   <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, fontWeight: 600, letterSpacing: "0.05em" }}>PENDING</span>
                 </div>
                 <div className="stat-value glow-text-green" style={{ color: "#14F195", marginBottom: 16 }}>
-                  {data.pending.toFixed(3)} ◎
+                  {data.pending.toFixed(3)} ◎
                 </div>
                 <button
                   className={`claim-btn${data.pending > 0 ? " pulse" : ""}`}
@@ -472,7 +490,7 @@ export default function ReferralPage() {
                   </div>
                   <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, fontWeight: 600, letterSpacing: "0.05em" }}>CLAIMED</span>
                 </div>
-                <div className="stat-value" style={{ color: "#FFD700" }}>{data.claimed.toFixed(3)} ◎</div>
+                <div className="stat-value" style={{ color: "#FFD700" }}>{data.claimed.toFixed(3)} ◎</div>
                 <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, margin: "8px 0 0" }}>
                   Total earned lifetime
                 </p>
@@ -566,7 +584,7 @@ export default function ReferralPage() {
                     fontSize: 13,
                     fontWeight: 600,
                   }}>
-                    🏆 All milestones reached!
+                    ğŸ† All milestones reached!
                   </div>
                 )}
               </div>
