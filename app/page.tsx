@@ -9,16 +9,16 @@ const SPECS = [
   {
     tag: "01 / Virtual Pools",
     title: "Algorithmic Bonding Curves",
-    body: "Constant-product (x·y=k) virtual reserve calculations establish programmatic floor pricing and protect initial purchasers from coordinated manipulation.",
+    body: "Constant-product (xÂ·y=k) virtual reserve calculations establish programmatic floor pricing and protect initial purchasers from coordinated manipulation.",
     accent: "#9945FF",
-    metrics: [["< 10s", "DEPLOY"], ["x·y=k", "FORMULA"], ["0", "ADMIN KEYS"]],
+    metrics: [["< 10s", "DEPLOY"], ["xÂ·y=k", "FORMULA"], ["0", "ADMIN KEYS"]],
   },
   {
     tag: "02 / Token Integrity",
     title: "Immutable SPL Standards",
     body: "Direct deployment via Metaplex token program with immutable authority revocation. Fully verified, fully permissionless, on-chain in seconds.",
     accent: "#14F195",
-    metrics: [["100%", "ON-CHAIN"], ["SPL", "STANDARD"], ["∞", "SUPPLY CTL"]],
+    metrics: [["100%", "ON-CHAIN"], ["SPL", "STANDARD"], ["âˆ", "SUPPLY CTL"]],
   },
   {
     tag: "03 / Autonomous Migrations",
@@ -36,7 +36,7 @@ const F = {
   mono: "var(--font-mono), 'JetBrains Mono', monospace",
 };
 
-/* ── Activity Feed ───────────────────────────────────────────────────────────── */
+/* â”€â”€ Activity Feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const FAKE_WALLETS = [
   "7xKp...2MQr","3rNt...Qz8w","9fBw...Ly4k","5mJc...Vu1p","2sHd...Xo6n",
   "8nEa...Ri3s","4kGp...Se9t","6tCv...Bn2m","1yFq...Wm7j","0hDl...Zj5c",
@@ -155,7 +155,7 @@ function LiveActivityFeed() {
   );
 }
 
-/* ── Viewer Count ────────────────────────────────────────────────────────────── */
+/* â”€â”€ Viewer Count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function useViewerCount() {
   const [count, setCount] = useState(47);
   useEffect(() => {
@@ -167,13 +167,13 @@ function useViewerCount() {
   return count;
 }
 
-/* ── Slots Counter ───────────────────────────────────────────────────────────── */
+/* â”€â”€ Slots Counter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function SlotsCounter() {
-  const [slots, setSlots] = useState(33);
+  const [slots, setSlots] = useState(() => Math.floor(Math.random() * 200) + 80);
   useEffect(() => {
     const iv = setInterval(() => {
-      setSlots(s => Math.max(1, s - (Math.random() > 0.7 ? 1 : 0)));
-    }, 8000);
+      setSlots(s => Math.min(500, Math.max(1, s + Math.floor(Math.random() * 11) - 5)));
+    }, 4000);
     return () => clearInterval(iv);
   }, []);
   return (
@@ -192,13 +192,13 @@ function SlotsCounter() {
         fontFamily: F.mono, fontSize: 11, fontWeight: 700,
         color: "rgba(255,120,120,0.9)", letterSpacing: "0.1em",
       }}>
-        ONLY <span style={{ color: "#ff5050", fontSize: 14 }}>{slots}</span> EARLY ACCESS SLOTS LEFT AT 0.05 SOL
+        <span style={{ color: "#ff5050", fontSize: 14 }}>{slots}</span> PEOPLE ARE BROWSING THE SITE RIGHT NOW
       </span>
     </div>
   );
 }
 
-/* ── Viewers Badge ───────────────────────────────────────────────────────────── */
+/* â”€â”€ Viewers Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ViewersBadge({ count }: { count: number }) {
   return (
     <div style={{
@@ -221,7 +221,7 @@ function ViewersBadge({ count }: { count: number }) {
   );
 }
 
-/* ── Launch Ticker ───────────────────────────────────────────────────────────── */
+/* â”€â”€ Launch Ticker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function LaunchTicker({ tokens }: { tokens: DexToken[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const posRef   = useRef(0);
@@ -276,7 +276,7 @@ function LaunchTicker({ tokens }: { tokens: DexToken[] }) {
   );
 }
 
-/* ── Main ────────────────────────────────────────────────────────────────────── */
+/* â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function HomePage() {
   const [tokens,       setTokens]      = useState<DexToken[]>([]);
   const [loading,      setLoading]     = useState(true);
@@ -367,10 +367,10 @@ export default function HomePage() {
         <div style={{ position: "absolute", top: "30%", right: "-10%", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle,rgba(20,241,149,0.06) 0%,transparent 65%)", filter: "blur(50px)" }} />
       </div>
 
-      {/* Live toasts — bottom left */}
+      {/* Live toasts â€” bottom left */}
       <LiveActivityFeed />
 
-      {/* ── HERO ── */}
+      {/* â”€â”€ HERO â”€â”€ */}
       <section style={{ position: "relative", zIndex: 10, minHeight: "100vh", display: "flex", alignItems: "center" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "96px 24px", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
 
@@ -391,7 +391,7 @@ export default function HomePage() {
                   <span style={{ position: "relative", width: 8, height: 8, borderRadius: "50%", background: "#14F195", boxShadow: "0 0 6px #14F195" }} />
                 </span>
                 <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", color: "#14F195" }}>
-                  SOLANA MAINNET · LIVE NOW
+                  SOLANA MAINNET Â· LIVE NOW
                 </span>
               </div>
               <ViewersBadge count={viewers} />
@@ -424,7 +424,7 @@ export default function HomePage() {
                 letterSpacing: "0.06em", position: "relative", overflow: "hidden",
               }}>
                 <span style={{ position: "absolute", left: 0, right: 0, height: "30%", background: "linear-gradient(transparent,rgba(255,255,255,0.08),transparent)", animation: "scanline 2s linear infinite", pointerEvents: "none" }} />
-                🚀 LAUNCH TOKEN · 0.05 SOL
+                🚀 LAUNCH TOKEN · 0.15 SOL
               </Link>
               <Link href="/dex" style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
@@ -433,17 +433,17 @@ export default function HomePage() {
                 color: "rgba(153,69,255,0.9)", textDecoration: "none",
                 fontFamily: F.display, fontSize: 13, fontWeight: 700, letterSpacing: "0.05em",
               }}>
-                VIEW TERMINAL →
+                VIEW TERMINAL â†’
               </Link>
             </div>
 
             {/* stats row */}
             <div style={{ display: "flex", gap: 40, paddingTop: 8 }}>
               {[
-                [tokens.length > 0 ? `${tokens.length}+` : "—", "TOKENS LIVE"],
+                [tokens.length > 0 ? `${tokens.length}+` : "â€”", "TOKENS LIVE"],
                 ["< 10s", "DEPLOY TIME"],
                 ["100%", "ON-CHAIN"],
-                ["0.95%", "TOTAL FEE"],
+                ["0.60%", "TOTAL FEE"],
               ].map(([v, l]) => (
                 <div key={String(l)}>
                   <p style={{ margin: 0, fontFamily: F.display, fontSize: 26, fontWeight: 900, color: l === "TOTAL FEE" ? "#14F195" : "#fff", letterSpacing: "-0.025em", lineHeight: 1 }}>{v}</p>
@@ -490,16 +490,16 @@ export default function HomePage() {
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 128, pointerEvents: "none", background: "linear-gradient(to bottom,transparent,#0a0414)" }} />
       </section>
 
-      {/* ── TICKER ── */}
+      {/* â”€â”€ TICKER â”€â”€ */}
       <LaunchTicker tokens={tokens} />
 
-      {/* ── TOKEN GRID ── */}
+      {/* â”€â”€ TOKEN GRID â”€â”€ */}
       <section style={{ position: "relative", zIndex: 10, paddingTop: 80, paddingBottom: 80 }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px" }}>
 
           <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 999, marginBottom: 20, background: "rgba(153,69,255,0.07)", border: "1px solid rgba(153,69,255,0.18)" }}>
-              <span style={{ fontFamily: F.mono, color: "rgba(153,69,255,0.65)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em" }}>◈ BLUEPRINT LIVE TRADING DESK</span>
+              <span style={{ fontFamily: F.mono, color: "rgba(153,69,255,0.65)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em" }}>â—ˆ BLUEPRINT LIVE TRADING DESK</span>
             </div>
             <h2 style={{ margin: 0, fontFamily: F.display, fontSize: "clamp(32px,4vw,54px)", fontWeight: 900, letterSpacing: "-0.025em", color: "#fff", lineHeight: 1.1 }}>
               The <span style={{ color: "#14F195" }}>Active</span> Launch Grid
@@ -516,7 +516,7 @@ export default function HomePage() {
               <div style={{ borderRadius: 18, padding: 24, background: "linear-gradient(135deg,rgba(153,69,255,0.08),rgba(10,4,16,0.98))" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span>👑</span>
+                    <span>ğŸ‘‘</span>
                     <span style={{ fontFamily: F.mono, color: "rgba(255,255,255,0.22)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em" }}>KING OF THE HILL</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -537,14 +537,14 @@ export default function HomePage() {
                     <p style={{ margin: 0, fontFamily: F.mono, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{tokens[0].mint.slice(0,8)}...{tokens[0].mint.slice(-6)}</p>
                   </div>
                   <div style={{ flex: 1, minWidth: 220 }}>
-                    <p style={{ margin: "0 0 8px", fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: "#14F195", animation: "textPulse 1.5s ease-in-out infinite" }}>LIVE ON BONDING CURVE → TRADE NOW</p>
+                    <p style={{ margin: "0 0 8px", fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: "#14F195", animation: "textPulse 1.5s ease-in-out infinite" }}>LIVE ON BONDING CURVE â†’ TRADE NOW</p>
                     <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.05)" }}>
                       <div style={{ height: "100%", width: "68%", borderRadius: 4, background: "linear-gradient(90deg,#9945FF,#14F195)", animation: "glowPulse 2s ease-in-out infinite" }} />
                     </div>
-                    <p style={{ margin: "6px 0 0", fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.3)" }}>68% filled · migrating to Raydium soon 🔥</p>
+                    <p style={{ margin: "6px 0 0", fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.3)" }}>68% filled Â· migrating to Raydium soon ğŸ”¥</p>
                   </div>
                   <Link href={`/dex?mint=${tokens[0].mint}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "12px 24px", borderRadius: 12, background: "linear-gradient(135deg,#14F195,#0fa96a)", color: "#07070f", textDecoration: "none", fontFamily: F.display, fontSize: 13, fontWeight: 800, letterSpacing: "0.06em", flexShrink: 0 }}>
-                    TRADE NOW →
+                    TRADE NOW â†’
                   </Link>
                 </div>
               </div>
@@ -555,7 +555,7 @@ export default function HomePage() {
           <motion.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
             style={{ display: "flex", gap: 12, marginBottom: 32, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
-              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(153,69,255,0.45)", fontSize: 13, fontFamily: F.mono, pointerEvents: "none" }}>›_</span>
+              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(153,69,255,0.45)", fontSize: 13, fontFamily: F.mono, pointerEvents: "none" }}>â€º_</span>
               <input
                 value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search token, symbol, mint address..."
@@ -593,7 +593,7 @@ export default function HomePage() {
                   Be the first to launch a token on BluPrint. Your coin will appear here live on the bonding curve seconds after creation.
                 </p>
                 <Link href="/create" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 32px", borderRadius: 14, background: "linear-gradient(135deg,#14F195,#0fa96a)", color: "#07070f", textDecoration: "none", fontFamily: F.display, fontSize: 14, fontWeight: 800, letterSpacing: "0.06em", boxShadow: "0 0 36px rgba(20,241,149,0.4)" }}>
-                  ⬡ CREATE THE FIRST TOKEN
+                  â¬¡ CREATE THE FIRST TOKEN
                 </Link>
               </motion.div>
             ) : (
@@ -652,7 +652,7 @@ export default function HomePage() {
                       <div style={{ display: "flex", gap: 16 }}>
                         <div>
                           <p style={{ margin: 0, fontFamily: F.mono, fontSize: 9, letterSpacing: "0.12em", color: "rgba(255,255,255,0.18)" }}>CREATOR</p>
-                          <p style={{ margin: "3px 0 0", fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: "rgba(153,69,255,0.8)" }}>{token.creator ? `${token.creator.slice(0,6)}...` : "—"}</p>
+                          <p style={{ margin: "3px 0 0", fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: "rgba(153,69,255,0.8)" }}>{token.creator ? `${token.creator.slice(0,6)}...` : "â€”"}</p>
                         </div>
                         <div>
                           <p style={{ margin: 0, fontFamily: F.mono, fontSize: 9, letterSpacing: "0.12em", color: "rgba(255,255,255,0.18)" }}>STATUS</p>
@@ -665,7 +665,7 @@ export default function HomePage() {
                     </div>
                     <div style={{ padding: "6px 16px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: "0.12em", color: "rgba(255,255,255,0.18)" }}>CURVE FILL</span>
-                      <Link href={`/dex?mint=${token.mint}`} style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: "rgba(153,69,255,0.7)", textDecoration: "none" }}>TRADE →</Link>
+                      <Link href={`/dex?mint=${token.mint}`} style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: "rgba(153,69,255,0.7)", textDecoration: "none" }}>TRADE â†’</Link>
                     </div>
                   </motion.div>
                 ))}
@@ -676,20 +676,20 @@ export default function HomePage() {
           {sorted.length > 0 && (
             <div style={{ textAlign: "center", marginTop: 40 }}>
               <Link href="/dex" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", borderRadius: 12, background: "rgba(153,69,255,0.07)", border: "1px solid rgba(153,69,255,0.2)", color: "rgba(153,69,255,0.8)", textDecoration: "none", fontFamily: F.mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em" }}>
-                VIEW ALL TOKENS →
+                VIEW ALL TOKENS â†’
               </Link>
             </div>
           )}
         </div>
       </section>
 
-      {/* ── SPECS ── */}
+      {/* â”€â”€ SPECS â”€â”€ */}
       <section style={{ position: "relative", zIndex: 10, paddingTop: 80, paddingBottom: 80 }}>
         <div style={{ height: 1, maxWidth: 1280, margin: "0 auto 64px", background: "linear-gradient(90deg,transparent,rgba(153,69,255,0.28),rgba(20,241,149,0.28),transparent)" }} />
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px" }}>
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 999, marginBottom: 16, background: "rgba(20,241,149,0.05)", border: "1px solid rgba(20,241,149,0.14)" }}>
-              <span style={{ fontFamily: F.mono, color: "rgba(20,241,149,0.55)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em" }}>◈ PROTOCOL ARCHITECTURE</span>
+              <span style={{ fontFamily: F.mono, color: "rgba(20,241,149,0.55)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em" }}>â—ˆ PROTOCOL ARCHITECTURE</span>
             </div>
             <h2 style={{ margin: 0, fontFamily: F.display, fontSize: "clamp(30px,4vw,52px)", fontWeight: 900, letterSpacing: "-0.025em", color: "#fff", lineHeight: 1.1 }}>
               Why <span style={{ color: "#9945FF" }}>BluPrint</span> Wins
@@ -718,7 +718,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {/* â”€â”€ FOOTER â”€â”€ */}
       <footer style={{ position: "relative", zIndex: 10, paddingTop: 56, paddingBottom: 40 }}>
         <div style={{ height: 1, maxWidth: 1280, margin: "0 auto 48px", background: "linear-gradient(90deg,transparent,rgba(153,69,255,0.18),transparent)" }} />
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px" }}>
@@ -727,7 +727,7 @@ export default function HomePage() {
               <img src="/favicon.ico" alt="BluPrint" style={{ width: 38, height: 38, objectFit: "contain", filter: "drop-shadow(0 0 12px rgba(153,69,255,0.4))" }} />
               <div>
                 <p style={{ margin: 0, fontFamily: F.display, fontSize: 17, fontWeight: 800, color: "#fff" }}>BluPrint</p>
-                <p style={{ margin: 0, fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em" }}>Solana's fastest bonding-curve launchpad</p>
+                <p style={{ margin: 0, fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em" }}>Solana'nın en avantajlı ve en kazandıran launchpad'i</p>
               </div>
             </div>
             <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
@@ -742,7 +742,7 @@ export default function HomePage() {
           </div>
           <div style={{ borderTop: "1px solid rgba(153,69,255,0.07)", paddingTop: 18, textAlign: "center" }}>
             <p style={{ margin: 0, fontFamily: F.mono, fontSize: 10, color: "rgba(255,255,255,0.12)", letterSpacing: "0.1em" }}>
-              Securely powered by Solana Mainnet · © 2026 BluPrint Protocol.
+              Securely powered by Solana Mainnet Â· Â© 2026 BluPrint Protocol.
             </p>
           </div>
         </div>
