@@ -8,9 +8,12 @@ type Props = {
   trades: Trade[];
 };
 
-type PricePoint = {
+type Candle = {
   time: number;
-  value: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
   volume: number;
 };
 
@@ -26,9 +29,7 @@ const INTERVAL_MS: Record<Interval, number> = {
   "1D": 24 * 60 * 60_000,
 };
 
-// Trade'leri zaman bucket'larına göre tek bir fiyat noktasına indir (bucket'taki son fiyat + toplam hacim).
-// Candlestick'in high/low/wick karmaşası yok — bu yüzden az veri varken bozulmuyor.
-function tradesToPoints(trades: Trade[], intervalMs: number): PricePoint[] {
+function tradesToCandles(trades: Trade[], intervalMs: number): Candle[] {
   const valid = trades.filter((t) => t.price > 0);
   if (valid.length === 0) return [];
 
@@ -36,24 +37,23 @@ function tradesToPoints(trades: Trade[], intervalMs: number): PricePoint[] {
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
-  const buckets = new Map<number, { lastPrice: number; volume: number }>();
+  const buckets = new Map<number, { prices: number[]; volume: number }>();
   for (const t of sorted) {
     const ts = new Date(t.created_at).getTime();
     const bucket = Math.floor(ts / intervalMs) * intervalMs;
-    const existing = buckets.get(bucket);
-    if (existing) {
-      existing.lastPrice = t.price; // bucket içindeki en son fiyat kazanır
-      existing.volume += t.amount_sol;
-    } else {
-      buckets.set(bucket, { lastPrice: t.price, volume: t.amount_sol });
-    }
+    if (!buckets.has(bucket)) buckets.set(bucket, { prices: [], volume: 0 });
+    buckets.get(bucket)!.prices.push(t.price);
+    buckets.get(bucket)!.volume += t.amount_sol;
   }
 
   return Array.from(buckets.entries())
     .sort(([a], [b]) => a - b)
-    .map(([ts, { lastPrice, volume }]) => ({
+    .map(([ts, { prices, volume }]) => ({
       time: Math.floor(ts / 1000),
-      value: lastPrice,
+      open: prices[0],
+      high: Math.max(...prices),
+      low: Math.min(...prices),
+      close: prices[prices.length - 1],
       volume,
     }));
 }
@@ -61,7 +61,7 @@ function tradesToPoints(trades: Trade[], intervalMs: number): PricePoint[] {
 export default function TradeChart({ mint, trades }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
-  const areaSeriesRef = useRef<any>(null);
+  const candleSeriesRef = useRef<any>(null);
   const volSeriesRef = useRef<any>(null);
   const initRef = useRef(false);
   const [interval, setInterval] = useState<Interval>("5m");
@@ -102,44 +102,42 @@ export default function TradeChart({ mint, trades }: Props) {
           borderColor: "#2a2e39",
           timeVisible: true,
           secondsVisible: false,
+          // Az mum varken her mum daha geniş gözüksün — sıkı zoom
+          barSpacing: 24,
+          minBarSpacing: 6,
         },
       });
 
-      let areaSeries: any;
+      let candleSeries: any;
       let volSeries: any;
 
-      // Area series — fiyatı dolgu ile gösterir (Birdeye/Pump.fun tarzı)
-      if (typeof (chart as any).addAreaSeries === "function") {
-        areaSeries = (chart as any).addAreaSeries({
-          lineColor: "#26a69a",
-          topColor: "rgba(38,166,154,0.35)",
-          bottomColor: "rgba(38,166,154,0.02)",
-          lineWidth: 2,
+      if (typeof (chart as any).addCandlestickSeries === "function") {
+        candleSeries = (chart as any).addCandlestickSeries({
+          upColor: "#26a69a", downColor: "#ef5350",
+          borderUpColor: "#26a69a", borderDownColor: "#ef5350",
+          wickUpColor: "#26a69a", wickDownColor: "#ef5350",
           priceFormat: { type: "price", precision: 10, minMove: 0.0000000001 },
         });
         volSeries = (chart as any).addHistogramSeries({
           priceFormat: { type: "volume" }, priceScaleId: "vol",
-          color: "rgba(38,166,154,0.4)",
         });
       } else {
-        const { AreaSeries, HistogramSeries } = lc as any;
-        areaSeries = chart.addSeries(AreaSeries, {
-          lineColor: "#26a69a",
-          topColor: "rgba(38,166,154,0.35)",
-          bottomColor: "rgba(38,166,154,0.02)",
-          lineWidth: 2,
+        const { CandlestickSeries, HistogramSeries } = lc as any;
+        candleSeries = chart.addSeries(CandlestickSeries, {
+          upColor: "#26a69a", downColor: "#ef5350",
+          borderUpColor: "#26a69a", borderDownColor: "#ef5350",
+          wickUpColor: "#26a69a", wickDownColor: "#ef5350",
           priceFormat: { type: "price", precision: 10, minMove: 0.0000000001 },
         });
         volSeries = chart.addSeries(HistogramSeries, {
           priceFormat: { type: "volume" }, priceScaleId: "vol",
-          color: "rgba(38,166,154,0.4)",
         });
       }
 
       chart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
 
       chartRef.current = chart;
-      areaSeriesRef.current = areaSeries;
+      candleSeriesRef.current = candleSeries;
       volSeriesRef.current = volSeries;
 
       const ro = new ResizeObserver(() => {
@@ -158,44 +156,44 @@ export default function TradeChart({ mint, trades }: Props) {
     return () => {
       chartRef.current?.remove();
       chartRef.current = null;
-      areaSeriesRef.current = null;
+      candleSeriesRef.current = null;
       volSeriesRef.current = null;
       initRef.current = false;
     };
   }, []);
 
-  // trades veya interval değişince noktaları yeniden çiz
+  // trades veya interval değişince candle'ları yeniden çiz
   useEffect(() => {
-    if (!ready || !areaSeriesRef.current || !volSeriesRef.current) return;
+    if (!ready || !candleSeriesRef.current || !volSeriesRef.current) return;
 
-    const points = tradesToPoints(trades, INTERVAL_MS[interval]);
-    if (points.length === 0) return;
+    const candles = tradesToCandles(trades, INTERVAL_MS[interval]);
+    if (candles.length === 0) return;
 
-    areaSeriesRef.current.setData(
-      points.map((p) => ({ time: p.time, value: p.value }))
+    candleSeriesRef.current.setData(
+      candles.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))
     );
     volSeriesRef.current.setData(
-      points.map((p, i) => ({
-        time: p.time,
-        value: p.volume,
-        color: i === 0 || p.value >= points[i - 1].value
-          ? "rgba(38,166,154,0.5)"
-          : "rgba(239,83,80,0.5)",
+      candles.map((c) => ({
+        time: c.time,
+        value: c.volume,
+        color: c.close >= c.open ? "rgba(38,166,154,0.5)" : "rgba(239,83,80,0.5)",
       }))
     );
 
     const chart = chartRef.current;
     if (chart) {
       const timeScale = chart.timeScale();
-      // Sağda makul bir boşluk bırak (son nokta kenara yapışmasın), ama
-      // yapay olarak zaman aralığını GENİŞLETME — bu, veri olmayan bölgede
-      // çizginin düz uzayıp gitmesine (boş alan hissi) sebep oluyordu.
-      const rightOffsetBars = Math.min(8, Math.max(2, Math.floor(points.length * 0.3)));
-      timeScale.applyOptions({ rightOffset: rightOffsetBars });
+
+      // Az mum varken mumlar büyük ve net görünsün, sağda az boşluk olsun.
+      // Yapay zaman aralığı genişletmesi YOK — sadece gerçek mumlara fitContent.
+      const rightOffsetBars = Math.min(4, Math.max(1, Math.floor(candles.length * 0.2)));
+      timeScale.applyOptions({
+        rightOffset: rightOffsetBars,
+        barSpacing: candles.length <= 12 ? 28 : undefined,
+      });
       timeScale.fitContent();
 
-      // Line/area chart'ta autoscale doğal çalışır — tek değer (close) olduğu için
-      // candlestick'teki high/low/wick domine etme sorunu burada hiç oluşmaz.
+      // Gerçek autoscale — candle'ların doğal high/low aralığına göre.
       chart.priceScale("right").applyOptions({ autoScale: true });
     }
   }, [trades, interval, ready]);
