@@ -4,7 +4,7 @@ import { useState } from "react";
 
 type Props = {
   mint: string;
-  trades?: any[]; // artık kullanılmıyor ama eski çağrılar kırılmasın diye prop bırakıldı
+  trades?: any[];
 };
 
 const INTERVALS = [
@@ -20,13 +20,10 @@ export default function TradeChart({ mint }: Props) {
   const [interval, setInterval] = useState("5m");
   const [iframeError, setIframeError] = useState(false);
 
-  const src = `https://birdeye.so/tv-widget/${mint}?chain=solana&viewMode=pair&chartInterval=${interval}&chartType=CANDLE&chartTimezone=Etc%2FUTC&chartLeftToolbar=hide&theme=dark`;
+  const src = `https://embed.birdeye.so/tv-widget/${mint}?chain=solana&viewMode=pair&chartInterval=${interval}&chartType=CANDLE&chartTimezone=Etc%2FUTC&chartLeftToolbar=hide&theme=dark`;
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", minHeight: 320 }}>
-      {/* Interval buttons - Birdeye widget kendi interval kontrolüne de sahip,
-          ama site tasarımıyla tutarlı olsun diye kendi butonlarımızı tutuyoruz.
-          Buton değişince iframe src'si değişip Birdeye'in ilgili interval'ını yükler. */}
       <div style={{ position: "absolute", top: 8, left: 8, zIndex: 10, display: "flex", gap: 4 }}>
         {INTERVALS.map((iv) => (
           <button
