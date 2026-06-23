@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
@@ -14,7 +14,7 @@ import { useTrades } from "@/hooks/useTrades";
 import type { DexToken } from "@/types/dex";
 import type { Trade } from "@/hooks/useTrades";
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function fmt(n: number, dec = 4) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
@@ -40,7 +40,7 @@ function fmtMcap(mcapSol: number, solPrice = 145) {
 const SOL_PRICE_USD = 145;
 const TOTAL_SUPPLY = 1_000_000_000;
 
-// ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
+// â”€â”€â”€ GLOBAL STYLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const GLOBAL_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@700;900&display=swap');
@@ -173,7 +173,7 @@ const GLOBAL_STYLES = `
   }
 `;
 
-// ─── BACKGROUND ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ BACKGROUND â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Background() {
   return (
@@ -206,7 +206,7 @@ function Background() {
   );
 }
 
-// ─── TOKEN AVATAR ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ TOKEN AVATAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TokenAvatar({ token, size = 48 }: { token: DexToken; size?: number }) {
   const grads = ["#9945FF,#14F195", "#ff2d95,#9945FF", "#14F195,#0ea5e9", "#f59e0b,#ff2d95"];
@@ -234,7 +234,7 @@ function TokenAvatar({ token, size = 48 }: { token: DexToken; size?: number }) {
   );
 }
 
-// ─── TOKEN CARD ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ TOKEN CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean; onClick: () => void }) {
   const age = token.createdAt ? Date.now() - token.createdAt : null;
@@ -276,7 +276,7 @@ function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean;
             color: "#080612", letterSpacing: "0.1em",
             animation: "popIn 0.4s cubic-bezier(0.16,1,0.3,1), pulse 1.8s ease-in-out 0.4s infinite",
             boxShadow: "0 0 16px rgba(153,69,255,0.5)",
-          }}>✦ NEW</div>
+          }}>âœ¦ NEW</div>
         )}
         {age !== null && (
           <div style={{
@@ -315,14 +315,14 @@ function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean;
           color: "rgba(255,255,255,0.18)", fontSize: 10, letterSpacing: "0.04em",
           fontFamily: "monospace",
         }}>
-          {token.mint.slice(0, 6)}···{token.mint.slice(-4)}
+          {token.mint.slice(0, 6)}Â·Â·Â·{token.mint.slice(-4)}
         </div>
       </div>
     </div>
   );
 }
 
-// ─── LIVE TRADE ROW ───────────────────────────────────────────────────────────
+// â”€â”€â”€ LIVE TRADE ROW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TradeRow({ trade, isNew }: { trade: Trade; isNew: boolean }) {
   const age = Date.now() - new Date(trade.created_at).getTime();
@@ -377,7 +377,7 @@ function TradeRow({ trade, isNew }: { trade: Trade; isNew: boolean }) {
       </span>
 
       <span className="trade-row-mcap" style={{ fontSize: 10, color: "rgba(153,69,255,0.65)", fontWeight: 600 }}>
-        {mcapSol > 0 ? fmtMcap(mcapSol) : "—"}
+        {mcapSol > 0 ? fmtMcap(mcapSol) : "â€”"}
       </span>
 
       <a
@@ -393,13 +393,13 @@ function TradeRow({ trade, isNew }: { trade: Trade; isNew: boolean }) {
         onMouseEnter={e => ((e.target as HTMLElement).style.color = "#9945FF")}
         onMouseLeave={e => ((e.target as HTMLElement).style.color = "rgba(153,69,255,0.4)")}
       >
-        {trade.wallet.slice(0, 4)}···{trade.wallet.slice(-4)} ↗
+        {trade.wallet.slice(0, 4)}Â·Â·Â·{trade.wallet.slice(-4)} â†—
       </a>
     </div>
   );
 }
 
-// ─── HOLDERS TAB ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ HOLDERS TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function HoldersTab({ mint }: { mint: string }) {
   const [holders, setHolders] = useState<{ address: string; amount: number; pct: number }[]>([]);
@@ -407,8 +407,7 @@ function HoldersTab({ mint }: { mint: string }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_KEY ?? ""}`, {
-      method: "POST",
+fetch(process.env.NEXT_PUBLIC_RPC_URL ?? "https://mainnet.helius-rpc.com/?api-key=fdbb8762-06b5-4bbd-ab1e-33310587e2d4", {      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         jsonrpc: "2.0", id: "holders",
@@ -443,7 +442,7 @@ function HoldersTab({ mint }: { mint: string }) {
   if (holders.length === 0) {
     return (
       <div style={{ padding: "40px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: 28, marginBottom: 10, opacity: 0.12, color: "#9945FF" }}>◈</div>
+        <div style={{ fontSize: 28, marginBottom: 10, opacity: 0.12, color: "#9945FF" }}>â—ˆ</div>
         <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13 }}>
           No holder data available
         </div>
@@ -503,7 +502,7 @@ function HoldersTab({ mint }: { mint: string }) {
               onMouseEnter={e => ((e.target as HTMLElement).style.opacity = "0.65")}
               onMouseLeave={e => ((e.target as HTMLElement).style.opacity = "1")}
             >
-              {h.address.slice(0, 6)}···{h.address.slice(-4)} ↗
+              {h.address.slice(0, 6)}Â·Â·Â·{h.address.slice(-4)} â†—
             </a>
 
             <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
@@ -535,7 +534,7 @@ function HoldersTab({ mint }: { mint: string }) {
   );
 }
 
-// ─── COPY ADDRESS BUTTON ──────────────────────────────────────────────────────
+// â”€â”€â”€ COPY ADDRESS BUTTON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CopyAddressButton({ address }: { address: string }) {
   const [copied, setCopied] = useState(false);
@@ -598,7 +597,7 @@ function CopyAddressButton({ address }: { address: string }) {
   );
 }
 
-// ─── TOKEN DETAIL ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ TOKEN DETAIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void }) {
   const [activeTab, setActiveTab] = useState<"Trades" | "Holders">("Trades");
@@ -674,7 +673,7 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
               b.style.background = "rgba(153,69,255,0.07)";
             }}
           >
-            ← <span className="back-btn-label">BACK</span>
+            â† <span className="back-btn-label">BACK</span>
           </button>
 
           <div style={{ width: 1, height: 26, background: "rgba(153,69,255,0.1)", flexShrink: 0 }} />
@@ -694,16 +693,16 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
               }}>${token.symbol}</span>
             </div>
             <div style={{ color: "rgba(255,255,255,0.17)", fontSize: 9, marginTop: 1, fontFamily: "monospace" }}>
-              {token.mint.slice(0, 8)}···{token.mint.slice(-6)}
+              {token.mint.slice(0, 8)}Â·Â·Â·{token.mint.slice(-6)}
             </div>
           </div>
 
           <div style={{ width: 1, height: 26, background: "rgba(153,69,255,0.08)", flexShrink: 0 }} />
 
-          {/* Stats — only volume + trades count, no price/liquidity */}
+          {/* Stats â€” only volume + trades count, no price/liquidity */}
           <div className="top-bar-stats" style={{ display: "flex", gap: 0, flex: 1 }}>
             {[
-              { label: "VOLUME",  value: volumeSol > 0 ? `${volumeSol.toFixed(2)} SOL` : "—", color: "rgba(255,255,255,0.75)" },
+              { label: "VOLUME",  value: volumeSol > 0 ? `${volumeSol.toFixed(2)} SOL` : "â€”", color: "rgba(255,255,255,0.75)" },
               { label: "TRADES",  value: String(trades.length),                               color: "rgba(255,255,255,0.75)" },
             ].map(({ label, value, color }) => (
               <div key={label} className="stat-chip">
@@ -739,7 +738,7 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
                   a.style.color = "rgba(153,69,255,0.45)";
                   a.style.background = "transparent";
                 }}
-              >{label} ↗</a>
+              >{label} â†—</a>
             ))}
           </div>
         </div>
@@ -822,7 +821,7 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
                   </div>
                 ) : trades.length === 0 ? (
                   <div style={{ padding: "32px 20px", textAlign: "center" }}>
-                    <div style={{ fontSize: 22, marginBottom: 10, opacity: 0.12, color: "#9945FF" }}>◈</div>
+                    <div style={{ fontSize: 22, marginBottom: 10, opacity: 0.12, color: "#9945FF" }}>â—ˆ</div>
                     <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                       No trades yet
                     </div>
@@ -869,7 +868,7 @@ function TokenDetail({ token, onBack }: { token: DexToken; onBack: () => void })
   );
 }
 
-// ─── MAIN ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ MAIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function DexPageContent() {
   const searchParams  = useSearchParams();
@@ -942,7 +941,7 @@ export default function DexPageContent() {
                 </h1>
               </div>
               <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, margin: 0, maxWidth: 400, lineHeight: 1.6 }}>
-                Browse, trade and track every token launched on BluPrint — live.
+                Browse, trade and track every token launched on BluPrint â€” live.
               </p>
             </div>
 
@@ -1002,7 +1001,7 @@ export default function DexPageContent() {
                   b.style.background = "rgba(153,69,255,0.06)";
                 }}
               >
-                {isFetching ? "↻ ..." : "↻ REFRESH"}
+                {isFetching ? "â†» ..." : "â†» REFRESH"}
               </button>
             </div>
 
@@ -1023,7 +1022,7 @@ export default function DexPageContent() {
               </div>
             ) : filteredTokens.length === 0 ? (
               <div className="glass" style={{ padding: "80px 40px", textAlign: "center" }}>
-                <div style={{ fontSize: 34, opacity: 0.1, color: "#9945FF", marginBottom: 14 }}>◈</div>
+                <div style={{ fontSize: 34, opacity: 0.1, color: "#9945FF", marginBottom: 14 }}>â—ˆ</div>
                 <p style={{ color: "rgba(255,255,255,0.22)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, margin: 0 }}>
                   {search ? `No tokens matching "${search}"` : "No tokens yet"}
                 </p>
@@ -1047,3 +1046,4 @@ export default function DexPageContent() {
     </div>
   );
 }
+
