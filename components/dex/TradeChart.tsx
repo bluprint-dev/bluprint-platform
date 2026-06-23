@@ -174,9 +174,43 @@ export default function TradeChart({ mint, trades }: Props) {
     const candles = tradesToCandles(trades, INTERVAL_MS[interval]);
     if (candles.length === 0) return;
 
-    candleSeriesRef.current.setData(
-      candles.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))
-    );
+    const chart = chartRef.current;
+    const minBars = 20; // ekranda en az ~20 bar genişliğinde alan göster
+
+    // --- Y EKSENİ (fiyat) AKILLI PADDING ---
+    // Az mum varken tek bir candle'ın high-low'u tüm grafiği domine edebiliyor.
+    // Garanti çalışan yöntem: candle dizisine GÖRÜNMEZ "anchor" noktaları ekleyip
+    // gerçek autoscale'in bu noktalara göre genişlemesini sağlamak (versiyon bağımsız).
+    let candleData: any[] = candles.map((c) => ({
+      time: c.time, open: c.open, high: c.high, low: c.low, close: c.close,
+    }));
+
+    if (candles.length < minBars) {
+      const highs = candles.map((c) => c.high);
+      const lows = candles.map((c) => c.low);
+      const maxPrice = Math.max(...highs);
+      const minPrice = Math.min(...lows);
+      const range = maxPrice - minPrice;
+      const padding = range === 0 ? (maxPrice * 0.25 || 0.0000001) : range * 0.5;
+
+      const paddedMin = Math.max(0, minPrice - padding);
+      const paddedMax = maxPrice + padding;
+
+      // Mevcut candle'ların zaman aralığının dışında, görünmez iki "anchor" nokta:
+      // bunlar autoscale'i paddedMin/paddedMax'a doğru zorlar ama görünür
+      // aralığın (visible range) dışında kaldıkları için ekranda hiç görünmezler.
+      const intervalSec = INTERVAL_MS[interval] / 1000;
+      const anchorTimeLow = candles[0].time - intervalSec * (minBars + 5);
+      const anchorTimeHigh = candles[0].time - intervalSec * (minBars + 4);
+
+      candleData = [
+        { time: anchorTimeLow, open: paddedMin, high: paddedMin, low: paddedMin, close: paddedMin },
+        { time: anchorTimeHigh, open: paddedMax, high: paddedMax, low: paddedMax, close: paddedMax },
+        ...candleData,
+      ];
+    }
+
+    candleSeriesRef.current.setData(candleData);
     volSeriesRef.current.setData(
       candles.map((c) => ({
         time: c.time,
@@ -184,7 +218,7 @@ export default function TradeChart({ mint, trades }: Props) {
         color: c.close >= c.open ? "rgba(38,166,154,0.5)" : "rgba(239,83,80,0.5)",
       }))
     );
-    const chart = chartRef.current;
+
     if (chart) {
       const timeScale = chart.timeScale();
       // Mum başlarına sıkışmasın, sağda biraz boşluk bıraksın (Birdeye tarzı)
@@ -193,7 +227,6 @@ export default function TradeChart({ mint, trades }: Props) {
 
       // Az mum varsa çok fazla yakınlaşmasın — minimum bir zaman aralığı zorla
       const intervalMs = INTERVAL_MS[interval];
-      const minBars = 20; // ekranda en az ~20 bar genişliğinde alan göster
       const minRangeSec = (minBars * intervalMs) / 1000;
 
       const lastTime = candles[candles.length - 1].time;
@@ -202,6 +235,8 @@ export default function TradeChart({ mint, trades }: Props) {
 
       if (currentRangeSec < minRangeSec) {
         const extra = (minRangeSec - currentRangeSec) / 2;
+        // Anchor noktaları (varsa) bu görünür aralığın ÖNCESİNDE kalıyor,
+        // dolayısıyla ekranda görünmezler — sadece price scale'i geriyorlar.
         timeScale.setVisibleRange({
           from: firstTime - extra,
           to: lastTime + extra + (intervalMs / 1000) * rightOffsetBars,
@@ -210,39 +245,7 @@ export default function TradeChart({ mint, trades }: Props) {
         timeScale.fitContent();
       }
 
-      // --- Y EKSENİ (fiyat) AKILLI AUTOSCALE ---
-      // Az mum varken tek bir candle'ın high-low'u tüm grafiği domine edebiliyor.
-      // Bunu engellemek için: mevcut tüm candle'ların fiyat aralığını hesapla,
-      // ve görünür aralığa makul bir "nefes alanı" (padding) ekleyip autoscale'i kapat,
-      // manuel bir min/max ata. Yeterince mum oluştuğunda (>= minBars) tekrar
-      // otomatik moda bırak çünkü o noktada dağılım zaten doğal genişler.
-      const priceScale = chart.priceScale("right");
-      if (candles.length < minBars) {
-        const highs = candles.map((c) => c.high);
-        const lows = candles.map((c) => c.low);
-        const maxPrice = Math.max(...highs);
-        const minPrice = Math.min(...lows);
-        const range = maxPrice - minPrice;
-        // Aralık 0 ise (tek fiyat) %20 yapay genişlik ver, yoksa %35 padding ekle
-        const padding = range === 0 ? maxPrice * 0.2 || 0.0000001 : range * 0.35;
-
-        priceScale.applyOptions({
-          autoScale: false,
-        });
-        candleSeriesRef.current.applyOptions({
-          autoscaleInfoProvider: () => ({
-            priceRange: {
-              minValue: Math.max(0, minPrice - padding),
-              maxValue: maxPrice + padding,
-            },
-          }),
-        });
-      } else {
-        priceScale.applyOptions({ autoScale: true });
-        candleSeriesRef.current.applyOptions({
-          autoscaleInfoProvider: undefined,
-        });
-      }
+      chart.priceScale("right").applyOptions({ autoScale: true });
     }
   }, [trades, interval, ready]);
 
