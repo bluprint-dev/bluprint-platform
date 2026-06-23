@@ -67,7 +67,7 @@ export default function TradeChart({ mint, trades }: Props) {
   const [interval, setInterval] = useState<Interval>("5m");
   const [ready, setReady] = useState(false);
 
-  // Chart'Ä± bir kez kur
+  // Chart'ı bir kez kur
   useEffect(() => {
     if (!containerRef.current || initRef.current) return;
     initRef.current = true;
@@ -96,7 +96,7 @@ export default function TradeChart({ mint, trades }: Props) {
         },
         rightPriceScale: {
           borderColor: "#2a2e39",
-          scaleMargins: { top: 0.1, bottom: 0.25 },
+          scaleMargins: { top: 0.15, bottom: 0.3 },
         },
         timeScale: {
           borderColor: "#2a2e39",
@@ -167,7 +167,7 @@ export default function TradeChart({ mint, trades }: Props) {
     };
   }, []);
 
-  // trades veya interval deÄŸiÅŸince candle'larÄ± yeniden Ã§iz
+  // trades veya interval değişince candle'ları yeniden çiz
   useEffect(() => {
     if (!ready || !candleSeriesRef.current || !volSeriesRef.current) return;
 
@@ -187,14 +187,13 @@ export default function TradeChart({ mint, trades }: Props) {
     const chart = chartRef.current;
     if (chart) {
       const timeScale = chart.timeScale();
-      // Mum baÅŸlarÄ±na sÄ±kÄ±ÅŸmasÄ±n, saÄŸda biraz boÅŸluk bÄ±raksÄ±n (Birdeye tarzÄ±)
+      // Mum başlarına sıkışmasın, sağda biraz boşluk bıraksın (Birdeye tarzı)
       const rightOffsetBars = Math.max(5, Math.floor(candles.length * 0.5));
       timeScale.applyOptions({ rightOffset: rightOffsetBars });
-      timeScale.fitContent();
 
-      // Az mum varsa Ã§ok fazla yakÄ±nlaÅŸmasÄ±n â€” minimum bir zaman aralÄ±ÄŸÄ± zorla
+      // Az mum varsa çok fazla yakınlaşmasın — minimum bir zaman aralığı zorla
       const intervalMs = INTERVAL_MS[interval];
-      const minBars = 20; // ekranda en az ~20 bar geniÅŸliÄŸinde alan gÃ¶ster
+      const minBars = 20; // ekranda en az ~20 bar genişliğinde alan göster
       const minRangeSec = (minBars * intervalMs) / 1000;
 
       const lastTime = candles[candles.length - 1].time;
@@ -206,6 +205,42 @@ export default function TradeChart({ mint, trades }: Props) {
         timeScale.setVisibleRange({
           from: firstTime - extra,
           to: lastTime + extra + (intervalMs / 1000) * rightOffsetBars,
+        });
+      } else {
+        timeScale.fitContent();
+      }
+
+      // --- Y EKSENİ (fiyat) AKILLI AUTOSCALE ---
+      // Az mum varken tek bir candle'ın high-low'u tüm grafiği domine edebiliyor.
+      // Bunu engellemek için: mevcut tüm candle'ların fiyat aralığını hesapla,
+      // ve görünür aralığa makul bir "nefes alanı" (padding) ekleyip autoscale'i kapat,
+      // manuel bir min/max ata. Yeterince mum oluştuğunda (>= minBars) tekrar
+      // otomatik moda bırak çünkü o noktada dağılım zaten doğal genişler.
+      const priceScale = chart.priceScale("right");
+      if (candles.length < minBars) {
+        const highs = candles.map((c) => c.high);
+        const lows = candles.map((c) => c.low);
+        const maxPrice = Math.max(...highs);
+        const minPrice = Math.min(...lows);
+        const range = maxPrice - minPrice;
+        // Aralık 0 ise (tek fiyat) %20 yapay genişlik ver, yoksa %35 padding ekle
+        const padding = range === 0 ? maxPrice * 0.2 || 0.0000001 : range * 0.35;
+
+        priceScale.applyOptions({
+          autoScale: false,
+        });
+        candleSeriesRef.current.applyOptions({
+          autoscaleInfoProvider: () => ({
+            priceRange: {
+              minValue: Math.max(0, minPrice - padding),
+              maxValue: maxPrice + padding,
+            },
+          }),
+        });
+      } else {
+        priceScale.applyOptions({ autoScale: true });
+        candleSeriesRef.current.applyOptions({
+          autoscaleInfoProvider: undefined,
         });
       }
     }
