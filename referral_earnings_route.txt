@@ -1,0 +1,69 @@
+﻿// app/api/referral-earnings/route.ts
+// Returns earnings + stats for a wallet.
+// Key standard (matches create-token):
+//   ref:earnings:{wallet}:pending  -> float string (incrbyfloat)
+//   ref:earnings:{wallet}:claimed  -> float string (incrbyfloat)
+//   ref:count:{wallet}             -> int (incr)
+//   ref:list:{wallet}              -> set of referred wallets
+//   ref:user:{wallet}              -> promo code string
+//
+// 5-10k safe: pipeline ile tek round-trip
+
+import { NextRequest, NextResponse } from 'next/server';
+import { redis } from '@/app/lib/redis';
+
+export const runtime = 'nodejs';
+
+const MILESTONES = [
+  { count: 5,   bonus: 0.05 },
+  { count: 10,  bonus: 0.1  },
+  { count: 25,  bonus: 0.25 },
+  { count: 50,  bonus: 0.5  },
+  { count: 100, bonus: 1.0  },
+];
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const wallet = searchParams.get('wallet');
+
+  if (!wallet) {
+    return NextResponse.json({ success: false, error: 'Wallet required' }, { status: 400 });
+  }
+
+  try {
+    // Pipeline: 4 key tek round-trip
+    const [pendingRaw, claimedRaw, countRaw, code] = await Promise.all([
+      redis.get(`ref:earnings:${wallet}:pending`),
+      redis.get(`ref:earnings:${wallet}:claimed`),
+      redis.get(`ref:count:${wallet}`),
+      redis.get(`ref:user:${wallet}`),
+    ]);
+
+    const pending = parseFloat((pendingRaw as string | null) ?? '0') || 0;
+    const claimed = parseFloat((claimedRaw as string | null) ?? '0') || 0;
+    const referralCount = parseInt((countRaw as string | null) ?? '0') || 0;
+
+    // Milestone hesapla
+    const milestones = MILESTONES.map((m) => ({
+      count: m.count,
+      bonus: m.bonus,
+      reached: referralCount >= m.count,
+    }));
+
+    const nextMilestone = MILESTONES.find((m) => referralCount < m.count) ?? null;
+
+    return NextResponse.json({
+      success: true,
+      pending: Math.round(pending * 1e6) / 1e6,  // float precision fix
+      claimed: Math.round(claimed * 1e6) / 1e6,
+      referralCount,
+      code: code ?? null,
+      milestones,
+      nextMilestone: nextMilestone
+        ? { count: nextMilestone.count, remaining: nextMilestone.count - referralCount }
+        : null,
+    });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
+  }
+}
