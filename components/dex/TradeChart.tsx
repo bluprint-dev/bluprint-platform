@@ -187,27 +187,12 @@ export default function TradeChart({ mint, trades }: Props) {
     const chart = chartRef.current;
     if (chart) {
       const timeScale = chart.timeScale();
-      const rightOffsetBars = Math.max(5, Math.floor(points.length * 0.5));
+      // Sağda makul bir boşluk bırak (son nokta kenara yapışmasın), ama
+      // yapay olarak zaman aralığını GENİŞLETME — bu, veri olmayan bölgede
+      // çizginin düz uzayıp gitmesine (boş alan hissi) sebep oluyordu.
+      const rightOffsetBars = Math.min(8, Math.max(2, Math.floor(points.length * 0.3)));
       timeScale.applyOptions({ rightOffset: rightOffsetBars });
-
-      // Az nokta varsa çok fazla yakınlaşmasın — minimum bir zaman aralığı zorla
-      const intervalMs = INTERVAL_MS[interval];
-      const minBars = 20;
-      const minRangeSec = (minBars * intervalMs) / 1000;
-
-      const lastTime = points[points.length - 1].time;
-      const firstTime = points[0].time;
-      const currentRangeSec = lastTime - firstTime;
-
-      if (currentRangeSec < minRangeSec) {
-        const extra = (minRangeSec - currentRangeSec) / 2;
-        timeScale.setVisibleRange({
-          from: firstTime - extra,
-          to: lastTime + extra + (intervalMs / 1000) * rightOffsetBars,
-        });
-      } else {
-        timeScale.fitContent();
-      }
+      timeScale.fitContent();
 
       // Line/area chart'ta autoscale doğal çalışır — tek değer (close) olduğu için
       // candlestick'teki high/low/wick domine etme sorunu burada hiç oluşmaz.
