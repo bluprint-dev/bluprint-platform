@@ -2,10 +2,7 @@ import type { Metadata } from "next";
 import { Outfit, Space_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
-import Sidebar from "./components/Sidebar";
-import MarqueeBanner from "./components/MarqueeBanner";
-import ChatbaseEmbed from "./components/ChatbaseEmbed";
-import Footer from "./components/Footer";
+import LayoutShell from "./components/LayoutShell";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -21,7 +18,7 @@ const mono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BluPrint — #1 Solana Launchpad",
+  title: "BluPrint – #1 Solana Launchpad",
   description: "The fastest algorithmic bonding curve launchpad on Solana. Launch, trade, and migrate to Raydium in seconds.",
   icons: { icon: "/favicon.ico" },
 };
@@ -34,24 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         style={{ margin: 0, padding: 0, background: "#0A0A0F", color: "#fff", fontFamily: "var(--font-outfit), system-ui, sans-serif" }}
       >
         <Providers>
-          {/* MarqueeBanner Ã¢â‚¬â€ fixed top */}
-          <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 20 }}>
-            <MarqueeBanner />
-          </div>
-
-          {/* Sidebar â€” desktop fixed column + mobile header/drawer, handled internally by Sidebar.tsx */}
-          <Sidebar />
-
-          {/* Main content */}
-          <main
-            className="md:ml-56 site-main"
-            style={{ minHeight: "100vh", paddingTop: 36, position: "relative", zIndex: 10, display: "flex", flexDirection: "column" }}
-          >
-            <div style={{ flex: 1 }}>{children}</div>
-            <Footer />
-          </main>
-
-          <ChatbaseEmbed />
+          <LayoutShell>{children}</LayoutShell>
         </Providers>
       </body>
     </html>
