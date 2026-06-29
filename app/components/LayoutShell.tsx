@@ -7,8 +7,7 @@ import Footer from "./Footer";
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isComingSoon = pathname === "/coming-soon";
-
+  const isComingSoon = pathname === "/x";
   if (isComingSoon) return <>{children}</>;
 
   return (
