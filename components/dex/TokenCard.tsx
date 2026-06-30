@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import type { DexToken } from "@/types/dex";
 import { shortMint } from "@/lib/dex/normalizeToken";
 
@@ -33,6 +33,56 @@ function TokenAvatar({ token }: { token: DexToken }) {
     }}>
       {token.symbol.charAt(0)}
     </div>
+  );
+}
+
+// ─── DEV HOLDING BADGE ──────────────────────────────────
+function DevHoldingBadge({ token }: { token: DexToken }) {
+  const [percent, setPercent] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!token.creator || !token.mint) return;
+    let cancelled = false;
+
+    fetch(`/api/dev-holding?mint=${encodeURIComponent(token.mint)}&creator=${encodeURIComponent(token.creator)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!cancelled && data.success) {
+          setPercent(data.devPercent);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPercent(null);
+      });
+
+    return () => { cancelled = true; };
+  }, [token.creator, token.mint]);
+
+  if (percent === null) return null;
+
+  const color =
+    percent < 5 ? "#14F195" :
+    percent < 15 ? "#facc15" :
+    "#ff4d4d";
+
+  const bg =
+    percent < 5 ? "rgba(20,241,149,0.1)" :
+    percent < 15 ? "rgba(250,204,21,0.1)" :
+    "rgba(255,77,77,0.1)";
+
+  return (
+    <span
+      title="Dev wallet holding percentage"
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 3,
+        color, background: bg,
+        fontFamily: "monospace", fontSize: 9.5, fontWeight: 700,
+        padding: "1px 5px", borderRadius: 4,
+        flexShrink: 0,
+      }}
+    >
+      Dev {percent}%
+    </span>
   );
 }
 
@@ -80,7 +130,7 @@ function TokenCardComponent({ token, selected, index = 0, onSelect }: TokenCardP
 
       {/* Name + mint */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "wrap" }}>
           <span style={{
             color: "#fff", fontWeight: 700, fontSize: 14,
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -92,6 +142,7 @@ function TokenCardComponent({ token, selected, index = 0, onSelect }: TokenCardP
             padding: "1px 6px", borderRadius: 4,
             flexShrink: 0,
           }}>${token.symbol}</span>
+          <DevHoldingBadge token={token} />
         </div>
         <span style={{
           color: "rgba(255,255,255,0.2)", fontFamily: "monospace", fontSize: 10,
