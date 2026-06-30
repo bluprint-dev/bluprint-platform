@@ -40,11 +40,13 @@ function TokenAvatar({ token }: { token: DexToken }) {
 function DevHoldingBadge({ token }: { token: DexToken }) {
   const [percent, setPercent] = useState<number | null>(null);
 
+  const creatorWallet = token.creator || token.genesisAccount || "";
+
   useEffect(() => {
-    if (!token.creator || !token.mint) return;
+    if (!creatorWallet || !token.mint) return;
     let cancelled = false;
 
-    fetch(`/api/dev-holding?mint=${encodeURIComponent(token.mint)}&creator=${encodeURIComponent(token.creator)}`)
+    fetch(`/api/dev-holding?mint=${encodeURIComponent(token.mint)}&creator=${encodeURIComponent(creatorWallet)}`)
       .then(r => r.json())
       .then(data => {
         if (!cancelled && data.success) {
@@ -56,7 +58,7 @@ function DevHoldingBadge({ token }: { token: DexToken }) {
       });
 
     return () => { cancelled = true; };
-  }, [token.creator, token.mint]);
+  }, [creatorWallet, token.mint]);
 
   if (percent === null) return null;
 
