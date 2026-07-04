@@ -63,30 +63,65 @@ const GLOBAL_STYLES = `
   }
 
   .glass {
-    background: rgba(255,255,255,0.035);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(212,175,122,0.18);
-    border-radius: 16px;
+    position: relative;
+    background: linear-gradient(150deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015) 45%, rgba(212,175,122,0.035));
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid rgba(212,175,122,0.16);
+    border-radius: 20px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.07) inset,
+      0 0 0 1px rgba(0,0,0,0.25),
+      0 24px 48px -20px rgba(0,0,0,0.65),
+      0 0 50px -24px rgba(212,175,122,0.18);
+    transition: border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  }
+  .glass:hover {
+    border-color: rgba(212,175,122,0.3);
+    transform: translateY(-3px);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.09) inset,
+      0 0 0 1px rgba(0,0,0,0.25),
+      0 28px 56px -20px rgba(0,0,0,0.7),
+      0 0 70px -18px rgba(212,175,122,0.26);
+  }
+
+  .tabnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+  .grain-overlay {
+    position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    opacity: 0.035; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .glass-expanded {
+    border-color: rgba(212,175,122,0.4) !important;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.1) inset,
+      0 0 0 1px rgba(0,0,0,0.3),
+      0 32px 64px -18px rgba(0,0,0,0.75),
+      0 0 90px -14px rgba(212,175,122,0.32) !important;
   }
 
   .dex-input {
-    background: rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.045);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(212,175,122,0.22);
     border-radius: 12px;
-    color: #fff;
+    color: #EDEBE6;
     font-family: 'Space Grotesk', sans-serif;
     font-size: 14px;
     padding: 12px 16px 12px 42px;
     width: 100%;
     outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   }
   .dex-input:focus {
-    border-color: rgba(212,175,122,0.5);
-    box-shadow: 0 0 0 3px rgba(212,175,122,0.08);
+    border-color: rgba(212,175,122,0.55);
+    background: rgba(255,255,255,0.065);
+    box-shadow: 0 0 0 4px rgba(212,175,122,0.1), 0 0 24px -6px rgba(212,175,122,0.3);
   }
-  .dex-input::placeholder { color: rgba(212,175,122,0.3); }
+  .dex-input::placeholder { color: rgba(212,175,122,0.32); }
 
   .skeleton {
     background: linear-gradient(90deg, rgba(212,175,122,0.05) 25%, rgba(212,175,122,0.1) 50%, rgba(212,175,122,0.05) 75%);
@@ -1237,11 +1272,29 @@ export default function DexPageContent() {
     <div style={{ minHeight: "100vh", background: "#0A0A0C", color: "#EDEBE6", fontFamily: "'Space Grotesk', sans-serif" }}>
       <style>{GLOBAL_STYLES}</style>
       <Background />
+      <div className="grain-overlay" />
 
       <div style={{ position: "relative", zIndex: 1 }}>
-        {/* Sade ust bar: sadece sol ustte parlayan Axor.fun logosu */}
-        <div style={{ padding: "22px 20px 4px" }}>
-          <span className="axor-logo-shine">Axor.fun</span>
+        {/* Sade ust bar: sadece sol ustte parlayan Axor.fun logosu, cam rozet icinde */}
+        <div style={{ padding: "20px 20px 4px" }}>
+          <div
+            className="glass"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 16px",
+              borderRadius: 999,
+            }}
+          >
+            <span style={{
+              width: 7, height: 7, borderRadius: "50%",
+              background: "#D4AF7A",
+              boxShadow: "0 0 8px 1px rgba(212,175,122,0.7)",
+              animation: "glow 2.4s ease-in-out infinite",
+            }} />
+            <span className="axor-logo-shine">Axor.fun</span>
+          </div>
         </div>
 
         <div className="page-pad" style={{ maxWidth: 1400, margin: "0 auto", padding: "12px 20px 80px" }}>

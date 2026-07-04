@@ -90,9 +90,11 @@ function HeaderBtn({ onClick, title, children }: { onClick: () => void; title: s
         borderRadius: 7,
         border: `1px solid rgba(${CHAMPAGNE_RGB},0.2)`,
         background: `rgba(${CHAMPAGNE_RGB},0.06)`,
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
         color: `rgba(${CHAMPAGNE_RGB},0.65)`,
         cursor: "pointer",
-        transition: "all 0.15s",
+        transition: "all 0.18s cubic-bezier(0.16,1,0.3,1)",
         flexShrink: 0,
       }}
       onMouseEnter={(e) => {
@@ -100,12 +102,14 @@ function HeaderBtn({ onClick, title, children }: { onClick: () => void; title: s
         b.style.borderColor = `rgba(${CHAMPAGNE_RGB},0.5)`;
         b.style.color = CHAMPAGNE;
         b.style.background = `rgba(${CHAMPAGNE_RGB},0.14)`;
+        b.style.transform = "scale(1.08)";
       }}
       onMouseLeave={(e) => {
         const b = e.currentTarget;
         b.style.borderColor = `rgba(${CHAMPAGNE_RGB},0.2)`;
         b.style.color = `rgba(${CHAMPAGNE_RGB},0.65)`;
         b.style.background = `rgba(${CHAMPAGNE_RGB},0.06)`;
+        b.style.transform = "scale(1)";
       }}
     >
       {children}
@@ -148,15 +152,12 @@ export default function BlockShell({
 
   const inner = (
     <div
-      className="glass"
+      className={`glass${isExpanded ? " glass-expanded" : ""}`}
       style={{
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
         height: "100%",
-        background: `rgba(${BRIGHT_RGB},0.03)`,
-        border: `1px solid rgba(${CHAMPAGNE_RGB},${isExpanded ? 0.35 : 0.16})`,
-        borderRadius: 16,
       }}
     >
       {/* Header */}
