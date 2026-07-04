@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Reorder } from "framer-motion";
-import DexHeader from "@/components/dex/Header";
+// DexHeader kaldırıldı — yerine sade "Axor.fun" logosu kullanılıyor
 import TradePanel from "@/components/dex/TradePanel";
 import TradeChart from "@/components/dex/TradeChart";
 import BlockShell, { ClosedBlockChip } from "@/components/dex/BlockShell";
@@ -105,8 +105,39 @@ const GLOBAL_STYLES = `
   @keyframes cardIn  { from{opacity:0;transform:translateY(-8px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
   @keyframes popIn   { from{transform:scale(0.85);opacity:0} to{transform:scale(1);opacity:1} }
   @keyframes float   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
+  @keyframes bgRotate { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes glow    { 0%,100%{opacity:0.5} 50%{opacity:1} }
   @keyframes copyPop { from{transform:scale(0.92)} to{transform:scale(1)} }
+
+  /* Fener isigi gibi soldan saga kayan parlama - her 5 saniyede bir */
+  @keyframes shineSweep {
+    0%   { background-position: -140% 0; }
+    18%  { background-position: 140% 0; }
+    100% { background-position: 140% 0; }
+  }
+
+  .axor-logo-shine {
+    display: inline-block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    background: linear-gradient(
+      100deg,
+      #B8935E 0%,
+      #B8935E 40%,
+      #D4AF7A 46%,
+      #FCEBC9 50%,
+      #D4AF7A 54%,
+      #B8935E 60%,
+      #B8935E 100%
+    );
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shineSweep 5s ease-in-out infinite;
+  }
 
   .token-card {
     cursor: pointer;
@@ -206,6 +237,15 @@ function Background() {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(212,175,122,0.12) 0%, transparent 70%)" }} />
+
+      {/* Yavas donen halka - arka plana derinlik ve hareket hissi katar, dikkat dagitmayacak kadar yavas (90s) */}
+      <div style={{
+        position: "absolute", width: "160vmax", height: "160vmax", left: "50%", top: "50%",
+        marginLeft: "-80vmax", marginTop: "-80vmax",
+        background: "conic-gradient(from 0deg, transparent 0deg, rgba(212,175,122,0.05) 60deg, transparent 140deg, transparent 220deg, rgba(232,201,137,0.04) 280deg, transparent 340deg)",
+        animation: "bgRotate 90s linear infinite",
+      }} />
+
       <div style={{
         position: "absolute", width: 700, height: 700, borderRadius: "50%",
         background: "radial-gradient(circle, rgba(212,175,122,0.08) 0%, transparent 70%)",
@@ -220,6 +260,11 @@ function Background() {
         position: "absolute", width: 400, height: 400, borderRadius: "50%",
         background: "radial-gradient(circle, rgba(212,175,122,0.05) 0%, transparent 70%)",
         top: "45%", left: "55%", animation: "float 28s ease-in-out infinite 6s",
+      }} />
+      <div style={{
+        position: "absolute", width: 320, height: 320, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(184,147,94,0.05) 0%, transparent 70%)",
+        top: "70%", left: "20%", animation: "float 24s ease-in-out infinite 3s",
       }} />
       <div style={{
         position: "absolute", inset: 0,
@@ -1106,7 +1151,7 @@ export default function DexPageContent() {
   const prevMintsRef                  = useRef<Set<string>>(new Set());
 
   const { search, selectedMint, setSearch, selectToken, resetTrade } = useDexStore();
-  const { tokens, isLoading, isFetching, refresh }                   = useDexTokens();
+  const { tokens, isLoading }                                          = useDexTokens();
 
   const { order, closed, setOrder, mobileIndex, setMobileIndex } = useDexLayoutStore();
 
@@ -1194,25 +1239,12 @@ export default function DexPageContent() {
       <Background />
 
       <div style={{ position: "relative", zIndex: 1 }}>
-        <DexHeader onRefresh={() => refresh()} isRefreshing={isFetching} />
+        {/* Sade ust bar: sadece sol ustte parlayan Axor.fun logosu */}
+        <div style={{ padding: "22px 20px 4px" }}>
+          <span className="axor-logo-shine">Axor.fun</span>
+        </div>
 
-        <div className="page-pad" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 20px 80px" }}>
-
-          {/* Page header */}
-          <div style={{ marginBottom: 24, animation: "fadeUp 0.5s cubic-bezier(0.16,1,0.3,1)" }}>
-            <p style={{ color: "#D4AF7A", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 10px" }}>
-              BluPrint DEX
-            </p>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <img src="/favicon.ico" alt="BluPrint" style={{ width: 32, height: 32, borderRadius: 8, objectFit: "contain" }} />
-              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#EDEBE6", letterSpacing: "-0.01em" }}>
-                Token Explorer
-              </h1>
-            </div>
-            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, margin: 0, maxWidth: 440, lineHeight: 1.6 }}>
-              Browse, trade and track every token launched on BluPrint — live. Blokları sürükle, küçült veya kapat.
-            </p>
-          </div>
+        <div className="page-pad" style={{ maxWidth: 1400, margin: "0 auto", padding: "12px 20px 80px" }}>
 
           {/* Kapatılmış blok çipleri */}
           {closedIds.length > 0 && (
