@@ -150,6 +150,7 @@ const GLOBAL_STYLES = `
   @keyframes bgRotate { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes netPing { 0%{transform:scale(1);opacity:0.8} 75%{transform:scale(2.6);opacity:0} 100%{transform:scale(1);opacity:0} }
   @keyframes gridGlow { 0%,100%{opacity:0.15;transform:scale(1)} 50%{opacity:0.9;transform:scale(1.8)} }
+  @keyframes whaleIn { from{opacity:0;transform:translateY(-10px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
   @keyframes glow    { 0%,100%{opacity:0.5} 50%{opacity:1} }
   @keyframes copyPop { from{transform:scale(0.92)} to{transform:scale(1)} }
 
@@ -766,12 +767,16 @@ function TokenTrade({ token, onBack, compact = true }: { token: DexToken; onBack
   const [activeTab, setActiveTab] = useState<"Trades" | "Holders">("Trades");
   const [newTradeIds, setNewTradeIds] = useState<Set<number>>(new Set());
   const prevTradeIdsRef = useRef<Set<number>>(new Set());
+  const [whaleAlert, setWhaleAlert] = useState<{ isBuy: boolean; amountSol: number } | null>(null);
 
   const { isBuy, amount, selectedGenesisAccount, setIsBuy, setAmount, resetTrade } = useDexStore();
   const genesisAccount = selectedGenesisAccount ?? token.genesisAccount ?? token.mint;
   const { data: curveInfo, isLoading: isLoadingCurve } = useBondingCurveInfo(genesisAccount);
   const { swap, isSwapping, error: swapError } = useSwap();
   const { trades, isLoading: isLoadingTrades } = useTrades(token.mint);
+
+  // Balina alarmi esigi: bu tutardan buyuk yeni bir islem gelirse ekranda gostericez
+  const WHALE_THRESHOLD_SOL = 10;
 
   useEffect(() => {
     const currentIds = new Set(trades.map(t => t.id));
@@ -780,6 +785,13 @@ function TokenTrade({ token, onBack, compact = true }: { token: DexToken; onBack
     if (newIds.size > 0 && prevTradeIdsRef.current.size > 0) {
       setNewTradeIds(newIds);
       setTimeout(() => setNewTradeIds(new Set()), 3000);
+
+      // Gercek trade verisinden balina kontrolu (uydurma degil, amount_sol'dan)
+      const whaleTrade = trades.find(t => newIds.has(t.id) && t.amount_sol >= WHALE_THRESHOLD_SOL);
+      if (whaleTrade) {
+        setWhaleAlert({ isBuy: whaleTrade.is_buy, amountSol: whaleTrade.amount_sol });
+        setTimeout(() => setWhaleAlert(null), 4500);
+      }
     }
     prevTradeIdsRef.current = currentIds;
   }, [trades]);
@@ -793,8 +805,36 @@ function TokenTrade({ token, onBack, compact = true }: { token: DexToken; onBack
   const volumeSol = trades.reduce((s, t) => s + t.amount_sol, 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: compact ? "column" : "row", background: "#0A0A0C" }}>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+    <div style={{ display: "flex", flexDirection: compact ? "column" : "row", background: "#0A0A0C", position: "relative" }}>
+      {whaleAlert && (
+        <div
+          style={{
+            position: "absolute", top: 8, left: 8, right: 8, zIndex: 40,
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "9px 14px", borderRadius: 12,
+            background: whaleAlert.isBuy ? "rgba(232,201,137,0.14)" : "rgba(184,147,94,0.14)",
+            border: `1px solid ${whaleAlert.isBuy ? "rgba(232,201,137,0.5)" : "rgba(184,147,94,0.5)"}`,
+            backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+            boxShadow: `0 0 30px -6px ${whaleAlert.isBuy ? "rgba(232,201,137,0.6)" : "rgba(184,147,94,0.6)"}`,
+            animation: "whaleIn 0.35s cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          <span style={{ fontSize: 15 }}>{whaleAlert.isBuy ? "🐋" : "🐳"}</span>
+          <span style={{
+            fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 800,
+            letterSpacing: "0.04em",
+            color: whaleAlert.isBuy ? "#E8C989" : "#EDEBE6",
+          }}>
+            WHALE {whaleAlert.isBuy ? "BOUGHT" : "SOLD"} {whaleAlert.amountSol.toFixed(1)} SOL OF ${token.symbol}
+          </span>
+        </div>
+      )}
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0,
+        outline: whaleAlert ? `2px solid ${whaleAlert.isBuy ? "rgba(232,201,137,0.6)" : "rgba(184,147,94,0.6)"}` : "none",
+        outlineOffset: -2,
+        transition: "outline-color 0.3s ease",
+      }}>
         {/* Top bar */}
         <div style={{
           padding: "0 14px", borderBottom: "1px solid rgba(212,175,122,0.1)",
