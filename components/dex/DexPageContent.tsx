@@ -4,6 +4,9 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Reorder } from "framer-motion";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { Wallet as WalletIcon } from "lucide-react";
 // DexHeader kaldırıldı — yerine sade "Axor.fun" logosu kullanılıyor
 import TradePanel from "@/components/dex/TradePanel";
 import TradeChart from "@/components/dex/TradeChart";
@@ -43,6 +46,10 @@ function fmtMcap(mcapSol: number, solPrice = 145) {
 
 const SOL_PRICE_USD = 145;
 const TOTAL_SUPPLY = 1_000_000_000;
+
+function shortenAddress(address: string) {
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
 
 // ─── GLOBAL STYLES ─────────────────────────────────────────────────────────
 
@@ -1178,6 +1185,99 @@ function MobileBlockCarousel({
   );
 }
 
+// --- WALLET BUTTON ------------------------------------------------------------
+// Sag ustte gosterilen cam/sampanya temali cuzdan baglama butonu.
+// Bagli degilken tiklaninca wallet-adapter modal'ini acar, bagliyken kisaltilmis
+// adresi + baglantiyi kesme secenegini gosterir.
+
+function WalletButton() {
+  const { connected, disconnect, publicKey } = useWallet();
+  const { setVisible } = useWalletModal();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  if (!connected) {
+    return (
+      <button
+        onClick={() => setVisible(true)}
+        className="glass"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "8px 16px",
+          borderRadius: 999,
+          color: "#D4AF7A",
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: "0.04em",
+          cursor: "pointer",
+        }}
+      >
+        <WalletIcon size={14} />
+        Connect Wallet
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setMenuOpen((v) => !v)}
+        className="glass"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "7px 14px 7px 7px",
+          borderRadius: 999,
+          color: "#EDEBE6",
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        <div style={{
+          width: 22, height: 22, borderRadius: "50%",
+          background: "linear-gradient(135deg, #D4AF7A, #E8C989)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 0 10px rgba(212,175,122,0.5)",
+        }}>
+          <WalletIcon size={12} color="#0A0A0C" />
+        </div>
+        {publicKey ? shortenAddress(publicKey.toString()) : ""}
+      </button>
+
+      {menuOpen && (
+        <div
+          className="glass"
+          style={{
+            position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60,
+            padding: 6, minWidth: 150,
+            animation: "fadeUp 0.18s cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          <button
+            onClick={() => { disconnect(); setMenuOpen(false); }}
+            style={{
+              width: "100%", textAlign: "left",
+              padding: "8px 10px", borderRadius: 10,
+              background: "transparent", border: "none",
+              color: "#B8935E", fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 12, fontWeight: 600, cursor: "pointer",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212,175,122,0.08)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            Baglantiyi kes
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DexPageContent() {
   const searchParams  = useSearchParams();
   const mintFromUrl   = searchParams.get("mint");
@@ -1275,8 +1375,8 @@ export default function DexPageContent() {
       <div className="grain-overlay" />
 
       <div style={{ position: "relative", zIndex: 1 }}>
-        {/* Sade ust bar: sadece sol ustte parlayan Axor.fun logosu, cam rozet icinde */}
-        <div style={{ padding: "20px 20px 4px" }}>
+        {/* Ust bar: solda parlayan Axor.fun logosu, sagda cuzdan baglama butonu */}
+        <div style={{ padding: "20px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div
             className="glass"
             style={{
@@ -1295,6 +1395,8 @@ export default function DexPageContent() {
             }} />
             <span className="axor-logo-shine">Axor.fun</span>
           </div>
+
+          <WalletButton />
         </div>
 
         <div className="page-pad" style={{ maxWidth: 1400, margin: "0 auto", padding: "12px 20px 80px" }}>
