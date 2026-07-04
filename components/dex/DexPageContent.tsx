@@ -812,11 +812,11 @@ function TokenTrade({ token, onBack, compact = true }: { token: DexToken; onBack
 
 function LiveTokensBlock({
   tokens, isLoading, search, searchInput, setSearchInput, setSearch,
-  newMints, onSelect,
+  newMints, onSelect, draggable = true,
 }: {
   tokens: DexToken[]; isLoading: boolean; search: string;
   searchInput: string; setSearchInput: (v: string) => void; setSearch: (v: string) => void;
-  newMints: Set<string>; onSelect: (t: DexToken) => void;
+  newMints: Set<string>; onSelect: (t: DexToken) => void; draggable?: boolean;
 }) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
@@ -852,7 +852,7 @@ function LiveTokensBlock({
   );
 
   return (
-    <BlockShell id="live" headerRight={headerRight}>
+    <BlockShell id="live" headerRight={headerRight} draggable={draggable}>
       <div style={{ padding: 12 }}>
         <div style={{ position: "relative", marginBottom: 10 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,122,0.4)" strokeWidth={2.5} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}>
@@ -902,17 +902,17 @@ function LiveTokensBlock({
 
 // ─── BLOCK 2: CREATE TOKEN (default kart, morph → trade ekranı) ────────────
 
-function CreateTokenBlock({ selectedToken, onBack }: { selectedToken: DexToken | null; onBack: () => void }) {
+function CreateTokenBlock({ selectedToken, onBack, draggable = true }: { selectedToken: DexToken | null; onBack: () => void; draggable?: boolean }) {
   if (selectedToken) {
     return (
-      <BlockShell id="create">
+      <BlockShell id="create" draggable={draggable}>
         <TokenTrade token={selectedToken} onBack={onBack} compact />
       </BlockShell>
     );
   }
 
   return (
-    <BlockShell id="create">
+    <BlockShell id="create" draggable={draggable}>
       <div style={{ padding: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 320, textAlign: "center" }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16, marginBottom: 16,
@@ -948,7 +948,7 @@ function CreateTokenBlock({ selectedToken, onBack }: { selectedToken: DexToken |
 
 // ─── BLOCK 3: TRENDING ─────────────────────────────────────────────────────
 
-function TrendingBlock({ tokens, onSelect }: { tokens: DexToken[]; onSelect: (t: DexToken) => void }) {
+function TrendingBlock({ tokens, onSelect, draggable = true }: { tokens: DexToken[]; onSelect: (t: DexToken) => void; draggable?: boolean }) {
   // Not: gerçek hacim verisi ayrı bir hook'tan gelmiyorsa şimdilik en yeni tokenlara göre sıralanır.
   const trending = useMemo(() => {
     return [...tokens]
@@ -957,7 +957,7 @@ function TrendingBlock({ tokens, onSelect }: { tokens: DexToken[]; onSelect: (t:
   }, [tokens]);
 
   return (
-    <BlockShell id="trending">
+    <BlockShell id="trending" draggable={draggable}>
       <div className="dex-scroll" style={{ padding: 10, maxHeight: 560, overflowY: "auto" }}>
         {trending.length === 0 ? (
           <div style={{ padding: "40px 10px", textAlign: "center", color: "rgba(255,255,255,0.22)", fontSize: 12 }}>
@@ -1152,7 +1152,7 @@ export default function DexPageContent() {
   const closedIds = (Object.keys(closed) as BlockId[]).filter(id => closed[id]);
   const visibleOrder = order.filter(id => !closed[id]);
 
-  const blockContent: Record<BlockId, React.ReactNode> = {
+  const desktopBlockContent: Record<BlockId, React.ReactNode> = {
     live: (
       <LiveTokensBlock
         tokens={filteredTokens}
@@ -1163,10 +1163,29 @@ export default function DexPageContent() {
         setSearch={setSearch}
         newMints={newMints}
         onSelect={handleSelect}
+        draggable
       />
     ),
-    create: <CreateTokenBlock selectedToken={selectedToken} onBack={handleBack} />,
-    trending: <TrendingBlock tokens={tokens} onSelect={handleSelect} />,
+    create: <CreateTokenBlock selectedToken={selectedToken} onBack={handleBack} draggable />,
+    trending: <TrendingBlock tokens={tokens} onSelect={handleSelect} draggable />,
+  };
+
+  const mobileBlockContent: Record<BlockId, React.ReactNode> = {
+    live: (
+      <LiveTokensBlock
+        tokens={filteredTokens}
+        isLoading={isLoading}
+        search={search}
+        searchInput={searchInput}
+        setSearchInput={setSearchInput}
+        setSearch={setSearch}
+        newMints={newMints}
+        onSelect={handleSelect}
+        draggable={false}
+      />
+    ),
+    create: <CreateTokenBlock selectedToken={selectedToken} onBack={handleBack} draggable={false} />,
+    trending: <TrendingBlock tokens={tokens} onSelect={handleSelect} draggable={false} />,
   };
 
   return (
@@ -1182,16 +1201,16 @@ export default function DexPageContent() {
           {/* Page header */}
           <div style={{ marginBottom: 24, animation: "fadeUp 0.5s cubic-bezier(0.16,1,0.3,1)" }}>
             <p style={{ color: "#D4AF7A", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 10px" }}>
-              Axor DEX
+              BluPrint DEX
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <img src="/favicon.ico" alt="Axor" style={{ width: 32, height: 32, borderRadius: 8, objectFit: "contain" }} />
+              <img src="/favicon.ico" alt="BluPrint" style={{ width: 32, height: 32, borderRadius: 8, objectFit: "contain" }} />
               <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#EDEBE6", letterSpacing: "-0.01em" }}>
                 Token Explorer
               </h1>
             </div>
             <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, margin: 0, maxWidth: 440, lineHeight: 1.6 }}>
-              Browse, trade and track every token launched on Axor — live. Blokları sürükle, küçült veya kapat.
+              Browse, trade and track every token launched on BluPrint — live. Blokları sürükle, küçült veya kapat.
             </p>
           </div>
 
@@ -1218,7 +1237,7 @@ export default function DexPageContent() {
             >
               {visibleOrder.map(id => (
                 <div key={id} style={{ display: "contents" }}>
-                  {blockContent[id]}
+                  {desktopBlockContent[id]}
                 </div>
               ))}
             </Reorder.Group>
@@ -1228,7 +1247,7 @@ export default function DexPageContent() {
           <div className="dex-blocks-mobile">
             <MobileBlockCarousel
               visibleOrder={visibleOrder}
-              blockContent={blockContent}
+              blockContent={mobileBlockContent}
               mobileIndex={mobileIndex}
               setMobileIndex={setMobileIndex}
             />

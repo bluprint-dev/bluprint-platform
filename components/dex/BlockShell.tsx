@@ -122,10 +122,12 @@ export default function BlockShell({
   id,
   headerRight,
   children,
+  draggable = true,
 }: {
   id: BlockId;
   headerRight?: ReactNode;
   children: ReactNode;
+  draggable?: boolean;
 }) {
   const dragControls = useDragControls();
   const { collapsed, expanded, toggleCollapsed, closeBlock, expandBlock } = useDexLayoutStore();
@@ -134,46 +136,41 @@ export default function BlockShell({
   const isExpanded = expanded === id;
   const someoneElseExpanded = expanded !== null && !isExpanded;
 
-  return (
-    <Reorder.Item
-      value={id}
-      dragListener={false}
-      dragControls={dragControls}
-      as="div"
+  const cardStyle: React.CSSProperties = {
+    flex: isExpanded ? "3 1 0" : someoneElseExpanded ? "0.6 1 0" : "1 1 0",
+    minWidth: isExpanded ? 420 : 340,
+    maxWidth: isExpanded ? 900 : 560,
+    display: someoneElseExpanded ? "none" : "flex",
+    flexDirection: "column",
+    listStyle: "none",
+    transition: "flex 0.3s ease, max-width 0.3s ease",
+  };
+
+  const inner = (
+    <div
+      className="glass"
       style={{
-        flex: isExpanded ? "3 1 0" : someoneElseExpanded ? "0.6 1 0" : "1 1 0",
-        minWidth: isExpanded ? 420 : 340,
-        maxWidth: isExpanded ? 900 : 560,
-        display: someoneElseExpanded ? "none" : "flex",
+        display: "flex",
         flexDirection: "column",
-        listStyle: "none",
-        transition: "flex 0.3s ease, max-width 0.3s ease",
+        overflow: "hidden",
+        height: "100%",
+        background: `rgba(${BRIGHT_RGB},0.03)`,
+        border: `1px solid rgba(${CHAMPAGNE_RGB},${isExpanded ? 0.35 : 0.16})`,
+        borderRadius: 16,
       }}
-      layout
     >
+      {/* Header */}
       <div
-        className="glass"
         style={{
           display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          height: "100%",
-          background: `rgba(${BRIGHT_RGB},0.03)`,
-          border: `1px solid rgba(${CHAMPAGNE_RGB},${isExpanded ? 0.35 : 0.16})`,
-          borderRadius: 16,
+          alignItems: "center",
+          gap: 10,
+          padding: "12px 14px",
+          borderBottom: isCollapsed ? "none" : `1px solid rgba(${CHAMPAGNE_RGB},0.12)`,
+          flexShrink: 0,
         }}
       >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "12px 14px",
-            borderBottom: isCollapsed ? "none" : `1px solid rgba(${CHAMPAGNE_RGB},0.12)`,
-            flexShrink: 0,
-          }}
-        >
+        {draggable && (
           <div
             onPointerDown={(e) => dragControls.start(e)}
             style={{
@@ -187,51 +184,70 @@ export default function BlockShell({
           >
             <DragHandleIcon />
           </div>
+        )}
 
-          <span style={{ color: CHAMPAGNE, fontSize: 13 }}>{meta.icon}</span>
+        <span style={{ color: CHAMPAGNE, fontSize: 13 }}>{meta.icon}</span>
 
-          <span
-            style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: "0.14em",
-              color: `rgba(${BRIGHT_RGB},0.8)`,
-              flex: 1,
-            }}
-          >
-            {meta.title}
-          </span>
+        <span
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: "0.14em",
+            color: `rgba(${BRIGHT_RGB},0.8)`,
+            flex: 1,
+          }}
+        >
+          {meta.title}
+        </span>
 
-          {!isCollapsed && headerRight}
+        {!isCollapsed && headerRight}
 
-          <HeaderBtn onClick={() => expandBlock(id)} title={isExpanded ? "Kucult" : "Genislet"}>
-            <ExpandIcon expanded={isExpanded} />
-          </HeaderBtn>
-          <HeaderBtn onClick={() => toggleCollapsed(id)} title={isCollapsed ? "Genislet" : "Kucult"}>
-            <ChevronIcon open={!isCollapsed} />
-          </HeaderBtn>
-          <HeaderBtn onClick={() => closeBlock(id)} title="Kapat">
-            <CloseIcon />
-          </HeaderBtn>
-        </div>
-
-        {/* Body */}
-        <AnimatePresence initial={false}>
-          {!isCollapsed && (
-            <motion.div
-              key="body"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              style={{ overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}
-            >
-              {children}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <HeaderBtn onClick={() => expandBlock(id)} title={isExpanded ? "Kucult" : "Genislet"}>
+          <ExpandIcon expanded={isExpanded} />
+        </HeaderBtn>
+        <HeaderBtn onClick={() => toggleCollapsed(id)} title={isCollapsed ? "Genislet" : "Kucult"}>
+          <ChevronIcon open={!isCollapsed} />
+        </HeaderBtn>
+        <HeaderBtn onClick={() => closeBlock(id)} title="Kapat">
+          <CloseIcon />
+        </HeaderBtn>
       </div>
+
+      {/* Body */}
+      <AnimatePresence initial={false}>
+        {!isCollapsed && (
+          <motion.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+            style={{ overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
+  // Mobilde (draggable=false) Reorder.Group context'i olmadigi icin
+  // Reorder.Item kullanilamaz - duz bir div ile sarmalariz.
+  if (!draggable) {
+    return <div style={cardStyle}>{inner}</div>;
+  }
+
+  return (
+    <Reorder.Item
+      value={id}
+      dragListener={false}
+      dragControls={dragControls}
+      as="div"
+      style={cardStyle}
+      layout
+    >
+      {inner}
     </Reorder.Item>
   );
 }
