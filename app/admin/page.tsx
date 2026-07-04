@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -53,7 +53,7 @@ export default function AdminPage() {
     setVerifying(true);
     setError('');
     try {
-      const message = `BluPrint Admin Access ${Date.now()}`;
+      const message = `Axor Admin Access ${Date.now()}`;
       const sig = await signMessage(new TextEncoder().encode(message));
       const res = await fetch('/api/admin/verify', {
         method: 'POST',
@@ -176,7 +176,7 @@ export default function AdminPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold font-mono text-purple-400">BluPrint Admin</h1>
+          <h1 className="text-2xl font-bold font-mono text-purple-400">Axor Admin</h1>
           <p className="text-gray-500 text-xs mt-1">
             {lastRefresh ? `Last updated: ${lastRefresh.toLocaleTimeString()}` : 'Loading...'}
           </p>

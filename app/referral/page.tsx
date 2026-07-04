@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -133,14 +133,14 @@ export default function ReferralPage() {
 
   const shareOnX = () => {
     const text = encodeURIComponent(
-      `Just launched my token on BluPrint 🚀\nUse my code to get started: ${refLink}`
+      `Just launched my token on Axor 🚀\nUse my code to get started: ${refLink}`
     );
     window.open(`https://twitter.com/intent/tweet?text=${text}`, "_blank");
   };
 
   const shareOnTelegram = () => {
     const text = encodeURIComponent(
-      `Launch your token on BluPrint 🚀 Use my referral: ${refLink}`
+      `Launch your token on Axor 🚀 Use my referral: ${refLink}`
     );
     window.open(`https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${text}`, "_blank");
   };
@@ -384,7 +384,7 @@ export default function ReferralPage() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 8 }}>
             <div>
               <p style={{ color: "#9945FF", fontSize: 12, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 8px" }}>
-                BluPrint
+                Axor
               </p>
               <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: "clamp(24px, 5vw, 38px)", fontWeight: 900, color: "#fff", margin: 0, lineHeight: 1.1 }}>
                 Referral <span style={{ color: "#14F195" }} className="glow-text-green">Program</span>

@@ -12,7 +12,7 @@ import { useDexTokens } from "@/hooks/useDexTokens";
 import { useBondingCurveInfo } from "@/hooks/useBondingCurveInfo";
 import { useSwap } from "@/hooks/useSwap";
 import { useDexStore } from "@/store/dexStore";
-import { useDexLayoutStore, BlockId } from "@/store/dexLayoutStore";
+import { useDexLayoutStore, BlockId, BLOCK_META } from "@/store/dexLayoutStore";
 import { filterTokens } from "@/lib/dex/normalizeToken";
 import { useTrades } from "@/hooks/useTrades";
 import type { DexToken } from "@/types/dex";
@@ -52,13 +52,13 @@ const GLOBAL_STYLES = `
   *, *::before, *::after { box-sizing: border-box; }
 
   :root {
-    --purple: #9945FF;
-    --green: #14F195;
-    --pink: #ff2d95;
-    --dark: #080612;
+    --purple: #D4AF7A;
+    --green: #E8C989;
+    --pink: #B8935E;
+    --dark: #0A0A0C;
     --card: rgba(255,255,255,0.035);
-    --border: rgba(153,69,255,0.18);
-    --border-green: rgba(20,241,149,0.22);
+    --border: rgba(212,175,122,0.18);
+    --border-green: rgba(232,201,137,0.22);
     --text-muted: rgba(255,255,255,0.35);
   }
 
@@ -66,13 +66,13 @@ const GLOBAL_STYLES = `
     background: rgba(255,255,255,0.035);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(153,69,255,0.18);
+    border: 1px solid rgba(212,175,122,0.18);
     border-radius: 16px;
   }
 
   .dex-input {
     background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(153,69,255,0.22);
+    border: 1px solid rgba(212,175,122,0.22);
     border-radius: 12px;
     color: #fff;
     font-family: 'Space Grotesk', sans-serif;
@@ -83,20 +83,20 @@ const GLOBAL_STYLES = `
     transition: border-color 0.2s, box-shadow 0.2s;
   }
   .dex-input:focus {
-    border-color: rgba(153,69,255,0.5);
-    box-shadow: 0 0 0 3px rgba(153,69,255,0.08);
+    border-color: rgba(212,175,122,0.5);
+    box-shadow: 0 0 0 3px rgba(212,175,122,0.08);
   }
-  .dex-input::placeholder { color: rgba(153,69,255,0.3); }
+  .dex-input::placeholder { color: rgba(212,175,122,0.3); }
 
   .skeleton {
-    background: linear-gradient(90deg, rgba(153,69,255,0.05) 25%, rgba(153,69,255,0.1) 50%, rgba(153,69,255,0.05) 75%);
+    background: linear-gradient(90deg, rgba(212,175,122,0.05) 25%, rgba(212,175,122,0.1) 50%, rgba(212,175,122,0.05) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.6s infinite;
   }
 
   .dex-scroll::-webkit-scrollbar { width: 3px; }
   .dex-scroll::-webkit-scrollbar-track { background: transparent; }
-  .dex-scroll::-webkit-scrollbar-thumb { background: rgba(153,69,255,0.2); border-radius: 2px; }
+  .dex-scroll::-webkit-scrollbar-thumb { background: rgba(212,175,122,0.2); border-radius: 2px; }
 
   @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.35} }
@@ -111,7 +111,7 @@ const GLOBAL_STYLES = `
   .token-card {
     cursor: pointer;
     transition: transform 0.22s cubic-bezier(0.4,0,0.2,1), box-shadow 0.22s, border-color 0.22s;
-    border: 1px solid rgba(153,69,255,0.15);
+    border: 1px solid rgba(212,175,122,0.15);
     border-radius: 16px;
     overflow: hidden;
     background: rgba(255,255,255,0.03);
@@ -119,8 +119,8 @@ const GLOBAL_STYLES = `
   }
   .token-card:hover {
     transform: translateY(-4px) scale(1.012);
-    border-color: rgba(153,69,255,0.4);
-    box-shadow: 0 8px 32px rgba(153,69,255,0.18), 0 2px 8px rgba(0,0,0,0.4);
+    border-color: rgba(212,175,122,0.4);
+    box-shadow: 0 8px 32px rgba(212,175,122,0.18), 0 2px 8px rgba(0,0,0,0.4);
   }
 
   .stat-chip {
@@ -128,7 +128,7 @@ const GLOBAL_STYLES = `
     flex-direction: column;
     gap: 2px;
     padding: 0 18px;
-    border-right: 1px solid rgba(153,69,255,0.07);
+    border-right: 1px solid rgba(212,175,122,0.07);
   }
 
   .tab-btn {
@@ -152,7 +152,7 @@ const GLOBAL_STYLES = `
     position: relative;
     transition: background 0.15s;
   }
-  .trend-row:hover { background: rgba(153,69,255,0.05); }
+  .trend-row:hover { background: rgba(212,175,122,0.05); }
   .trend-preview {
     position: absolute;
     left: 100%;
@@ -171,15 +171,18 @@ const GLOBAL_STYLES = `
     transform: translateX(0);
   }
 
+  .dex-blocks-desktop { display: block; }
+  .dex-blocks-mobile  { display: none; }
+
   @media (max-width: 1100px) {
-    .dex-blocks { flex-direction: column !important; }
-    .dex-blocks > * { max-width: 100% !important; }
+    .dex-blocks-desktop { display: none !important; }
+    .dex-blocks-mobile  { display: block !important; }
     .trend-preview { display: none !important; }
   }
   @media (max-width: 768px) {
     .detail-layout { flex-direction: column !important; height: auto !important; overflow: auto !important; }
     .detail-left   { min-height: 0 !important; flex: none !important; }
-    .detail-right  { width: 100% !important; border-left: none !important; border-top: 1px solid rgba(153,69,255,0.1) !important; }
+    .detail-right  { width: 100% !important; border-left: none !important; border-top: 1px solid rgba(212,175,122,0.1) !important; }
     .chart-area    { height: 260px !important; min-height: 260px !important; }
     .tabs-area     { height: auto !important; }
     .tabs-scroll   { height: 220px !important; }
@@ -202,25 +205,25 @@ const GLOBAL_STYLES = `
 function Background() {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(153,69,255,0.12) 0%, transparent 70%)" }} />
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(212,175,122,0.12) 0%, transparent 70%)" }} />
       <div style={{
         position: "absolute", width: 700, height: 700, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(153,69,255,0.08) 0%, transparent 70%)",
+        background: "radial-gradient(circle, rgba(212,175,122,0.08) 0%, transparent 70%)",
         top: -200, left: -200, animation: "float 18s ease-in-out infinite",
       }} />
       <div style={{
         position: "absolute", width: 500, height: 500, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(20,241,149,0.06) 0%, transparent 70%)",
+        background: "radial-gradient(circle, rgba(232,201,137,0.06) 0%, transparent 70%)",
         bottom: -100, right: -100, animation: "float 22s ease-in-out infinite reverse",
       }} />
       <div style={{
         position: "absolute", width: 400, height: 400, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(153,69,255,0.05) 0%, transparent 70%)",
+        background: "radial-gradient(circle, rgba(212,175,122,0.05) 0%, transparent 70%)",
         top: "45%", left: "55%", animation: "float 28s ease-in-out infinite 6s",
       }} />
       <div style={{
         position: "absolute", inset: 0,
-        backgroundImage: "linear-gradient(rgba(153,69,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(153,69,255,0.03) 1px, transparent 1px)",
+        backgroundImage: "linear-gradient(rgba(212,175,122,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,122,0.03) 1px, transparent 1px)",
         backgroundSize: "60px 60px",
       }} />
     </div>
@@ -230,7 +233,7 @@ function Background() {
 // ─── TOKEN AVATAR ──────────────────────────────────────────────────────────
 
 function TokenAvatar({ token, size = 48 }: { token: DexToken; size?: number }) {
-  const grads = ["#9945FF,#14F195", "#ff2d95,#9945FF", "#14F195,#0ea5e9", "#f59e0b,#ff2d95"];
+  const grads = ["#D4AF7A,#E8C989", "#B8935E,#D4AF7A", "#E8C989,#C9A876", "#F0D9A8,#B8935E"];
   const grad = grads[(token.symbol.charCodeAt(0) ?? 0) % grads.length];
   if (token.imageUrl) {
     return (
@@ -247,7 +250,7 @@ function TokenAvatar({ token, size = 48 }: { token: DexToken; size?: number }) {
       width: size, height: size, borderRadius: size * 0.28, flexShrink: 0,
       background: `linear-gradient(135deg, ${grad})`,
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * 0.42, fontWeight: 900, color: "#fff",
+      fontSize: size * 0.42, fontWeight: 900, color: "#EDEBE6",
       fontFamily: "'Orbitron', monospace",
     }}>
       {token.symbol.charAt(0)}
@@ -266,7 +269,7 @@ function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean;
       onClick={onClick}
       style={{ animation: isNew ? "cardIn 0.45s cubic-bezier(0.16,1,0.3,1)" : undefined }}
     >
-      <div style={{ position: "relative", width: "100%", paddingBottom: "62%", background: "rgba(153,69,255,0.04)" }}>
+      <div style={{ position: "relative", width: "100%", paddingBottom: "62%", background: "rgba(212,175,122,0.04)" }}>
         {token.imageUrl ? (
           <img
             src={token.imageUrl}
@@ -277,10 +280,10 @@ function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean;
         ) : (
           <div style={{
             position: "absolute", inset: 0,
-            background: "linear-gradient(145deg, rgba(153,69,255,0.1), rgba(20,241,149,0.05))",
+            background: "linear-gradient(145deg, rgba(212,175,122,0.1), rgba(232,201,137,0.05))",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontFamily: "'Orbitron', monospace", fontSize: 40, fontWeight: 900,
-            color: "rgba(153,69,255,0.25)",
+            color: "rgba(212,175,122,0.25)",
           }}>
             {token.symbol.charAt(0)}
           </div>
@@ -289,12 +292,12 @@ function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean;
         {isNew && (
           <div style={{
             position: "absolute", top: 8, left: 8,
-            background: "linear-gradient(135deg, #9945FF, #14F195)",
+            background: "linear-gradient(135deg, #D4AF7A, #E8C989)",
             borderRadius: 6, padding: "3px 9px",
             fontSize: 9, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700,
-            color: "#080612", letterSpacing: "0.1em",
+            color: "#0A0A0C", letterSpacing: "0.1em",
             animation: "popIn 0.4s cubic-bezier(0.16,1,0.3,1), pulse 1.8s ease-in-out 0.4s infinite",
-            boxShadow: "0 0 16px rgba(153,69,255,0.5)",
+            boxShadow: "0 0 16px rgba(212,175,122,0.5)",
           }}>✦ NEW</div>
         )}
         {age !== null && (
@@ -317,14 +320,14 @@ function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean;
       <div style={{ padding: "10px 12px 12px", fontFamily: "'Space Grotesk', sans-serif" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
           <span style={{
-            color: "#fff", fontWeight: 700, fontSize: 12,
+            color: "#EDEBE6", fontWeight: 700, fontSize: 12,
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
           }}>
             {token.name}
           </span>
           <span style={{
-            color: "#14F195", fontSize: 9, fontWeight: 700,
-            background: "rgba(20,241,149,0.08)", border: "1px solid rgba(20,241,149,0.18)",
+            color: "#E8C989", fontSize: 9, fontWeight: 700,
+            background: "rgba(232,201,137,0.08)", border: "1px solid rgba(232,201,137,0.18)",
             padding: "2px 7px", borderRadius: 5, flexShrink: 0, letterSpacing: "0.05em",
           }}>${token.symbol}</span>
         </div>
@@ -349,19 +352,19 @@ function TokenListRow({ token, isNew, onClick }: { token: DexToken; isNew: boole
       style={{
         display: "flex", alignItems: "center", gap: 10,
         padding: "9px 12px", borderRadius: 10, cursor: "pointer",
-        border: "1px solid rgba(153,69,255,0.08)",
-        background: isNew ? "rgba(153,69,255,0.05)" : "transparent",
+        border: "1px solid rgba(212,175,122,0.08)",
+        background: isNew ? "rgba(212,175,122,0.05)" : "transparent",
         transition: "background 0.15s, border-color 0.15s",
         marginBottom: 6,
       }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(153,69,255,0.35)")}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(153,69,255,0.08)")}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(212,175,122,0.35)")}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(212,175,122,0.08)")}
     >
       <TokenAvatar token={token} size={32} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ color: "#fff", fontWeight: 700, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{token.name}</span>
-          <span style={{ color: "#14F195", fontSize: 9, fontWeight: 700 }}>${token.symbol}</span>
+          <span style={{ color: "#EDEBE6", fontWeight: 700, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{token.name}</span>
+          <span style={{ color: "#E8C989", fontSize: 9, fontWeight: 700 }}>${token.symbol}</span>
         </div>
         <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 9, fontFamily: "monospace" }}>
           {token.mint.slice(0, 6)}···{token.mint.slice(-4)}
@@ -387,28 +390,28 @@ function TradeRow({ trade, isNew }: { trade: Trade; isNew: boolean }) {
         display: "grid",
         gridTemplateColumns: "52px 1fr 1fr 42px 1fr 88px",
         padding: "9px 18px",
-        borderBottom: "1px solid rgba(153,69,255,0.04)",
+        borderBottom: "1px solid rgba(212,175,122,0.04)",
         alignItems: "center",
         gap: 8,
         fontFamily: "'Space Grotesk', sans-serif",
         background: isNew
-          ? trade.is_buy ? "rgba(20,241,149,0.03)" : "rgba(255,45,149,0.03)"
+          ? trade.is_buy ? "rgba(232,201,137,0.03)" : "rgba(255,45,149,0.03)"
           : "transparent",
         transition: "background 1.8s ease",
         animation: isNew ? "slideIn 0.3s cubic-bezier(0.16,1,0.3,1)" : undefined,
       }}
-      onMouseEnter={e => (e.currentTarget.style.background = "rgba(153,69,255,0.04)")}
+      onMouseEnter={e => (e.currentTarget.style.background = "rgba(212,175,122,0.04)")}
       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
     >
       <div style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         padding: "4px 0", borderRadius: 6,
-        background: trade.is_buy ? "rgba(20,241,149,0.09)" : "rgba(255,45,149,0.09)",
-        border: `1px solid ${trade.is_buy ? "rgba(20,241,149,0.2)" : "rgba(255,45,149,0.2)"}`,
+        background: trade.is_buy ? "rgba(232,201,137,0.09)" : "rgba(255,45,149,0.09)",
+        border: `1px solid ${trade.is_buy ? "rgba(232,201,137,0.2)" : "rgba(255,45,149,0.2)"}`,
       }}>
         <span style={{
           fontSize: 9, fontWeight: 800,
-          color: trade.is_buy ? "#14F195" : "#ff2d95",
+          color: trade.is_buy ? "#E8C989" : "#B8935E",
           letterSpacing: "0.08em",
         }}>
           {trade.is_buy ? "BUY" : "SELL"}
@@ -428,7 +431,7 @@ function TradeRow({ trade, isNew }: { trade: Trade; isNew: boolean }) {
         {fmtAge(age)}
       </span>
 
-      <span className="trade-row-mcap" style={{ fontSize: 10, color: "rgba(153,69,255,0.65)", fontWeight: 600 }}>
+      <span className="trade-row-mcap" style={{ fontSize: 10, color: "rgba(212,175,122,0.65)", fontWeight: 600 }}>
         {mcapSol > 0 ? fmtMcap(mcapSol) : "—"}
       </span>
 
@@ -437,13 +440,13 @@ function TradeRow({ trade, isNew }: { trade: Trade; isNew: boolean }) {
         href={trade.tx_signature ? `https://solscan.io/tx/${trade.tx_signature}` : "#"}
         target="_blank" rel="noopener noreferrer"
         style={{
-          fontSize: 10, color: "rgba(153,69,255,0.4)",
+          fontSize: 10, color: "rgba(212,175,122,0.4)",
           textDecoration: "none",
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           transition: "color 0.15s",
         }}
-        onMouseEnter={e => ((e.target as HTMLElement).style.color = "#9945FF")}
-        onMouseLeave={e => ((e.target as HTMLElement).style.color = "rgba(153,69,255,0.4)")}
+        onMouseEnter={e => ((e.target as HTMLElement).style.color = "#D4AF7A")}
+        onMouseLeave={e => ((e.target as HTMLElement).style.color = "rgba(212,175,122,0.4)")}
       >
         {trade.wallet.slice(0, 4)}···{trade.wallet.slice(-4)} ↗
       </a>
@@ -495,7 +498,7 @@ function HoldersTab({ mint }: { mint: string }) {
   if (holders.length === 0) {
     return (
       <div style={{ padding: "40px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: 28, marginBottom: 10, opacity: 0.12, color: "#9945FF" }}>◈</div>
+        <div style={{ fontSize: 28, marginBottom: 10, opacity: 0.12, color: "#D4AF7A" }}>◈</div>
         <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13 }}>
           No holder data available
         </div>
@@ -503,19 +506,19 @@ function HoldersTab({ mint }: { mint: string }) {
     );
   }
 
-  const top3Colors = ["#14F195", "#9945FF", "#0ea5e9"];
+  const top3Colors = ["#E8C989", "#D4AF7A", "#C9A876"];
 
   return (
     <div>
       <div style={{
         display: "grid", gridTemplateColumns: "32px 1fr 90px 130px",
         padding: "8px 18px 10px",
-        borderBottom: "1px solid rgba(153,69,255,0.06)",
+        borderBottom: "1px solid rgba(212,175,122,0.06)",
         gap: 8,
       }}>
         {["#", "WALLET", "TOKENS", "SHARE"].map(h => (
           <span key={h} style={{
-            color: "rgba(153,69,255,0.3)", fontFamily: "'Space Grotesk', sans-serif",
+            color: "rgba(212,175,122,0.3)", fontFamily: "'Space Grotesk', sans-serif",
             fontSize: 9, letterSpacing: "0.12em", fontWeight: 700,
           }}>{h}</span>
         ))}
@@ -528,10 +531,10 @@ function HoldersTab({ mint }: { mint: string }) {
           <div key={h.address} style={{
             display: "grid", gridTemplateColumns: "32px 1fr 90px 130px",
             padding: "9px 18px",
-            borderBottom: "1px solid rgba(153,69,255,0.03)",
+            borderBottom: "1px solid rgba(212,175,122,0.03)",
             alignItems: "center", gap: 8, transition: "background 0.15s",
           }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(153,69,255,0.04)")}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(212,175,122,0.04)")}
             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
           >
             <div style={{
@@ -566,7 +569,7 @@ function HoldersTab({ mint }: { mint: string }) {
               <div style={{ flex: 1, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
                 <div style={{
                   height: "100%", width: `${Math.min(h.pct, 100)}%`,
-                  background: isTop ? `linear-gradient(90deg, ${rankColor}70, ${rankColor})` : "linear-gradient(90deg, rgba(153,69,255,0.3), rgba(153,69,255,0.6))",
+                  background: isTop ? `linear-gradient(90deg, ${rankColor}70, ${rankColor})` : "linear-gradient(90deg, rgba(212,175,122,0.3), rgba(212,175,122,0.6))",
                   borderRadius: 2,
                   boxShadow: isTop ? `0 0 6px ${rankColor}50` : "none",
                   transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)",
@@ -605,10 +608,10 @@ function CopyAddressButton({ address }: { address: string }) {
         padding: "6px 13px", borderRadius: 8, cursor: "pointer",
         fontFamily: "'Space Grotesk', sans-serif", fontSize: 10, fontWeight: 700,
         letterSpacing: "0.06em",
-        border: copied ? "1px solid rgba(20,241,149,0.45)" : "1px solid rgba(153,69,255,0.22)",
-        background: copied ? "rgba(20,241,149,0.07)" : "rgba(153,69,255,0.06)",
-        color: copied ? "#14F195" : "rgba(153,69,255,0.65)",
-        boxShadow: copied ? "0 0 14px rgba(20,241,149,0.2)" : "none",
+        border: copied ? "1px solid rgba(232,201,137,0.45)" : "1px solid rgba(212,175,122,0.22)",
+        background: copied ? "rgba(232,201,137,0.07)" : "rgba(212,175,122,0.06)",
+        color: copied ? "#E8C989" : "rgba(212,175,122,0.65)",
+        boxShadow: copied ? "0 0 14px rgba(232,201,137,0.2)" : "none",
         transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
         animation: copied ? "copyPop 0.25s" : undefined,
         whiteSpace: "nowrap",
@@ -616,23 +619,23 @@ function CopyAddressButton({ address }: { address: string }) {
       onMouseEnter={e => {
         if (!copied) {
           const b = e.currentTarget as HTMLButtonElement;
-          b.style.borderColor = "rgba(153,69,255,0.4)";
-          b.style.color = "#9945FF";
-          b.style.background = "rgba(153,69,255,0.1)";
+          b.style.borderColor = "rgba(212,175,122,0.4)";
+          b.style.color = "#D4AF7A";
+          b.style.background = "rgba(212,175,122,0.1)";
         }
       }}
       onMouseLeave={e => {
         if (!copied) {
           const b = e.currentTarget as HTMLButtonElement;
-          b.style.borderColor = "rgba(153,69,255,0.22)";
-          b.style.color = "rgba(153,69,255,0.65)";
-          b.style.background = "rgba(153,69,255,0.06)";
+          b.style.borderColor = "rgba(212,175,122,0.22)";
+          b.style.color = "rgba(212,175,122,0.65)";
+          b.style.background = "rgba(212,175,122,0.06)";
         }
       }}
     >
       {copied ? (
         <>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#14F195" strokeWidth={3}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#E8C989" strokeWidth={3}>
             <polyline points="20 6 9 17 4 12" />
           </svg>
           COPIED
@@ -684,17 +687,17 @@ function TokenTrade({ token, onBack, compact = true }: { token: DexToken; onBack
   const volumeSol = trades.reduce((s, t) => s + t.amount_sol, 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: compact ? "column" : "row", background: "#080612" }}>
+    <div style={{ display: "flex", flexDirection: compact ? "column" : "row", background: "#0A0A0C" }}>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
         {/* Top bar */}
         <div style={{
-          padding: "0 14px", borderBottom: "1px solid rgba(153,69,255,0.1)",
+          padding: "0 14px", borderBottom: "1px solid rgba(212,175,122,0.1)",
           display: "flex", alignItems: "center", gap: 10, flexShrink: 0, height: 52,
           background: "rgba(8,6,18,0.97)",
         }}>
           <button onClick={onBack} style={{
-            background: "rgba(153,69,255,0.07)", border: "1px solid rgba(153,69,255,0.18)",
-            borderRadius: 9, padding: "6px 11px", color: "rgba(153,69,255,0.65)",
+            background: "rgba(212,175,122,0.07)", border: "1px solid rgba(212,175,122,0.18)",
+            borderRadius: 9, padding: "6px 11px", color: "rgba(212,175,122,0.65)",
             fontFamily: "'Space Grotesk', sans-serif", fontSize: 10, fontWeight: 700,
             cursor: "pointer", flexShrink: 0, letterSpacing: "0.05em",
           }}>← BACK</button>
@@ -703,8 +706,8 @@ function TokenTrade({ token, onBack, compact = true }: { token: DexToken; onBack
 
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "#fff", fontWeight: 700, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{token.name}</span>
-              <span style={{ color: "#14F195", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>${token.symbol}</span>
+              <span style={{ color: "#EDEBE6", fontWeight: 700, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{token.name}</span>
+              <span style={{ color: "#E8C989", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>${token.symbol}</span>
             </div>
             <div style={{ color: "rgba(255,255,255,0.17)", fontSize: 9, fontFamily: "monospace" }}>
               {volumeSol > 0 ? `${volumeSol.toFixed(2)} SOL vol` : "no volume yet"} · {trades.length} trades
@@ -721,7 +724,7 @@ function TokenTrade({ token, onBack, compact = true }: { token: DexToken; onBack
 
         {/* Trade Panel (compact modda chart altında, tam genişlikte) */}
         {compact && (
-          <div style={{ padding: 12, borderTop: "1px solid rgba(153,69,255,0.08)" }}>
+          <div style={{ padding: 12, borderTop: "1px solid rgba(212,175,122,0.08)" }}>
             <TradePanel
               token={token}
               isBuy={isBuy}
@@ -738,24 +741,24 @@ function TokenTrade({ token, onBack, compact = true }: { token: DexToken; onBack
         )}
 
         {/* Tabs */}
-        <div style={{ flexShrink: 0, borderTop: "1px solid rgba(153,69,255,0.08)" }}>
-          <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid rgba(153,69,255,0.07)", padding: "0 4px" }}>
+        <div style={{ flexShrink: 0, borderTop: "1px solid rgba(212,175,122,0.08)" }}>
+          <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid rgba(212,175,122,0.07)", padding: "0 4px" }}>
             {(["Trades", "Holders"] as const).map(tab => (
               <button
                 key={tab}
                 className="tab-btn"
                 onClick={() => setActiveTab(tab)}
                 style={{
-                  color: activeTab === tab ? "#fff" : "rgba(255,255,255,0.2)",
-                  borderBottom: activeTab === tab ? "2px solid #9945FF" : "2px solid transparent",
+                  color: activeTab === tab ? "#EDEBE6" : "rgba(255,255,255,0.2)",
+                  borderBottom: activeTab === tab ? "2px solid #D4AF7A" : "2px solid transparent",
                   marginBottom: -1,
                 }}
               >
                 {tab.toUpperCase()}
                 {tab === "Trades" && trades.length > 0 && (
                   <span style={{
-                    background: activeTab === "Trades" ? "rgba(153,69,255,0.15)" : "rgba(255,255,255,0.05)",
-                    color: activeTab === "Trades" ? "#9945FF" : "rgba(255,255,255,0.2)",
+                    background: activeTab === "Trades" ? "rgba(212,175,122,0.15)" : "rgba(255,255,255,0.05)",
+                    color: activeTab === "Trades" ? "#D4AF7A" : "rgba(255,255,255,0.2)",
                     fontFamily: "'Space Grotesk', sans-serif", fontSize: 9, fontWeight: 800,
                     padding: "1px 6px", borderRadius: 4,
                   }}>{trades.length}</span>
@@ -786,7 +789,7 @@ function TokenTrade({ token, onBack, compact = true }: { token: DexToken; onBack
       </div>
 
       {!compact && (
-        <div className="dex-scroll" style={{ width: 304, flexShrink: 0, borderLeft: "1px solid rgba(153,69,255,0.08)", overflowY: "auto", padding: 14 }}>
+        <div className="dex-scroll" style={{ width: 304, flexShrink: 0, borderLeft: "1px solid rgba(212,175,122,0.08)", overflowY: "auto", padding: 14 }}>
           <TradePanel
             token={token}
             isBuy={isBuy}
@@ -824,9 +827,9 @@ function LiveTokensBlock({
         title="Grid görünüm"
         style={{
           width: 22, height: 22, borderRadius: 6, cursor: "pointer",
-          border: "1px solid rgba(153,69,255,0.18)",
-          background: viewMode === "grid" ? "rgba(153,69,255,0.18)" : "transparent",
-          color: viewMode === "grid" ? "#9945FF" : "rgba(153,69,255,0.4)",
+          border: "1px solid rgba(212,175,122,0.18)",
+          background: viewMode === "grid" ? "rgba(212,175,122,0.18)" : "transparent",
+          color: viewMode === "grid" ? "#D4AF7A" : "rgba(212,175,122,0.4)",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
@@ -837,9 +840,9 @@ function LiveTokensBlock({
         title="Liste görünüm"
         style={{
           width: 22, height: 22, borderRadius: 6, cursor: "pointer",
-          border: "1px solid rgba(153,69,255,0.18)",
-          background: viewMode === "list" ? "rgba(153,69,255,0.18)" : "transparent",
-          color: viewMode === "list" ? "#9945FF" : "rgba(153,69,255,0.4)",
+          border: "1px solid rgba(212,175,122,0.18)",
+          background: viewMode === "list" ? "rgba(212,175,122,0.18)" : "transparent",
+          color: viewMode === "list" ? "#D4AF7A" : "rgba(212,175,122,0.4)",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
@@ -852,7 +855,7 @@ function LiveTokensBlock({
     <BlockShell id="live" headerRight={headerRight}>
       <div style={{ padding: 12 }}>
         <div style={{ position: "relative", marginBottom: 10 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(153,69,255,0.4)" strokeWidth={2.5} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,122,0.4)" strokeWidth={2.5} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}>
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
@@ -873,7 +876,7 @@ function LiveTokensBlock({
             </div>
           ) : tokens.length === 0 ? (
             <div style={{ padding: "40px 10px", textAlign: "center" }}>
-              <div style={{ fontSize: 26, opacity: 0.1, color: "#9945FF", marginBottom: 10 }}>◈</div>
+              <div style={{ fontSize: 26, opacity: 0.1, color: "#D4AF7A", marginBottom: 10 }}>◈</div>
               <p style={{ color: "rgba(255,255,255,0.22)", fontSize: 12, margin: 0 }}>
                 {search ? `No tokens matching "${search}"` : "No tokens yet"}
               </p>
@@ -913,12 +916,12 @@ function CreateTokenBlock({ selectedToken, onBack }: { selectedToken: DexToken |
       <div style={{ padding: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 320, textAlign: "center" }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16, marginBottom: 16,
-          background: "linear-gradient(135deg, rgba(153,69,255,0.18), rgba(20,241,149,0.1))",
-          border: "1px solid rgba(153,69,255,0.25)",
+          background: "linear-gradient(135deg, rgba(212,175,122,0.18), rgba(232,201,137,0.1))",
+          border: "1px solid rgba(212,175,122,0.25)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 26, color: "#9945FF",
+          fontSize: 26, color: "#D4AF7A",
         }}>＋</div>
-        <h3 style={{ margin: "0 0 8px", color: "#fff", fontSize: 15, fontWeight: 800 }}>Launch a Token</h3>
+        <h3 style={{ margin: "0 0 8px", color: "#EDEBE6", fontSize: 15, fontWeight: 800 }}>Launch a Token</h3>
         <p style={{ margin: "0 0 20px", color: "rgba(255,255,255,0.35)", fontSize: 12, maxWidth: 240, lineHeight: 1.6 }}>
           Name, symbol, supply ve bonding curve seçimini içeren tam launch formu ayrı sayfada.
         </p>
@@ -927,10 +930,10 @@ function CreateTokenBlock({ selectedToken, onBack }: { selectedToken: DexToken |
           style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "11px 22px", borderRadius: 12,
-            background: "linear-gradient(135deg, #9945FF, #7b2ff7)",
-            color: "#fff", fontFamily: "'Space Grotesk', sans-serif",
+            background: "linear-gradient(135deg, #D4AF7A, #7b2ff7)",
+            color: "#EDEBE6", fontFamily: "'Space Grotesk', sans-serif",
             fontSize: 12, fontWeight: 800, letterSpacing: "0.04em",
-            textDecoration: "none", boxShadow: "0 4px 20px rgba(153,69,255,0.35)",
+            textDecoration: "none", boxShadow: "0 4px 20px rgba(212,175,122,0.35)",
           }}
         >
           CREATE TOKEN →
@@ -971,12 +974,12 @@ function TrendingBlock({ tokens, onSelect }: { tokens: DexToken[]; onSelect: (t:
                 padding: "9px 10px", borderRadius: 10, marginBottom: 4,
               }}
             >
-              <span style={{ width: 16, fontSize: 10, color: "rgba(153,69,255,0.4)", fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
+              <span style={{ width: 16, fontSize: 10, color: "rgba(212,175,122,0.4)", fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
               <TokenAvatar token={token} size={30} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: "#fff", fontWeight: 700, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{token.name}</span>
-                  <span style={{ color: "#14F195", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>${token.symbol}</span>
+                  <span style={{ color: "#EDEBE6", fontWeight: 700, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{token.name}</span>
+                  <span style={{ color: "#E8C989", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>${token.symbol}</span>
                 </div>
               </div>
 
@@ -994,6 +997,107 @@ function TrendingBlock({ tokens, onSelect }: { tokens: DexToken[]; onSelect: (t:
 
 // ─── MAIN ──────────────────────────────────────────────────────────────────
 
+// --- MOBILE BLOCK CAROUSEL --------------------------------------------------
+// Mobilde 3 blok yan yana sigmadigi icin tek seferde bir blok gosterilir.
+// Ok butonlari veya parmakla kaydirarak (swipe) bloklar arasi gecis yapilir.
+
+function MobileBlockCarousel({
+  visibleOrder,
+  blockContent,
+  mobileIndex,
+  setMobileIndex,
+}: {
+  visibleOrder: BlockId[];
+  blockContent: Record<BlockId, React.ReactNode>;
+  mobileIndex: number;
+  setMobileIndex: (i: number) => void;
+}) {
+  const touchStartX = useRef<number | null>(null);
+  const clampedIndex = Math.min(mobileIndex, Math.max(visibleOrder.length - 1, 0));
+  const activeId = visibleOrder[clampedIndex];
+
+  const goTo = (i: number) => {
+    if (i < 0 || i >= visibleOrder.length) return;
+    setMobileIndex(i);
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    const SWIPE_THRESHOLD = 50;
+    if (delta > SWIPE_THRESHOLD) goTo(clampedIndex - 1);
+    else if (delta < -SWIPE_THRESHOLD) goTo(clampedIndex + 1);
+    touchStartX.current = null;
+  };
+
+  if (visibleOrder.length === 0 || !activeId) return null;
+
+  return (
+    <div>
+      {/* Ust navigasyon: geri / ileri + nokta gostergesi */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <button
+          onClick={() => goTo(clampedIndex - 1)}
+          disabled={clampedIndex === 0}
+          aria-label="Onceki blok"
+          style={{
+            width: 34, height: 34, borderRadius: 10,
+            border: "1px solid rgba(212,175,122,0.22)",
+            background: "rgba(212,175,122,0.06)",
+            color: clampedIndex === 0 ? "rgba(212,175,122,0.25)" : "#D4AF7A",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: clampedIndex === 0 ? "default" : "pointer",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {visibleOrder.map((id, i) => (
+            <button
+              key={id}
+              onClick={() => goTo(i)}
+              aria-label={`${BLOCK_META[id].title} bloguna git`}
+              style={{
+                width: i === clampedIndex ? 20 : 7, height: 7, borderRadius: 4,
+                border: "none", cursor: "pointer", padding: 0,
+                background: i === clampedIndex ? "#D4AF7A" : "rgba(212,175,122,0.25)",
+                transition: "width 0.2s ease, background 0.2s ease",
+              }}
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={() => goTo(clampedIndex + 1)}
+          disabled={clampedIndex === visibleOrder.length - 1}
+          aria-label="Sonraki blok"
+          style={{
+            width: 34, height: 34, borderRadius: 10,
+            border: "1px solid rgba(212,175,122,0.22)",
+            background: "rgba(212,175,122,0.06)",
+            color: clampedIndex === visibleOrder.length - 1 ? "rgba(212,175,122,0.25)" : "#D4AF7A",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: clampedIndex === visibleOrder.length - 1 ? "default" : "pointer",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="9 18 15 12 9 6" /></svg>
+        </button>
+      </div>
+
+      {/* Aktif blok, swipe destekli */}
+      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ display: "flex" }}>
+        <div key={activeId} style={{ width: "100%", animation: "fadeUp 0.25s cubic-bezier(0.16,1,0.3,1)" }}>
+          {blockContent[activeId]}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DexPageContent() {
   const searchParams  = useSearchParams();
   const mintFromUrl   = searchParams.get("mint");
@@ -1004,7 +1108,7 @@ export default function DexPageContent() {
   const { search, selectedMint, setSearch, selectToken, resetTrade } = useDexStore();
   const { tokens, isLoading, isFetching, refresh }                   = useDexTokens();
 
-  const { order, closed, setOrder } = useDexLayoutStore();
+  const { order, closed, setOrder, mobileIndex, setMobileIndex } = useDexLayoutStore();
 
   const filteredTokens = useMemo(() => {
     const base = filterTokens(tokens, search);
@@ -1066,7 +1170,7 @@ export default function DexPageContent() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#080612", color: "#fff", fontFamily: "'Space Grotesk', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#0A0A0C", color: "#EDEBE6", fontFamily: "'Space Grotesk', sans-serif" }}>
       <style>{GLOBAL_STYLES}</style>
       <Background />
 
@@ -1077,17 +1181,17 @@ export default function DexPageContent() {
 
           {/* Page header */}
           <div style={{ marginBottom: 24, animation: "fadeUp 0.5s cubic-bezier(0.16,1,0.3,1)" }}>
-            <p style={{ color: "#9945FF", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 10px" }}>
-              BluPrint DEX
+            <p style={{ color: "#D4AF7A", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 10px" }}>
+              Axor DEX
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <img src="/favicon.ico" alt="BluPrint" style={{ width: 32, height: 32, borderRadius: 8, objectFit: "contain" }} />
-              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>
+              <img src="/favicon.ico" alt="Axor" style={{ width: 32, height: 32, borderRadius: 8, objectFit: "contain" }} />
+              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#EDEBE6", letterSpacing: "-0.01em" }}>
                 Token Explorer
               </h1>
             </div>
             <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, margin: 0, maxWidth: 440, lineHeight: 1.6 }}>
-              Browse, trade and track every token launched on BluPrint — live. Blokları sürükle, küçült veya kapat.
+              Browse, trade and track every token launched on Axor — live. Blokları sürükle, küçült veya kapat.
             </p>
           </div>
 
@@ -1098,25 +1202,37 @@ export default function DexPageContent() {
             </div>
           )}
 
-          {/* 3 blok */}
-          <Reorder.Group
-            as="div"
-            axis="x"
-            values={visibleOrder}
-            onReorder={(newVisible) => {
-              // gizli (closed) blokların sırasını koru, sadece görünenleri güncelle
-              const merged = [...newVisible, ...order.filter(id => closed[id])];
-              setOrder(merged as BlockId[]);
-            }}
-            className="dex-blocks"
-            style={{ display: "flex", gap: 16, alignItems: "flex-start", listStyle: "none", padding: 0, margin: 0 }}
-          >
-            {visibleOrder.map(id => (
-              <div key={id} style={{ display: "contents" }}>
-                {blockContent[id]}
-              </div>
-            ))}
-          </Reorder.Group>
+          {/* 3 blok — masaustu: surukle-birak yan yana */}
+          <div className="dex-blocks-desktop">
+            <Reorder.Group
+              as="div"
+              axis="x"
+              values={visibleOrder}
+              onReorder={(newVisible) => {
+                // gizli (closed) blokların sırasını koru, sadece görünenleri güncelle
+                const merged = [...newVisible, ...order.filter(id => closed[id])];
+                setOrder(merged as BlockId[]);
+              }}
+              className="dex-blocks"
+              style={{ display: "flex", gap: 16, alignItems: "flex-start", listStyle: "none", padding: 0, margin: 0 }}
+            >
+              {visibleOrder.map(id => (
+                <div key={id} style={{ display: "contents" }}>
+                  {blockContent[id]}
+                </div>
+              ))}
+            </Reorder.Group>
+          </div>
+
+          {/* 3 blok — mobil: tek blok + ok/swipe ile gecis */}
+          <div className="dex-blocks-mobile">
+            <MobileBlockCarousel
+              visibleOrder={visibleOrder}
+              blockContent={blockContent}
+              mobileIndex={mobileIndex}
+              setMobileIndex={setMobileIndex}
+            />
+          </div>
 
         </div>
       </div>

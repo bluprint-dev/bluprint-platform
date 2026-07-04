@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Rocket } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -21,7 +21,7 @@ export default function EmptyState({ hasSearch }: EmptyStateProps) {
       <p className="text-gray-400 text-sm text-center max-w-md mb-6">
         {hasSearch
           ? "Try a different name, symbol, or mint address."
-          : "Be the first to launch a meme coin on BluPrint and start trading instantly."}
+          : "Be the first to launch a meme coin on Axor and start trading instantly."}
       </p>
       {!hasSearch && (
         <button

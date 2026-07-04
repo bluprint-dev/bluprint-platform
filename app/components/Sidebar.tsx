@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -62,7 +62,7 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
         {/* Logo */}
         <div style={{ padding: "12px 16px 16px" }}>
           <Link href="/" onClick={onLinkClick} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-            <img src="/favicon.ico" alt="BluPrint" style={{ width: 28, height: 28, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(153,69,255,0.5))" }} />
+            <img src="/favicon.ico" alt="Axor" style={{ width: 28, height: 28, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(153,69,255,0.5))" }} />
             <div style={{ display: "flex", fontFamily: F.display, fontSize: 18, fontWeight: 900, letterSpacing: "-0.02em" }}>
               <span style={{ color: "#fff" }}>Blu</span>
               <span style={{ color: "#9945FF", textShadow: "0 0 12px rgba(153,69,255,0.6)" }}>Print</span>
@@ -229,7 +229,7 @@ export default function Sidebar() {
       <div style={{ position: "fixed", top: 36, left: 0, right: 0, zIndex: 45, background: "rgba(8,4,18,0.95)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(153,69,255,0.12)", height: 50 }} className="md:hidden">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 16px", height: "100%" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-            <img src="/favicon.ico" alt="BluPrint" style={{ width: 24, height: 24, objectFit: "contain" }} />
+            <img src="/favicon.ico" alt="Axor" style={{ width: 24, height: 24, objectFit: "contain" }} />
             <div style={{ display: "flex", fontFamily: F.display, fontSize: 16, fontWeight: 900 }}>
               <span style={{ color: "#fff" }}>Blu</span>
               <span style={{ color: "#9945FF" }}>Print</span>

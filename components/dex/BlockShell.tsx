@@ -4,7 +4,14 @@ import { ReactNode } from "react";
 import { Reorder, useDragControls, motion, AnimatePresence } from "framer-motion";
 import { BlockId, BLOCK_META, useDexLayoutStore } from "@/store/dexLayoutStore";
 
-// ─── DRAG HANDLE ICON ────────────────────────────────────────────────────────
+// --- PALETTE ----------------------------------------------------------------
+// Tek kaynaktan yonetilen 3 renk: sampanya sarisi / uzay siyahi / parlak gri-beyaz
+const CHAMPAGNE = "#D4AF7A";
+const CHAMPAGNE_RGB = "212,175,122";
+const BRIGHT = "#EDEBE6";
+const BRIGHT_RGB = "237,235,230";
+
+// --- ICONS -------------------------------------------------------------------
 
 function DragHandleIcon() {
   return (
@@ -44,7 +51,30 @@ function CloseIcon() {
   );
 }
 
-// ─── HEADER BUTTON ────────────────────────────────────────────────────────────
+function ExpandIcon({ expanded }: { expanded: boolean }) {
+  if (expanded) {
+    // Compress icon (kucult)
+    return (
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+        <polyline points="9 3 9 9 3 9" />
+        <polyline points="15 3 15 9 21 9" />
+        <polyline points="9 21 9 15 3 15" />
+        <polyline points="15 21 15 15 21 15" />
+      </svg>
+    );
+  }
+  // Expand icon (genislet)
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+      <polyline points="3 9 3 3 9 3" />
+      <polyline points="21 9 21 3 15 3" />
+      <polyline points="3 15 3 21 9 21" />
+      <polyline points="21 15 21 21 15 21" />
+    </svg>
+  );
+}
+
+// --- HEADER BUTTON -------------------------------------------------------------
 
 function HeaderBtn({ onClick, title, children }: { onClick: () => void; title: string; children: ReactNode }) {
   return (
@@ -58,24 +88,24 @@ function HeaderBtn({ onClick, title, children }: { onClick: () => void; title: s
         alignItems: "center",
         justifyContent: "center",
         borderRadius: 7,
-        border: "1px solid rgba(153,69,255,0.16)",
-        background: "rgba(153,69,255,0.05)",
-        color: "rgba(153,69,255,0.55)",
+        border: `1px solid rgba(${CHAMPAGNE_RGB},0.2)`,
+        background: `rgba(${CHAMPAGNE_RGB},0.06)`,
+        color: `rgba(${CHAMPAGNE_RGB},0.65)`,
         cursor: "pointer",
         transition: "all 0.15s",
         flexShrink: 0,
       }}
       onMouseEnter={(e) => {
         const b = e.currentTarget;
-        b.style.borderColor = "rgba(153,69,255,0.4)";
-        b.style.color = "#9945FF";
-        b.style.background = "rgba(153,69,255,0.12)";
+        b.style.borderColor = `rgba(${CHAMPAGNE_RGB},0.5)`;
+        b.style.color = CHAMPAGNE;
+        b.style.background = `rgba(${CHAMPAGNE_RGB},0.14)`;
       }}
       onMouseLeave={(e) => {
         const b = e.currentTarget;
-        b.style.borderColor = "rgba(153,69,255,0.16)";
-        b.style.color = "rgba(153,69,255,0.55)";
-        b.style.background = "rgba(153,69,255,0.05)";
+        b.style.borderColor = `rgba(${CHAMPAGNE_RGB},0.2)`;
+        b.style.color = `rgba(${CHAMPAGNE_RGB},0.65)`;
+        b.style.background = `rgba(${CHAMPAGNE_RGB},0.06)`;
       }}
     >
       {children}
@@ -83,9 +113,10 @@ function HeaderBtn({ onClick, title, children }: { onClick: () => void; title: s
   );
 }
 
-// ─── BLOCK SHELL ──────────────────────────────────────────────────────────────
-// Her blok bu bileşenle sarmalanır. Reorder.Item + drag handle ile sürükleme,
-// header'daki chevron ile küçültme (collapse), X ile kapatma (close) sağlar.
+// --- BLOCK SHELL ---------------------------------------------------------------
+// Her blok bu bilesenle sarmalanir. Reorder.Item + drag handle ile surukleme,
+// header'daki chevron ile kucultme (collapse), buyutme butonu ile expand,
+// X ile kapatma (close) saglar.
 
 export default function BlockShell({
   id,
@@ -97,9 +128,11 @@ export default function BlockShell({
   children: ReactNode;
 }) {
   const dragControls = useDragControls();
-  const { collapsed, toggleCollapsed, closeBlock } = useDexLayoutStore();
+  const { collapsed, expanded, toggleCollapsed, closeBlock, expandBlock } = useDexLayoutStore();
   const meta = BLOCK_META[id];
   const isCollapsed = collapsed[id];
+  const isExpanded = expanded === id;
+  const someoneElseExpanded = expanded !== null && !isExpanded;
 
   return (
     <Reorder.Item
@@ -108,12 +141,13 @@ export default function BlockShell({
       dragControls={dragControls}
       as="div"
       style={{
-        flex: "1 1 0",
-        minWidth: 340,
-        maxWidth: 560,
-        display: "flex",
+        flex: isExpanded ? "3 1 0" : someoneElseExpanded ? "0.6 1 0" : "1 1 0",
+        minWidth: isExpanded ? 420 : 340,
+        maxWidth: isExpanded ? 900 : 560,
+        display: someoneElseExpanded ? "none" : "flex",
         flexDirection: "column",
         listStyle: "none",
+        transition: "flex 0.3s ease, max-width 0.3s ease",
       }}
       layout
     >
@@ -124,7 +158,9 @@ export default function BlockShell({
           flexDirection: "column",
           overflow: "hidden",
           height: "100%",
-          background: "rgba(255,255,255,0.025)",
+          background: `rgba(${BRIGHT_RGB},0.03)`,
+          border: `1px solid rgba(${CHAMPAGNE_RGB},${isExpanded ? 0.35 : 0.16})`,
+          borderRadius: 16,
         }}
       >
         {/* Header */}
@@ -134,7 +170,7 @@ export default function BlockShell({
             alignItems: "center",
             gap: 10,
             padding: "12px 14px",
-            borderBottom: isCollapsed ? "none" : "1px solid rgba(153,69,255,0.1)",
+            borderBottom: isCollapsed ? "none" : `1px solid rgba(${CHAMPAGNE_RGB},0.12)`,
             flexShrink: 0,
           }}
         >
@@ -142,17 +178,17 @@ export default function BlockShell({
             onPointerDown={(e) => dragControls.start(e)}
             style={{
               cursor: "grab",
-              color: "rgba(153,69,255,0.35)",
+              color: `rgba(${CHAMPAGNE_RGB},0.4)`,
               display: "flex",
               alignItems: "center",
               touchAction: "none",
             }}
-            title="Sürükle"
+            title="Surukle"
           >
             <DragHandleIcon />
           </div>
 
-          <span style={{ color: "#9945FF", fontSize: 13 }}>{meta.icon}</span>
+          <span style={{ color: CHAMPAGNE, fontSize: 13 }}>{meta.icon}</span>
 
           <span
             style={{
@@ -160,7 +196,7 @@ export default function BlockShell({
               fontSize: 11,
               fontWeight: 800,
               letterSpacing: "0.14em",
-              color: "rgba(255,255,255,0.75)",
+              color: `rgba(${BRIGHT_RGB},0.8)`,
               flex: 1,
             }}
           >
@@ -169,7 +205,10 @@ export default function BlockShell({
 
           {!isCollapsed && headerRight}
 
-          <HeaderBtn onClick={() => toggleCollapsed(id)} title={isCollapsed ? "Genişlet" : "Küçült"}>
+          <HeaderBtn onClick={() => expandBlock(id)} title={isExpanded ? "Kucult" : "Genislet"}>
+            <ExpandIcon expanded={isExpanded} />
+          </HeaderBtn>
+          <HeaderBtn onClick={() => toggleCollapsed(id)} title={isCollapsed ? "Genislet" : "Kucult"}>
             <ChevronIcon open={!isCollapsed} />
           </HeaderBtn>
           <HeaderBtn onClick={() => closeBlock(id)} title="Kapat">
@@ -197,8 +236,8 @@ export default function BlockShell({
   );
 }
 
-// ─── CLOSED BLOCK CHIP ────────────────────────────────────────────────────────
-// Kapatılmış bloklar için üstteki şeritte gösterilen "yeniden aç" çipi.
+// --- CLOSED BLOCK CHIP -----------------------------------------------------------
+// Kapatilmis bloklar icin ustteki seritte gosterilen "yeniden ac" cipi.
 
 export function ClosedBlockChip({ id }: { id: BlockId }) {
   const openBlock = useDexLayoutStore((s) => s.openBlock);
@@ -212,9 +251,9 @@ export function ClosedBlockChip({ id }: { id: BlockId }) {
         gap: 7,
         padding: "7px 14px",
         borderRadius: 10,
-        border: "1px dashed rgba(153,69,255,0.28)",
-        background: "rgba(153,69,255,0.05)",
-        color: "rgba(153,69,255,0.55)",
+        border: `1px dashed rgba(${CHAMPAGNE_RGB},0.32)`,
+        background: `rgba(${CHAMPAGNE_RGB},0.06)`,
+        color: `rgba(${CHAMPAGNE_RGB},0.65)`,
         fontFamily: "'Space Grotesk', sans-serif",
         fontSize: 10,
         fontWeight: 700,
@@ -224,20 +263,20 @@ export function ClosedBlockChip({ id }: { id: BlockId }) {
       }}
       onMouseEnter={(e) => {
         const b = e.currentTarget;
-        b.style.borderColor = "rgba(153,69,255,0.55)";
-        b.style.color = "#9945FF";
-        b.style.background = "rgba(153,69,255,0.1)";
+        b.style.borderColor = `rgba(${CHAMPAGNE_RGB},0.6)`;
+        b.style.color = CHAMPAGNE;
+        b.style.background = `rgba(${CHAMPAGNE_RGB},0.12)`;
       }}
       onMouseLeave={(e) => {
         const b = e.currentTarget;
-        b.style.borderColor = "rgba(153,69,255,0.28)";
-        b.style.color = "rgba(153,69,255,0.55)";
-        b.style.background = "rgba(153,69,255,0.05)";
+        b.style.borderColor = `rgba(${CHAMPAGNE_RGB},0.32)`;
+        b.style.color = `rgba(${CHAMPAGNE_RGB},0.65)`;
+        b.style.background = `rgba(${CHAMPAGNE_RGB},0.06)`;
       }}
     >
       <span>{meta.icon}</span>
       {meta.title}
-      <span style={{ opacity: 0.6 }}>＋</span>
+      <span style={{ opacity: 0.6 }}>+</span>
     </button>
   );
 }

@@ -1,4 +1,4 @@
-export default function PrivacyPage() {
+﻿export default function PrivacyPage() {
   const lastUpdated = "June 18, 2026";
 
   return (
@@ -16,9 +16,9 @@ export default function PrivacyPage() {
           <section className="space-y-3">
             <h2 className="text-white text-base font-bold">1. Overview</h2>
             <p>
-              BluPrint ("we", "us", "the platform") provides tools for creating and trading
+              Axor ("we", "us", "the platform") provides tools for creating and trading
               tokens on the Solana blockchain. This Privacy Policy explains what information
-              we collect, how we use it, and what choices you have. By using BluPrint, you
+              we collect, how we use it, and what choices you have. By using Axor, you
               agree to the practices described here.
             </p>
           </section>
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
           <section className="space-y-3">
             <h2 className="text-white text-base font-bold">2. Information We Collect</h2>
             <p>
-              BluPrint is designed to require minimal personal information. We may collect:
+              Axor is designed to require minimal personal information. We may collect:
             </p>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Public wallet addresses you connect to the platform.</li>
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
           <section className="space-y-3">
             <h2 className="text-white text-base font-bold">4. Blockchain Data</h2>
             <p>
-              Any transaction you make through BluPrint is recorded on the Solana blockchain,
+              Any transaction you make through Axor is recorded on the Solana blockchain,
               which is a public, permanent, and decentralized ledger. We have no ability to
               alter, delete, or hide this data once it is confirmed on-chain. You should
               understand that wallet addresses and transaction history are publicly visible
@@ -66,7 +66,7 @@ export default function PrivacyPage() {
           <section className="space-y-3">
             <h2 className="text-white text-base font-bold">5. Third-Party Services</h2>
             <p>
-              BluPrint may rely on third-party infrastructure such as RPC providers, hosting
+              Axor may rely on third-party infrastructure such as RPC providers, hosting
               services, or analytics tools to operate. These providers may independently
               collect technical data (such as IP addresses) as part of delivering their
               services. We are not responsible for the privacy practices of third parties not
@@ -106,8 +106,8 @@ export default function PrivacyPage() {
             <h2 className="text-white text-base font-bold">9. Contact</h2>
             <p>
               For privacy-related questions, contact us at{" "}
-              <a href="mailto:hello@bluprint.fun" className="text-[#ff2d95] hover:underline">
-                hello@bluprint.fun
+              <a href="mailto:hello@axor.fun" className="text-[#ff2d95] hover:underline">
+                hello@axor.fun
               </a>
               .
             </p>

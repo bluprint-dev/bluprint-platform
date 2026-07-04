@@ -1,4 +1,4 @@
-export type Locale = 'en' | 'ru' | 'zh';
+﻿export type Locale = 'en' | 'ru' | 'zh';
 
 export const locales: Locale[] = ['en', 'ru', 'zh'];
 
@@ -20,9 +20,9 @@ export const translations = {
     hero_subtitle: 'No code. No friction. Just launch.',
     hero_button: 'Create Token',
     
-    // Why BluPrint
+    // Why Axor
     why_title: 'Everything you need to launch a token — nothing you don’t.',
-    why_subtitle: 'Why choose BluPrint?',
+    why_subtitle: 'Why choose Axor?',
     why_instant: 'Instant Launch',
     why_instant_desc: 'Create and deploy your token in seconds, not hours.',
     why_security: 'Built-in Security',
@@ -64,7 +64,7 @@ export const translations = {
     
     // Final CTA
     cta_title: 'Ready to launch your token?',
-    cta_subtitle: 'Join hundreds of creators already using BluPrint',
+    cta_subtitle: 'Join hundreds of creators already using Axor',
     cta_button: 'Create Token',
     
     // Pool Stats
@@ -94,7 +94,7 @@ export const translations = {
     create_title: '✨ Create Your Meme Coin',
     create_subtitle: 'Deploy instantly on Solana',
     create_name_label: 'Token Name',
-    create_name_placeholder: 'e.g., BluPrint Coin',
+    create_name_placeholder: 'e.g., Axor Coin',
     create_symbol_label: 'Symbol',
     create_symbol_placeholder: 'e.g., BLUEP',
     create_supply_label: 'Total Supply',
@@ -247,7 +247,7 @@ export const translations = {
     hero_subtitle: 'Без кода. Просто запустите.',
     hero_button: 'Создать токен',
     why_title: 'Всё для запуска токена — ничего лишнего.',
-    why_subtitle: 'Почему BluPrint?',
+    why_subtitle: 'Почему Axor?',
     why_instant: 'Мгновенный запуск',
     why_instant_desc: 'Создайте токен за секунды.',
     why_security: 'Встроенная безопасность',
@@ -301,7 +301,7 @@ export const translations = {
     create_title: '✨ Создайте мем-монету',
     create_subtitle: 'Мгновенный деплой на Solana',
     create_name_label: 'Название',
-    create_name_placeholder: 'например, BluPrint Coin',
+    create_name_placeholder: 'например, Axor Coin',
     create_symbol_label: 'Символ',
     create_symbol_placeholder: 'например, BLUEP',
     create_supply_label: 'Объем',
@@ -440,7 +440,7 @@ export const translations = {
     hero_subtitle: '无需代码。即刻启动。',
     hero_button: '创建代币',
     why_title: '启动代币所需的一切',
-    why_subtitle: '为什么选择BluPrint？',
+    why_subtitle: '为什么选择Axor？',
     why_instant: '即时启动',
     why_instant_desc: '几秒内创建代币。',
     why_security: '内置安全',
@@ -472,7 +472,7 @@ export const translations = {
     usecase_exp: '实验项目',
     usecase_exp_desc: '即时测试新想法。',
     cta_title: '准备好启动代币了吗？',
-    cta_subtitle: '加入BluPrint创作者',
+    cta_subtitle: '加入Axor创作者',
     cta_button: '创建代币',
     pool_title: '前100名优惠',
     pool_first: '前',
@@ -494,7 +494,7 @@ export const translations = {
     create_title: '✨ 创建模因币',
     create_subtitle: '在Solana上即时部署',
     create_name_label: '代币名称',
-    create_name_placeholder: '例如：BluPrint Coin',
+    create_name_placeholder: '例如：Axor Coin',
     create_symbol_label: '代币符号',
     create_symbol_placeholder: '例如：BLUEP',
     create_supply_label: '总供应量',

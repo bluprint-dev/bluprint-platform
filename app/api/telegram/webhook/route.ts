@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 
 const BOT_TOKEN = '8797394555:AAECLgx3ZmP4E96O6548zfsPBcR7pC4M1Xs';
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bluprint.fun';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://axor.fun';
 
 export async function POST(req: Request) {
   try {
@@ -16,8 +16,8 @@ export async function POST(req: Request) {
     
     if (text === '/start') {
       await sendMessage(chatId, 
-        `🚀 *BluPrint Support Bot*\n\n` +
-        `Welcome to BluPrint! Here's what you can do:\n\n` +
+        `🚀 *Axor Support Bot*\n\n` +
+        `Welcome to Axor! Here's what you can do:\n\n` +
         `🎯 *Commands*\n` +
         `• /token - Create a meme coin\n` +
         `• /boost - Boost your token\n` +
@@ -73,13 +73,13 @@ export async function POST(req: Request) {
         `/help - This menu\n\n` +
         `🔗 Useful links:\n` +
         `• Website: ${SITE_URL}\n` +
-        `• Twitter: https://x.com/BluprintFun`
+        `• Twitter: https://x.com/AxorFun`
       );
     }
     else {
       await sendMessage(chatId, 
         `🤖 Hello! Type /help to see available commands.\n\n` +
-        `📢 Join our community: @BluPrint_Official`
+        `📢 Join our community: @Axor_Official`
       );
     }
     

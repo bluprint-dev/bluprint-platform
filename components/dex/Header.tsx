@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 
@@ -43,7 +43,7 @@ export default function DexHeader({ onRefresh, isRefreshing }: HeaderProps) {
           <div>
             <span style={{
               color: "#fff", fontWeight: 900, fontSize: 15, letterSpacing: "0.04em",
-            }}>BluPrint</span>
+            }}>Axor</span>
             <span style={{
               color: "rgba(153,69,255,0.6)", fontFamily: "monospace",
               fontSize: 9, display: "block", letterSpacing: "0.14em", marginTop: -2,

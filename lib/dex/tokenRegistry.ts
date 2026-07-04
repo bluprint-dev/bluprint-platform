@@ -1,4 +1,4 @@
-import { redis } from "@/app/lib/redis";
+﻿import { redis } from "@/app/lib/redis";
 import { normalizeToken } from "@/lib/dex/normalizeToken";
 import type { DexToken } from "@/types/dex";
 
@@ -16,7 +16,7 @@ async function fetchExternalMetadata(
       {
         headers: {
           Accept: "application/json",
-          "User-Agent": "BluPrint/1.0",
+          "User-Agent": "Axor/1.0",
         },
         signal: AbortSignal.timeout(8000),
       }

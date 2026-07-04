@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
@@ -19,7 +19,7 @@ const mono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BluPrint – #1 Solana Launchpad",
+  title: "Axor – #1 Solana Launchpad",
   description: "The fastest algorithmic bonding curve launchpad on Solana. Launch, trade, and migrate to Raydium in seconds.",
   icons: { icon: "/favicon.ico" },
 };

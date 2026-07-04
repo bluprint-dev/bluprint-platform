@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { redis, KEYS } from '@/app/lib/redis';
 
 export async function GET(req: NextRequest) {
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       {
         id: "2",
         mint: "7UyFuQfftyLg",
-        name: "BluPrint Token",
+        name: "Axor Token",
         symbol: "BLUEP",
         image: "",
         boostCount: 8

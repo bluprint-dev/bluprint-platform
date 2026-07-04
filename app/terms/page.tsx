@@ -1,4 +1,4 @@
-export default function TermsPage() {
+﻿export default function TermsPage() {
   const lastUpdated = "June 18, 2026";
 
   return (
@@ -16,7 +16,7 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="text-white text-base font-bold">1. Acceptance of Terms</h2>
             <p>
-              By accessing or using BluPrint ("the platform", "we", "us"), you agree to be
+              By accessing or using Axor ("the platform", "we", "us"), you agree to be
               bound by these Terms of Service. If you do not agree, do not use the platform.
               These Terms apply to all visitors and users, regardless of how they access the
               site.
@@ -26,7 +26,7 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="text-white text-base font-bold">2. Nature of the Service</h2>
             <p>
-              BluPrint is a non-custodial interface that allows users to create and trade
+              Axor is a non-custodial interface that allows users to create and trade
               tokens on the Solana blockchain using a bonding-curve mechanism. We do not hold,
               control, or have access to user funds, private keys, or wallets at any time. All
               transactions are executed directly on-chain through smart contracts and are
@@ -38,7 +38,7 @@ export default function TermsPage() {
             <h2 className="text-white text-base font-bold">3. No Financial Advice</h2>
             <p>
               Nothing on this platform constitutes financial, investment, legal, or tax
-              advice. Tokens created or traded through BluPrint, including meme coins, carry
+              advice. Tokens created or traded through Axor, including meme coins, carry
               no inherent value, utility, or guarantee of any kind. You are solely responsible
               for evaluating the risks of any transaction before signing it with your wallet.
             </p>
@@ -49,7 +49,7 @@ export default function TermsPage() {
             <p>You acknowledge and accept that:</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Cryptocurrency markets are highly volatile and tokens may lose all value, including to zero, at any time.</li>
-              <li>Tokens created by third-party users on this platform are not vetted, endorsed, or guaranteed by BluPrint in any way.</li>
+              <li>Tokens created by third-party users on this platform are not vetted, endorsed, or guaranteed by Axor in any way.</li>
               <li>Blockchain transactions are irreversible. Once a transaction is confirmed, it cannot be undone, refunded, or reversed by us.</li>
               <li>Smart contracts, including bonding-curve mechanisms, may contain bugs or vulnerabilities despite reasonable efforts to test them.</li>
               <li>You are solely responsible for the security of your wallet, private keys, and seed phrase. We will never ask for them.</li>
@@ -58,7 +58,7 @@ export default function TermsPage() {
 
           <section className="space-y-3">
             <h2 className="text-white text-base font-bold">5. Prohibited Use</h2>
-            <p>You agree not to use BluPrint to:</p>
+            <p>You agree not to use Axor to:</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Violate any applicable law or regulation in your jurisdiction.</li>
               <li>Engage in market manipulation, fraud, or any deceptive practice.</li>
@@ -85,7 +85,7 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="text-white text-base font-bold">7. Limitation of Liability</h2>
             <p>
-              To the fullest extent permitted by law, BluPrint and its operators shall not be
+              To the fullest extent permitted by law, Axor and its operators shall not be
               liable for any indirect, incidental, special, consequential, or punitive
               damages, including loss of funds, loss of profits, or loss of data, arising from
               your use of or inability to use the platform, any token created or traded
@@ -126,8 +126,8 @@ export default function TermsPage() {
             <h2 className="text-white text-base font-bold">11. Contact</h2>
             <p>
               For questions about these Terms, contact us at{" "}
-              <a href="mailto:hello@bluprint.fun" className="text-[#ff2d95] hover:underline">
-                hello@bluprint.fun
+              <a href="mailto:hello@axor.fun" className="text-[#ff2d95] hover:underline">
+                hello@axor.fun
               </a>
               .
             </p>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
@@ -175,7 +175,7 @@ export default function CreatePage() {
         body: JSON.stringify({
           name: form.name.trim(),
           symbol: form.symbol.trim().toUpperCase(),
-          description: form.description.trim() || `${form.name.trim()} token on BluPrint`,
+          description: form.description.trim() || `${form.name.trim()} token on Axor`,
           imageUrl,
           website: form.website.trim(),
           twitter: form.twitter.trim(),
@@ -435,8 +435,8 @@ export default function CreatePage() {
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 48, flexWrap: "wrap", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/favicon.ico" alt="BluPrint Logo" style={{ width: 36, height: 36, borderRadius: 10, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(153,69,255,0.6))" }} />
-            <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 18, fontWeight: 900, color: "#fff" }}>BluPrint</span>
+            <img src="/favicon.ico" alt="Axor Logo" style={{ width: 36, height: 36, borderRadius: 10, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(153,69,255,0.6))" }} />
+            <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 18, fontWeight: 900, color: "#fff" }}>Axor</span>
           </div>
           <WalletMultiButton style={{ background: "rgba(153,69,255,0.12)", border: "1px solid rgba(153,69,255,0.35)", borderRadius: 12, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 14 }} />
         </div>
@@ -473,7 +473,7 @@ export default function CreatePage() {
             <div>
               <div style={{ marginBottom: 36 }}>
                 <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", lineHeight: 1.1 }}>
-                  Launch Your <span style={{ color: "#14F195" }} className="glow-text-green">BluPrint</span>
+                  Launch Your <span style={{ color: "#14F195" }} className="glow-text-green">Axor</span>
                 </h1>
                 <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 15, margin: 0, maxWidth: 460, lineHeight: 1.6 }}>
                   Fill in the details to deploy your token onto the bonding curve instantly.
@@ -585,7 +585,7 @@ export default function CreatePage() {
                       🚀 Referral is live — launch now and start earning SOL!
                     </span>
                     <p className="fee-note">
-                      * {CREATION_FEE_SOL} SOL is the BluPrint platform fee. Metaplex protocol fees (rent, storage,
+                      * {CREATION_FEE_SOL} SOL is the Axor platform fee. Metaplex protocol fees (rent, storage,
                       on-chain accounts) are separate and may vary depending on network conditions.
                     </p>
                   </div>

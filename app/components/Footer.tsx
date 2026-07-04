@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Twitter, MessageCircle, Mail, ArrowUpRight, Sparkles } from "lucide-react";
@@ -29,7 +29,7 @@ export default function Footer() {
               <div className="flex items-center gap-3">
                 <img
                   src="/favicon.ico"
-                  alt="BluPrint"
+                  alt="Axor"
                   className="w-9 h-9 object-contain"
                   style={{ filter: "drop-shadow(0 0 10px rgba(153,69,255,0.5))" }}
                 />
@@ -101,7 +101,7 @@ export default function Footer() {
                 <h4 className="text-white/35 font-bold uppercase" style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: "0.14em" }}>Social</h4>
                 <ul className="space-y-2">
                   <li>
-                    <a href="https://x.com/BluprintFun" target="_blank" rel="noopener noreferrer" className="footer-link text-sm inline-flex items-center gap-2" style={{ fontFamily: F.display }}>
+                    <a href="https://x.com/AxorFun" target="_blank" rel="noopener noreferrer" className="footer-link text-sm inline-flex items-center gap-2" style={{ fontFamily: F.display }}>
                       <Twitter className="w-4 h-4" /> X
                     </a>
                   </li>
@@ -117,9 +117,9 @@ export default function Footer() {
                 <h4 className="text-white/35 font-bold uppercase" style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: "0.14em" }}>Contact</h4>
                 <ul className="space-y-2">
                   <li>
-                    <a href="mailto:hello@bluprint.fun" className="footer-link text-sm inline-flex items-center gap-2" style={{ fontFamily: F.display }}>
+                    <a href="mailto:hello@axor.fun" className="footer-link text-sm inline-flex items-center gap-2" style={{ fontFamily: F.display }}>
                       <Mail className="w-4 h-4" />
-                      hello@bluprint.fun
+                      hello@axor.fun
                     </a>
                   </li>
                   <li className="text-xs text-white/30 inline-flex items-center gap-2" style={{ fontFamily: F.display }}>
@@ -134,7 +134,7 @@ export default function Footer() {
           {/* Bottom bar */}
           <div className="mt-12 pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-xs text-white/30" style={{ fontFamily: F.mono }}>
-              © {currentYear} BluPrint Protocol. All rights reserved.
+              © {currentYear} Axor Protocol. All rights reserved.
             </div>
             <div className="text-[10px] text-white/20" style={{ fontFamily: F.mono, letterSpacing: "0.08em" }}>
               SOLANA MAINNET · BONDING CURVE · ZERO ADMIN KEYS

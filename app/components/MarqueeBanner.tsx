@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef } from "react";
 
 const ITEMS = [
-  { icon: "◈", text: "BLUPRINT.FUN IS LIVE" },
+  { icon: "◈", text: "AXOR.FUN IS LIVE" },
   { icon: "◆", text: "TOTAL FEE ONLY 0.60% — LOWEST IN THE GAME" },
   { icon: "◈", text: "FIRST 100 USERS MINT FOR JUST 0.05 SOL" },
   { icon: "◆", text: "ADVANCED BONDING CURVE & METAPLEX GENESIS" },

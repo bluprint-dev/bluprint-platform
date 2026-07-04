@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,11 +8,11 @@ export async function POST(req: NextRequest) {
     const metadata = {
       name,
       symbol,
-      description: description || `${name} token on BluPrint`,
+      description: description || `${name} token on Axor`,
       image: imageUrl,
-      external_url: 'https://bluprint.fun',
+      external_url: 'https://axor.fun',
       attributes: [
-        { trait_type: 'Launchpad', value: 'BluPrint' },
+        { trait_type: 'Launchpad', value: 'Axor' },
         { trait_type: 'Bonding Curve', value: 'Metaplex Genesis' },
       ],
       properties: {

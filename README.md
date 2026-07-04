@@ -1,6 +1,6 @@
-# bluprint-platform
+﻿# Axor-platform
 🚀 Solana Meme Coin Launchpad | Create tokens in seconds | Secure Token (3 revokes) | Referral system | Live token list
-# 🚀 BluPrint - Solana Meme Coin Launchpad
+# 🚀 Axor - Solana Meme Coin Launchpad
 
 Launch your own Solana meme coin in seconds. No code. No friction. Just launch.
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Rocket } from "lucide-react";
@@ -6,9 +6,9 @@ import { Rocket } from "lucide-react";
 export default function AboutPage() {
   return (
     <div className="max-w-3xl mx-auto px-6 py-16">
-      <h1 className="text-4xl font-bold text-white mb-4">About BluPrint</h1>
+      <h1 className="text-4xl font-bold text-white mb-4">About Axor</h1>
       <p className="text-gray-400 leading-relaxed mb-8">
-        BluPrint is a fair-launch Solana meme coin launchpad. Create tokens in seconds,
+        Axor is a fair-launch Solana meme coin launchpad. Create tokens in seconds,
         trade instantly on bonding curves, and migrate to Raydium when the curve fills.
       </p>
       <Link

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 
@@ -210,7 +210,7 @@ export default function KolRewardsPage() {
   const totalRewardSol = MILESTONES.reduce((s, m) => s + m.reward, 0);
 
   const handleApply = () => {
-    window.open("https://x.com/BluprintFun", "_blank");
+    window.open("https://x.com/AxorFun", "_blank");
   };
 
   return (
@@ -323,13 +323,13 @@ export default function KolRewardsPage() {
         {/* ── HEADER ── */}
         <div style={{ marginBottom: 40, animation: "slideUp 0.5s ease both" }}>
           <p style={{ color: "#9945FF", fontSize: 12, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 8px" }}>
-            BluPrint
+            Axor
           </p>
           <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: "clamp(24px, 5vw, 38px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", lineHeight: 1.1 }}>
             KOL <span style={{ color: "#14F195" }} className="glow-text-green">Rewards</span>
           </h1>
           <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 15, margin: 0, maxWidth: 520 }}>
-            Grow with BluPrint. Reach follower milestones → earn SOL rewards. Up to <span style={{ color: "#14F195", fontWeight: 600 }}>{totalRewardSol} SOL</span> total available.
+            Grow with Axor. Reach follower milestones → earn SOL rewards. Up to <span style={{ color: "#14F195", fontWeight: 600 }}>{totalRewardSol} SOL</span> total available.
           </p>
         </div>
 
@@ -512,7 +512,7 @@ export default function KolRewardsPage() {
           </button>
 
           <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, margin: "16px 0 0" }}>
-            Clicking will open a pre-filled tweet to <span style={{ color: "rgba(153,69,255,0.6)" }}>@BluPrintFun</span>. Edit it before posting if you like.
+            Clicking will open a pre-filled tweet to <span style={{ color: "rgba(153,69,255,0.6)" }}>@AxorFun</span>. Edit it before posting if you like.
           </p>
         </div>
 
