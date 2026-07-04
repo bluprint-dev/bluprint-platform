@@ -148,6 +148,8 @@ const GLOBAL_STYLES = `
   @keyframes popIn   { from{transform:scale(0.85);opacity:0} to{transform:scale(1);opacity:1} }
   @keyframes float   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
   @keyframes bgRotate { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes netPing { 0%{transform:scale(1);opacity:0.8} 75%{transform:scale(2.6);opacity:0} 100%{transform:scale(1);opacity:0} }
+  @keyframes gridGlow { 0%,100%{opacity:0.15;transform:scale(1)} 50%{opacity:0.9;transform:scale(1.8)} }
   @keyframes glow    { 0%,100%{opacity:0.5} 50%{opacity:1} }
   @keyframes copyPop { from{transform:scale(0.92)} to{transform:scale(1)} }
 
@@ -313,6 +315,23 @@ function Background() {
         backgroundImage: "linear-gradient(rgba(212,175,122,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,122,0.03) 1px, transparent 1px)",
         backgroundSize: "60px 60px",
       }} />
+
+      {/* Grid uzerinde yavasca yanip sonen altin nokta isiklari - "canli ekosistem" hissi */}
+      {[
+        { top: "12%", left: "18%", delay: "0s",   dur: "6s" },
+        { top: "34%", left: "72%", delay: "1.4s", dur: "7s" },
+        { top: "62%", left: "40%", delay: "2.8s", dur: "5.5s" },
+        { top: "78%", left: "85%", delay: "0.8s", dur: "6.5s" },
+        { top: "48%", left: "8%",  delay: "3.6s", dur: "7.5s" },
+      ].map((p, i) => (
+        <div key={i} style={{
+          position: "absolute", top: p.top, left: p.left,
+          width: 4, height: 4, borderRadius: "50%",
+          background: "#D4AF7A",
+          boxShadow: "0 0 12px 3px rgba(212,175,122,0.6)",
+          animation: `gridGlow ${p.dur} ease-in-out ${p.delay} infinite`,
+        }} />
+      ))}
     </div>
   );
 }
@@ -482,7 +501,7 @@ function TradeRow({ trade, isNew }: { trade: Trade; isNew: boolean }) {
         gap: 8,
         fontFamily: "'Space Grotesk', sans-serif",
         background: isNew
-          ? trade.is_buy ? "rgba(232,201,137,0.03)" : "rgba(255,45,149,0.03)"
+          ? trade.is_buy ? "rgba(232,201,137,0.03)" : "rgba(184,147,94,0.03)"
           : "transparent",
         transition: "background 1.8s ease",
         animation: isNew ? "slideIn 0.3s cubic-bezier(0.16,1,0.3,1)" : undefined,
@@ -493,8 +512,8 @@ function TradeRow({ trade, isNew }: { trade: Trade; isNew: boolean }) {
       <div style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         padding: "4px 0", borderRadius: 6,
-        background: trade.is_buy ? "rgba(232,201,137,0.09)" : "rgba(255,45,149,0.09)",
-        border: `1px solid ${trade.is_buy ? "rgba(232,201,137,0.2)" : "rgba(255,45,149,0.2)"}`,
+        background: trade.is_buy ? "rgba(232,201,137,0.09)" : "rgba(184,147,94,0.09)",
+        border: `1px solid ${trade.is_buy ? "rgba(232,201,137,0.2)" : "rgba(184,147,94,0.2)"}`,
       }}>
         <span style={{
           fontSize: 9, fontWeight: 800,
@@ -940,7 +959,25 @@ function LiveTokensBlock({
 
   return (
     <BlockShell id="live" headerRight={headerRight} draggable={draggable}>
-      <div style={{ padding: 12 }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 7,
+        padding: "8px 14px", margin: "0 12px 10px", marginTop: 12,
+        borderRadius: 10,
+        background: "rgba(212,175,122,0.06)",
+        border: "1px solid rgba(212,175,122,0.14)",
+      }}>
+        <span style={{ position: "relative", display: "flex", width: 7, height: 7 }}>
+          <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#E8C989", animation: "netPing 1.6s ease-out infinite" }} />
+          <span style={{ position: "relative", width: 7, height: 7, borderRadius: "50%", background: "#E8C989", boxShadow: "0 0 6px #E8C989" }} />
+        </span>
+        <span style={{
+          fontFamily: "'Space Grotesk', sans-serif", fontSize: 10, fontWeight: 700,
+          letterSpacing: "0.08em", color: "#E8C989",
+        }}>
+          {tokens.length} TOKEN SU AN ISLEM GORUYOR
+        </span>
+      </div>
+      <div style={{ padding: "0 12px 12px" }}>
         <div style={{ position: "relative", marginBottom: 10 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,122,0.4)" strokeWidth={2.5} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}>
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />

@@ -10,27 +10,27 @@ body {
 
 /* ==================== SCROLLBAR ==================== */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0A0A0C;
-  border-radius: 20px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D4AF7A;
+  background: rgba(212, 175, 122, 0.25);
   border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #E8C989;
+  background: rgba(212, 175, 122, 0.5);
 }
 
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #D4AF7A #0A0A0C;
+  scrollbar-color: rgba(212, 175, 122, 0.25) transparent;
 }
 
 /* ==================== SELECTION ==================== */
