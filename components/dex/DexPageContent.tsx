@@ -3,19 +3,16 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Reorder } from "framer-motion";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Wallet as WalletIcon } from "lucide-react";
 // DexHeader kaldırıldı — yerine sade "Axor.fun" logosu kullanılıyor
 import TradePanel from "@/components/dex/TradePanel";
 import TradeChart from "@/components/dex/TradeChart";
-import BlockShell, { ClosedBlockChip } from "@/components/dex/BlockShell";
 import { useDexTokens } from "@/hooks/useDexTokens";
 import { useBondingCurveInfo } from "@/hooks/useBondingCurveInfo";
 import { useSwap } from "@/hooks/useSwap";
 import { useDexStore } from "@/store/dexStore";
-import { useDexLayoutStore, BlockId, BLOCK_META } from "@/store/dexLayoutStore";
 import { filterTokens } from "@/lib/dex/normalizeToken";
 import { useTrades } from "@/hooks/useTrades";
 import type { DexToken } from "@/types/dex";
@@ -370,6 +367,14 @@ function TokenAvatar({ token, size = 48 }: { token: DexToken; size?: number }) {
 function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean; onClick: () => void }) {
   const age = token.createdAt ? Date.now() - token.createdAt : null;
 
+  // Gercek canli mcap + bonding curve verisi (uydurma degil)
+  const genesisAccount = token.genesisAccount ?? token.mint;
+  const { data: curveInfo, isLoading: isLoadingCurve } = useBondingCurveInfo(genesisAccount);
+  const tokensPerSol = curveInfo?.price?.tokensPerSol ? Number(curveInfo.price.tokensPerSol) : null;
+  const mcapSol = tokensPerSol && tokensPerSol > 0 ? TOTAL_SUPPLY / tokensPerSol : null;
+  const fillPercent = Math.max(0, Math.min(curveInfo?.lifecycle?.fillPercent ?? 0, 100));
+  const isGraduated = curveInfo?.lifecycle?.isGraduated ?? false;
+
   return (
     <div
       className="token-card"
@@ -443,6 +448,34 @@ function TokenCard({ token, isNew, onClick }: { token: DexToken; isNew: boolean;
           fontFamily: "monospace",
         }}>
           {token.mint.slice(0, 6)}···{token.mint.slice(-4)}
+        </div>
+
+        {/* Gercek canli MC + bonding curve durumu */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 8 }}>
+          <div className="tabnum" style={{ fontSize: 13, fontWeight: 800, color: "#D4AF7A" }}>
+            {isLoadingCurve ? (
+              <span className="skeleton" style={{ display: "inline-block", width: 46, height: 13, borderRadius: 4, verticalAlign: "middle" }} />
+            ) : mcapSol !== null ? (
+              fmtMcap(mcapSol, SOL_PRICE_USD)
+            ) : (
+              <span style={{ color: "rgba(255,255,255,0.15)", fontWeight: 600, fontSize: 10 }}>MC —</span>
+            )}
+          </div>
+
+          {isGraduated ? (
+            <span style={{
+              fontSize: 8, fontWeight: 800, letterSpacing: "0.06em",
+              color: "#0A0A0C", background: "linear-gradient(135deg,#D4AF7A,#E8C989)",
+              padding: "2px 7px", borderRadius: 5,
+            }}>GRADUATED</span>
+          ) : !isLoadingCurve && curveInfo ? (
+            <div style={{ flex: 1, maxWidth: 70, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+              <div style={{
+                width: `${Math.max(fillPercent, 2)}%`, height: "100%", borderRadius: 2,
+                background: "linear-gradient(90deg,#B8935E,#D4AF7A)",
+              }} />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -954,314 +987,6 @@ function TokenTrade({ token, onBack, compact = true }: { token: DexToken; onBack
   );
 }
 
-// ─── BLOCK 1: LIVE TOKENS ──────────────────────────────────────────────────
-
-function LiveTokensBlock({
-  tokens, isLoading, search, searchInput, setSearchInput, setSearch,
-  newMints, onSelect, draggable = true,
-}: {
-  tokens: DexToken[]; isLoading: boolean; search: string;
-  searchInput: string; setSearchInput: (v: string) => void; setSearch: (v: string) => void;
-  newMints: Set<string>; onSelect: (t: DexToken) => void; draggable?: boolean;
-}) {
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-
-  const headerRight = (
-    <div style={{ display: "flex", gap: 4 }}>
-      <button
-        onClick={() => setViewMode("grid")}
-        title="Grid görünüm"
-        style={{
-          width: 22, height: 22, borderRadius: 6, cursor: "pointer",
-          border: "1px solid rgba(212,175,122,0.18)",
-          background: viewMode === "grid" ? "rgba(212,175,122,0.18)" : "transparent",
-          color: viewMode === "grid" ? "#D4AF7A" : "rgba(212,175,122,0.4)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" /><rect x="13" y="3" width="8" height="8" /><rect x="3" y="13" width="8" height="8" /><rect x="13" y="13" width="8" height="8" /></svg>
-      </button>
-      <button
-        onClick={() => setViewMode("list")}
-        title="Liste görünüm"
-        style={{
-          width: 22, height: 22, borderRadius: 6, cursor: "pointer",
-          border: "1px solid rgba(212,175,122,0.18)",
-          background: viewMode === "list" ? "rgba(212,175,122,0.18)" : "transparent",
-          color: viewMode === "list" ? "#D4AF7A" : "rgba(212,175,122,0.4)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
-      </button>
-    </div>
-  );
-
-  return (
-    <BlockShell id="live" headerRight={headerRight} draggable={draggable}>
-      <div style={{
-        display: "flex", alignItems: "center", gap: 7,
-        padding: "8px 14px", margin: "0 12px 10px", marginTop: 12,
-        borderRadius: 10,
-        background: "rgba(212,175,122,0.06)",
-        border: "1px solid rgba(212,175,122,0.14)",
-      }}>
-        <span style={{ position: "relative", display: "flex", width: 7, height: 7 }}>
-          <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#E8C989", animation: "netPing 1.6s ease-out infinite" }} />
-          <span style={{ position: "relative", width: 7, height: 7, borderRadius: "50%", background: "#E8C989", boxShadow: "0 0 6px #E8C989" }} />
-        </span>
-        <span style={{
-          fontFamily: "'Space Grotesk', sans-serif", fontSize: 10, fontWeight: 700,
-          letterSpacing: "0.08em", color: "#E8C989",
-        }}>
-          {tokens.length} TOKEN SU AN ISLEM GORUYOR
-        </span>
-      </div>
-      <div style={{ padding: "0 12px 12px" }}>
-        <div style={{ position: "relative", marginBottom: 10 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,122,0.4)" strokeWidth={2.5} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}>
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            className="dex-input"
-            value={searchInput}
-            onChange={e => { setSearchInput(e.target.value); setSearch(e.target.value); }}
-            placeholder="Search name, symbol, address..."
-            style={{ height: 38, fontSize: 12, padding: "9px 12px 9px 34px" }}
-          />
-        </div>
-
-        <div className="dex-scroll" style={{ maxHeight: 480, overflowY: "auto" }}>
-          {isLoading ? (
-            <div style={{ display: "grid", gridTemplateColumns: viewMode === "grid" ? "repeat(2, 1fr)" : "1fr", gap: 8 }}>
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="skeleton" style={{ height: viewMode === "grid" ? 110 : 52, borderRadius: 12, animationDelay: `${i * 0.06}s` }} />
-              ))}
-            </div>
-          ) : tokens.length === 0 ? (
-            <div style={{ padding: "40px 10px", textAlign: "center" }}>
-              <div style={{ fontSize: 26, opacity: 0.1, color: "#D4AF7A", marginBottom: 10 }}>◈</div>
-              <p style={{ color: "rgba(255,255,255,0.22)", fontSize: 12, margin: 0 }}>
-                {search ? `No tokens matching "${search}"` : "No tokens yet"}
-              </p>
-            </div>
-          ) : viewMode === "grid" ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {tokens.map((token, i) => (
-                <div key={token.mint} style={{ animation: `fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) ${Math.min(i * 0.03, 0.3)}s both` }}>
-                  <TokenCard token={token} isNew={newMints.has(token.mint)} onClick={() => onSelect(token)} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            tokens.map(token => (
-              <TokenListRow key={token.mint} token={token} isNew={newMints.has(token.mint)} onClick={() => onSelect(token)} />
-            ))
-          )}
-        </div>
-      </div>
-    </BlockShell>
-  );
-}
-
-// ─── BLOCK 2: CREATE TOKEN (default kart, morph → trade ekranı) ────────────
-
-function CreateTokenBlock({ selectedToken, onBack, draggable = true }: { selectedToken: DexToken | null; onBack: () => void; draggable?: boolean }) {
-  if (selectedToken) {
-    return (
-      <BlockShell id="create" draggable={draggable}>
-        <TokenTrade token={selectedToken} onBack={onBack} compact />
-      </BlockShell>
-    );
-  }
-
-  return (
-    <BlockShell id="create" draggable={draggable}>
-      <div style={{ padding: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 320, textAlign: "center" }}>
-        <div style={{
-          width: 56, height: 56, borderRadius: 16, marginBottom: 16,
-          background: "linear-gradient(135deg, rgba(212,175,122,0.18), rgba(232,201,137,0.1))",
-          border: "1px solid rgba(212,175,122,0.25)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 26, color: "#D4AF7A",
-        }}>＋</div>
-        <h3 style={{ margin: "0 0 8px", color: "#EDEBE6", fontSize: 15, fontWeight: 800 }}>Launch a Token</h3>
-        <p style={{ margin: "0 0 20px", color: "rgba(255,255,255,0.35)", fontSize: 12, maxWidth: 240, lineHeight: 1.6 }}>
-          Name, symbol, supply ve bonding curve seçimini içeren tam launch formu ayrı sayfada.
-        </p>
-        <Link
-          href="/create"
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            padding: "11px 22px", borderRadius: 12,
-            background: "linear-gradient(135deg, #D4AF7A, #7b2ff7)",
-            color: "#EDEBE6", fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: 12, fontWeight: 800, letterSpacing: "0.04em",
-            textDecoration: "none", boxShadow: "0 4px 20px rgba(212,175,122,0.35)",
-          }}
-        >
-          CREATE TOKEN →
-        </Link>
-        <p style={{ marginTop: 18, color: "rgba(255,255,255,0.2)", fontSize: 10 }}>
-          veya soldaki/sağdaki listeden bir token seçip anında trade et
-        </p>
-      </div>
-    </BlockShell>
-  );
-}
-
-// ─── BLOCK 3: TRENDING ─────────────────────────────────────────────────────
-
-function TrendingBlock({ tokens, onSelect, draggable = true }: { tokens: DexToken[]; onSelect: (t: DexToken) => void; draggable?: boolean }) {
-  // Not: gerçek hacim verisi ayrı bir hook'tan gelmiyorsa şimdilik en yeni tokenlara göre sıralanır.
-  const trending = useMemo(() => {
-    return [...tokens]
-      .sort((a: any, b: any) => (b.volume24hSol ?? b.createdAt ?? 0) - (a.volume24hSol ?? a.createdAt ?? 0))
-      .slice(0, 15);
-  }, [tokens]);
-
-  return (
-    <BlockShell id="trending" draggable={draggable}>
-      <div className="dex-scroll" style={{ padding: 10, maxHeight: 560, overflowY: "auto" }}>
-        {trending.length === 0 ? (
-          <div style={{ padding: "40px 10px", textAlign: "center", color: "rgba(255,255,255,0.22)", fontSize: 12 }}>
-            No trending tokens yet
-          </div>
-        ) : (
-          trending.map((token, i) => (
-            <div
-              key={token.mint}
-              className="trend-row"
-              onClick={() => onSelect(token)}
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 10px", borderRadius: 10, marginBottom: 4,
-              }}
-            >
-              <span style={{ width: 16, fontSize: 10, color: "rgba(212,175,122,0.4)", fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
-              <TokenAvatar token={token} size={30} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: "#EDEBE6", fontWeight: 700, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{token.name}</span>
-                  <span style={{ color: "#E8C989", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>${token.symbol}</span>
-                </div>
-              </div>
-
-              {/* Hover'da chart preview */}
-              <div className="trend-preview glass" style={{ overflow: "hidden" }}>
-                <TradeChart mint={token.mint} trades={[]} />
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </BlockShell>
-  );
-}
-
-// ─── MAIN ──────────────────────────────────────────────────────────────────
-
-// --- MOBILE BLOCK CAROUSEL --------------------------------------------------
-// Mobilde 3 blok yan yana sigmadigi icin tek seferde bir blok gosterilir.
-// Ok butonlari veya parmakla kaydirarak (swipe) bloklar arasi gecis yapilir.
-
-function MobileBlockCarousel({
-  visibleOrder,
-  blockContent,
-  mobileIndex,
-  setMobileIndex,
-}: {
-  visibleOrder: BlockId[];
-  blockContent: Record<BlockId, React.ReactNode>;
-  mobileIndex: number;
-  setMobileIndex: (i: number) => void;
-}) {
-  const touchStartX = useRef<number | null>(null);
-  const clampedIndex = Math.min(mobileIndex, Math.max(visibleOrder.length - 1, 0));
-  const activeId = visibleOrder[clampedIndex];
-
-  const goTo = (i: number) => {
-    if (i < 0 || i >= visibleOrder.length) return;
-    setMobileIndex(i);
-  };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const delta = e.changedTouches[0].clientX - touchStartX.current;
-    const SWIPE_THRESHOLD = 50;
-    if (delta > SWIPE_THRESHOLD) goTo(clampedIndex - 1);
-    else if (delta < -SWIPE_THRESHOLD) goTo(clampedIndex + 1);
-    touchStartX.current = null;
-  };
-
-  if (visibleOrder.length === 0 || !activeId) return null;
-
-  return (
-    <div>
-      {/* Ust navigasyon: geri / ileri + nokta gostergesi */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <button
-          onClick={() => goTo(clampedIndex - 1)}
-          disabled={clampedIndex === 0}
-          aria-label="Onceki blok"
-          style={{
-            width: 34, height: 34, borderRadius: 10,
-            border: "1px solid rgba(212,175,122,0.22)",
-            background: "rgba(212,175,122,0.06)",
-            color: clampedIndex === 0 ? "rgba(212,175,122,0.25)" : "#D4AF7A",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: clampedIndex === 0 ? "default" : "pointer",
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
-        </button>
-
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          {visibleOrder.map((id, i) => (
-            <button
-              key={id}
-              onClick={() => goTo(i)}
-              aria-label={`${BLOCK_META[id].title} bloguna git`}
-              style={{
-                width: i === clampedIndex ? 20 : 7, height: 7, borderRadius: 4,
-                border: "none", cursor: "pointer", padding: 0,
-                background: i === clampedIndex ? "#D4AF7A" : "rgba(212,175,122,0.25)",
-                transition: "width 0.2s ease, background 0.2s ease",
-              }}
-            />
-          ))}
-        </div>
-
-        <button
-          onClick={() => goTo(clampedIndex + 1)}
-          disabled={clampedIndex === visibleOrder.length - 1}
-          aria-label="Sonraki blok"
-          style={{
-            width: 34, height: 34, borderRadius: 10,
-            border: "1px solid rgba(212,175,122,0.22)",
-            background: "rgba(212,175,122,0.06)",
-            color: clampedIndex === visibleOrder.length - 1 ? "rgba(212,175,122,0.25)" : "#D4AF7A",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: clampedIndex === visibleOrder.length - 1 ? "default" : "pointer",
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="9 18 15 12 9 6" /></svg>
-        </button>
-      </div>
-
-      {/* Aktif blok, swipe destekli */}
-      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ display: "flex" }}>
-        <div key={activeId} style={{ width: "100%", animation: "fadeUp 0.25s cubic-bezier(0.16,1,0.3,1)" }}>
-          {blockContent[activeId]}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // --- WALLET BUTTON ------------------------------------------------------------
 // Sag ustte gosterilen cam/sampanya temali cuzdan baglama butonu.
 // Bagli degilken tiklaninca wallet-adapter modal'ini acar, bagliyken kisaltilmis
@@ -1359,18 +1084,22 @@ export default function DexPageContent() {
   const searchParams  = useSearchParams();
   const mintFromUrl   = searchParams.get("mint");
   const [searchInput, setSearchInput] = useState("");
+  const [sortMode, setSortMode] = useState<"new" | "old">("new");
   const [newMints, setNewMints]       = useState<Set<string>>(new Set());
   const prevMintsRef                  = useRef<Set<string>>(new Set());
 
   const { search, selectedMint, setSearch, selectToken, resetTrade } = useDexStore();
-  const { tokens, isLoading }                                          = useDexTokens();
-
-  const { order, closed, setOrder, mobileIndex, setMobileIndex } = useDexLayoutStore();
+  const { tokens, isLoading }                                        = useDexTokens();
 
   const filteredTokens = useMemo(() => {
     const base = filterTokens(tokens, search);
-    return [...base].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, 50);
-  }, [tokens, search]);
+    const sorted = [...base].sort((a, b) =>
+      sortMode === "new"
+        ? (b.createdAt ?? 0) - (a.createdAt ?? 0)
+        : (a.createdAt ?? 0) - (b.createdAt ?? 0)
+    );
+    return sorted.slice(0, 60);
+  }, [tokens, search, sortMode]);
 
   useEffect(() => {
     const currentMints = new Set(filteredTokens.map(t => t.mint));
@@ -1406,45 +1135,6 @@ export default function DexPageContent() {
     resetTrade();
   };
 
-  const closedIds = (Object.keys(closed) as BlockId[]).filter(id => closed[id]);
-  const visibleOrder = order.filter(id => !closed[id]);
-
-  const desktopBlockContent: Record<BlockId, React.ReactNode> = {
-    live: (
-      <LiveTokensBlock
-        tokens={filteredTokens}
-        isLoading={isLoading}
-        search={search}
-        searchInput={searchInput}
-        setSearchInput={setSearchInput}
-        setSearch={setSearch}
-        newMints={newMints}
-        onSelect={handleSelect}
-        draggable
-      />
-    ),
-    create: <CreateTokenBlock selectedToken={selectedToken} onBack={handleBack} draggable />,
-    trending: <TrendingBlock tokens={tokens} onSelect={handleSelect} draggable />,
-  };
-
-  const mobileBlockContent: Record<BlockId, React.ReactNode> = {
-    live: (
-      <LiveTokensBlock
-        tokens={filteredTokens}
-        isLoading={isLoading}
-        search={search}
-        searchInput={searchInput}
-        setSearchInput={setSearchInput}
-        setSearch={setSearch}
-        newMints={newMints}
-        onSelect={handleSelect}
-        draggable={false}
-      />
-    ),
-    create: <CreateTokenBlock selectedToken={selectedToken} onBack={handleBack} draggable={false} />,
-    trending: <TrendingBlock tokens={tokens} onSelect={handleSelect} draggable={false} />,
-  };
-
   return (
     <div style={{ minHeight: "100vh", background: "#0A0A0C", color: "#EDEBE6", fontFamily: "'Space Grotesk', sans-serif" }}>
       <style>{GLOBAL_STYLES}</style>
@@ -1452,18 +1142,8 @@ export default function DexPageContent() {
       <div className="grain-overlay" />
 
       <div style={{ position: "relative", zIndex: 1 }}>
-        {/* Ust bar: solda parlayan Axor.fun logosu, sagda cuzdan baglama butonu */}
         <div style={{ padding: "20px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div
-            className="glass"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 16px",
-              borderRadius: 999,
-            }}
-          >
+          <div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 999 }}>
             <span style={{
               width: 7, height: 7, borderRadius: "50%",
               background: "#D4AF7A",
@@ -1478,44 +1158,80 @@ export default function DexPageContent() {
 
         <div className="page-pad" style={{ maxWidth: 1400, margin: "0 auto", padding: "12px 20px 80px" }}>
 
-          {/* Kapatılmış blok çipleri */}
-          {closedIds.length > 0 && (
-            <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-              {closedIds.map(id => <ClosedBlockChip key={id} id={id} />)}
+          {selectedToken ? (
+            <div className="glass" style={{ borderRadius: 20, overflow: "hidden", animation: "fadeUp 0.35s cubic-bezier(0.16,1,0.3,1)" }}>
+              <TokenTrade token={selectedToken} onBack={handleBack} compact={false} />
             </div>
-          )}
+          ) : (
+            <>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                padding: "8px 14px", marginBottom: 16,
+                borderRadius: 10, background: "rgba(212,175,122,0.06)", border: "1px solid rgba(212,175,122,0.14)",
+              }}>
+                <span style={{ position: "relative", display: "flex", width: 7, height: 7 }}>
+                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#E8C989", animation: "netPing 1.6s ease-out infinite" }} />
+                  <span style={{ position: "relative", width: 7, height: 7, borderRadius: "50%", background: "#E8C989", boxShadow: "0 0 6px #E8C989" }} />
+                </span>
+                <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#E8C989" }}>
+                  {filteredTokens.length} TOKEN SU AN LISTEDE
+                </span>
+              </div>
 
-          {/* 3 blok — masaustu: surukle-birak yan yana */}
-          <div className="dex-blocks-desktop">
-            <Reorder.Group
-              as="div"
-              axis="x"
-              values={visibleOrder}
-              onReorder={(newVisible) => {
-                // gizli (closed) blokların sırasını koru, sadece görünenleri güncelle
-                const merged = [...newVisible, ...order.filter(id => closed[id])];
-                setOrder(merged as BlockId[]);
-              }}
-              className="dex-blocks"
-              style={{ display: "flex", gap: 16, alignItems: "flex-start", listStyle: "none", padding: 0, margin: 0 }}
-            >
-              {visibleOrder.map(id => (
-                <div key={id} style={{ display: "contents" }}>
-                  {desktopBlockContent[id]}
+              <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ position: "relative", flex: "1 1 260px", minWidth: 220 }}>
+                  <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(212,175,122,0.4)", fontSize: 13, zIndex: 1 }}>{'\u2315'}</span>
+                  <input
+                    className="dex-input"
+                    placeholder="Token adi veya sembol ara..."
+                    value={searchInput}
+                    onChange={(e) => { setSearchInput(e.target.value); setSearch(e.target.value); }}
+                  />
                 </div>
-              ))}
-            </Reorder.Group>
-          </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {(["new", "old"] as const).map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => setSortMode(mode)}
+                      style={{
+                        padding: "10px 16px", borderRadius: 12,
+                        border: `1px solid rgba(212,175,122,${sortMode === mode ? 0.5 : 0.16})`,
+                        background: sortMode === mode ? "rgba(212,175,122,0.14)" : "rgba(255,255,255,0.02)",
+                        color: sortMode === mode ? "#D4AF7A" : "rgba(255,255,255,0.4)",
+                        fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 700,
+                        letterSpacing: "0.06em", cursor: "pointer", whiteSpace: "nowrap",
+                      }}
+                    >
+                      {mode === "new" ? "NEW" : "OLDEST"}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {/* 3 blok — mobil: tek blok + ok/swipe ile gecis */}
-          <div className="dex-blocks-mobile">
-            <MobileBlockCarousel
-              visibleOrder={visibleOrder}
-              blockContent={mobileBlockContent}
-              mobileIndex={mobileIndex}
-              setMobileIndex={setMobileIndex}
-            />
-          </div>
+              {isLoading ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+                  {[...Array(12)].map((_, i) => (
+                    <div key={i} className="skeleton" style={{ height: 220, borderRadius: 16, animationDelay: `${i * 0.05}s` }} />
+                  ))}
+                </div>
+              ) : filteredTokens.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 20px", color: "rgba(255,255,255,0.25)" }}>
+                  Token bulunamadi
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+                  {filteredTokens.map(token => (
+                    <TokenCard
+                      key={token.mint}
+                      token={token}
+                      isNew={newMints.has(token.mint)}
+                      onClick={() => handleSelect(token)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
         </div>
       </div>
