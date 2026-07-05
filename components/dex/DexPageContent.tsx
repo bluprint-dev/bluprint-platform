@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -137,6 +137,12 @@ const GLOBAL_STYLES = `
   .dex-scroll::-webkit-scrollbar-track { background: transparent; }
   .dex-scroll::-webkit-scrollbar-thumb { background: rgba(212,175,122,0.2); border-radius: 2px; }
 
+  .trending-scroll::-webkit-scrollbar { height: 4px; }
+  .trending-scroll::-webkit-scrollbar-track { background: transparent; }
+  .trending-scroll::-webkit-scrollbar-thumb { background: rgba(212,175,122,0.2); border-radius: 2px; }
+
+  .explore-table-row:hover { background: rgba(212,175,122,0.045); }
+
   @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.35} }
   @keyframes fadeUp  { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
@@ -270,6 +276,7 @@ const GLOBAL_STYLES = `
     .stat-chip { padding: 0 10px !important; }
     .page-pad  { padding: 20px 14px 80px !important; }
     .back-btn-label { display: none !important; }
+    .trending-scroll > div { min-width: 150px !important; }
   }
 `;
 
@@ -1080,26 +1087,300 @@ function WalletButton() {
   );
 }
 
+// ─── TRENDING / FILTER CONSTANTS ───────────────────────────────────────────
+
+const TRENDING_MCAP_THRESHOLD_USD = 100_000;
+const CATEGORIES = ["All", "Charity", "Agents", "Movers", "Mayhem"] as const;
+type Category = (typeof CATEGORIES)[number];
+
+// ─── MCAP PROBE ─────────────────────────────────────────────────────────────
+// Gorunmez yardimci bilesen: her token icin gercek mcap/graduated verisini
+// (useBondingCurveInfo uzerinden) ceker ve parent'a bildirir. TokenCard zaten
+// ayni hook'u kendi icinde de cagiriyor; ikisi ayni genesisAccount key'ini
+// kullandigi icin React Query cache'i paylasilir, ekstra network istegi olmaz.
+// Bu sayede Trending/Filter icin "gercek veri, uydurma yok" kurali korunur.
+
+function McapProbe({
+  token,
+  onUpdate,
+}: {
+  token: DexToken;
+  onUpdate: (mint: string, data: { mcapSol: number | null; isGraduated: boolean }) => void;
+}) {
+  const genesisAccount = token.genesisAccount ?? token.mint;
+  const { data: curveInfo } = useBondingCurveInfo(genesisAccount);
+  const tokensPerSol = curveInfo?.price?.tokensPerSol ? Number(curveInfo.price.tokensPerSol) : null;
+  const mcapSol = tokensPerSol && tokensPerSol > 0 ? TOTAL_SUPPLY / tokensPerSol : null;
+  const isGraduated = !!curveInfo?.lifecycle?.isGraduated;
+
+  useEffect(() => {
+    onUpdate(token.mint, { mcapSol, isGraduated });
+    // onUpdate bilerek dependency'den haric tutuldu; parent useCallback ile
+    // referansini sabit tutuyor, aksi halde sonsuz dongu olusabilir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token.mint, mcapSol, isGraduated]);
+
+  return null;
+}
+
+// ─── MCAP FILTER POPOVER ────────────────────────────────────────────────────
+
+function McapFilterPopover({
+  minMcap,
+  maxMcap,
+  onApply,
+  onReset,
+}: {
+  minMcap: number | null;
+  maxMcap: number | null;
+  onApply: (min: number | null, max: number | null) => void;
+  onReset: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [minInput, setMinInput] = useState(minMcap !== null ? String(minMcap) : "");
+  const [maxInput, setMaxInput] = useState(maxMcap !== null ? String(maxMcap) : "");
+  const active = minMcap !== null || maxMcap !== null;
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="glass"
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "10px 14px", borderRadius: 12, cursor: "pointer",
+          color: active ? "#D4AF7A" : "rgba(255,255,255,0.5)",
+          fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 700,
+          border: active ? "1px solid rgba(212,175,122,0.5)" : "1px solid transparent",
+          whiteSpace: "nowrap",
+        }}
+      >
+        ⚙ Filter
+        {active && (
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#D4AF7A", boxShadow: "0 0 6px #D4AF7A" }} />
+        )}
+      </button>
+
+      {open && (
+        <div
+          className="glass"
+          style={{
+            position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60,
+            padding: 16, width: 240, animation: "fadeUp 0.18s cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: "rgba(212,175,122,0.5)", marginBottom: 10 }}>
+            MARKET CAP (USD)
+          </div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <input
+              className="dex-input"
+              style={{ padding: "9px 10px", fontSize: 12 }}
+              placeholder="Min"
+              inputMode="numeric"
+              value={minInput}
+              onChange={e => setMinInput(e.target.value.replace(/[^0-9]/g, ""))}
+            />
+            <input
+              className="dex-input"
+              style={{ padding: "9px 10px", fontSize: 12 }}
+              placeholder="Max"
+              inputMode="numeric"
+              value={maxInput}
+              onChange={e => setMaxInput(e.target.value.replace(/[^0-9]/g, ""))}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => { onReset(); setMinInput(""); setMaxInput(""); setOpen(false); }}
+              style={{
+                flex: 1, padding: "8px 0", borderRadius: 9, cursor: "pointer",
+                border: "1px solid rgba(255,255,255,0.1)", background: "transparent",
+                color: "rgba(255,255,255,0.4)", fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 11, fontWeight: 700,
+              }}
+            >Reset</button>
+            <button
+              onClick={() => {
+                onApply(minInput ? Number(minInput) : null, maxInput ? Number(maxInput) : null);
+                setOpen(false);
+              }}
+              style={{
+                flex: 1, padding: "8px 0", borderRadius: 9, cursor: "pointer", border: "none",
+                background: "linear-gradient(135deg,#B8935E,#D4AF7A)", color: "#0A0A0C",
+                fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 800,
+              }}
+            >Apply</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CATEGORY TABS ──────────────────────────────────────────────────────────
+// NOT: DexToken tipinde henuz bir `category` alani yok (backend ihtiyaclari
+// listesinde belirtilmisti). Backend eklenene kadar "All" disindaki sekmeler
+// bos liste gosterecek — UI hazir, veri geldiginde otomatik calisir.
+
+function CategoryTabs({ active, onChange }: { active: Category; onChange: (c: Category) => void }) {
+  return (
+    <div style={{ display: "flex", gap: 6, overflowX: "auto" }}>
+      {CATEGORIES.map(cat => (
+        <button
+          key={cat}
+          onClick={() => onChange(cat)}
+          style={{
+            padding: "9px 14px", borderRadius: 12, whiteSpace: "nowrap", cursor: "pointer",
+            border: `1px solid rgba(212,175,122,${active === cat ? 0.5 : 0.14})`,
+            background: active === cat ? "rgba(212,175,122,0.14)" : "rgba(255,255,255,0.02)",
+            color: active === cat ? "#D4AF7A" : "rgba(255,255,255,0.4)",
+            fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 700,
+          }}
+        >
+          {cat}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── TOKEN TABLE ROW (table view for Explore Coins) ────────────────────────
+
+function TokenTableRow({ token, onClick }: { token: DexToken; onClick: () => void }) {
+  const age = token.createdAt ? Date.now() - token.createdAt : null;
+  const genesisAccount = token.genesisAccount ?? token.mint;
+  const { data: curveInfo, isLoading } = useBondingCurveInfo(genesisAccount);
+  const tokensPerSol = curveInfo?.price?.tokensPerSol ? Number(curveInfo.price.tokensPerSol) : null;
+  const mcapSol = tokensPerSol && tokensPerSol > 0 ? TOTAL_SUPPLY / tokensPerSol : null;
+  const isGraduated = !!curveInfo?.lifecycle?.isGraduated;
+  const fillPercent = Math.max(0, Math.min(curveInfo?.lifecycle?.fillPercent ?? 0, 100));
+
+  return (
+    <div
+      className="explore-table-row"
+      onClick={onClick}
+      style={{
+        display: "grid", gridTemplateColumns: "1fr 110px 100px 60px",
+        alignItems: "center", gap: 10, padding: "10px 16px", cursor: "pointer",
+        borderBottom: "1px solid rgba(212,175,122,0.05)", transition: "background 0.15s",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        <TokenAvatar token={token} size={30} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ color: "#EDEBE6", fontWeight: 700, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {token.name}
+            </span>
+            <span style={{ color: "#E8C989", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>${token.symbol}</span>
+          </div>
+          <div style={{ color: "rgba(255,255,255,0.18)", fontSize: 9, fontFamily: "monospace" }}>
+            {token.mint.slice(0, 6)}···{token.mint.slice(-4)}
+          </div>
+        </div>
+      </div>
+
+      <div className="tabnum" style={{ fontSize: 12, fontWeight: 700, color: "#D4AF7A" }}>
+        {isLoading ? (
+          <span className="skeleton" style={{ display: "inline-block", width: 44, height: 12, borderRadius: 4 }} />
+        ) : mcapSol !== null ? (
+          fmtMcap(mcapSol, SOL_PRICE_USD)
+        ) : (
+          <span style={{ color: "rgba(255,255,255,0.15)", fontWeight: 600, fontSize: 10 }}>—</span>
+        )}
+      </div>
+
+      <div>
+        {isGraduated ? (
+          <span style={{
+            fontSize: 8, fontWeight: 800, letterSpacing: "0.04em", color: "#0A0A0C",
+            background: "linear-gradient(135deg,#D4AF7A,#E8C989)", padding: "2px 7px", borderRadius: 5,
+          }}>GRADUATED</span>
+        ) : !isLoading && curveInfo ? (
+          <div style={{ width: 60, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+            <div style={{ width: `${Math.max(fillPercent, 2)}%`, height: "100%", borderRadius: 2, background: "linear-gradient(90deg,#B8935E,#D4AF7A)" }} />
+          </div>
+        ) : (
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.15)" }}>—</span>
+        )}
+      </div>
+
+      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textAlign: "right" }}>
+        {age !== null ? fmtAge(age) : "—"}
+      </div>
+    </div>
+  );
+}
+
 export default function DexPageContent() {
   const searchParams  = useSearchParams();
   const mintFromUrl   = searchParams.get("mint");
   const [searchInput, setSearchInput] = useState("");
   const [sortMode, setSortMode] = useState<"new" | "old">("new");
+  const [category, setCategory] = useState<Category>("All");
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [mcapMin, setMcapMin] = useState<number | null>(null);
+  const [mcapMax, setMcapMax] = useState<number | null>(null);
   const [newMints, setNewMints]       = useState<Set<string>>(new Set());
   const prevMintsRef                  = useRef<Set<string>>(new Set());
+  const [mcapMap, setMcapMap] = useState<Map<string, { mcapSol: number | null; isGraduated: boolean }>>(new Map());
 
   const { search, selectedMint, setSearch, selectToken, resetTrade } = useDexStore();
   const { tokens, isLoading }                                        = useDexTokens();
 
+  const handleMcapUpdate = useCallback((mint: string, data: { mcapSol: number | null; isGraduated: boolean }) => {
+    setMcapMap(prev => {
+      const existing = prev.get(mint);
+      if (existing && existing.mcapSol === data.mcapSol && existing.isGraduated === data.isGraduated) return prev;
+      const next = new Map(prev);
+      next.set(mint, data);
+      return next;
+    });
+  }, []);
+
+  // Arama + kategori filtresi (mcap filtresinden once, cunku Trending de bunun uzerine kurulu)
+  const baseFiltered = useMemo(() => {
+    let base = filterTokens(tokens, search);
+    if (category !== "All") {
+      base = base.filter(t => (t as any).category === category);
+    }
+    return base;
+  }, [tokens, search, category]);
+
+  // Explore Coins listesi: + mcap min/max filtresi + siralama
   const filteredTokens = useMemo(() => {
-    const base = filterTokens(tokens, search);
-    const sorted = [...base].sort((a, b) =>
+    let list = baseFiltered;
+    if (mcapMin !== null || mcapMax !== null) {
+      list = list.filter(t => {
+        const info = mcapMap.get(t.mint);
+        if (!info || info.mcapSol === null) return false;
+        const usd = info.mcapSol * SOL_PRICE_USD;
+        if (mcapMin !== null && usd < mcapMin) return false;
+        if (mcapMax !== null && usd > mcapMax) return false;
+        return true;
+      });
+    }
+    const sorted = [...list].sort((a, b) =>
       sortMode === "new"
         ? (b.createdAt ?? 0) - (a.createdAt ?? 0)
         : (a.createdAt ?? 0) - (b.createdAt ?? 0)
     );
     return sorted.slice(0, 60);
-  }, [tokens, search, sortMode]);
+  }, [baseFiltered, sortMode, mcapMin, mcapMax, mcapMap]);
+
+  // Trending Coins: gercek mcap >= $100K olanlar, mcap'e gore siralanmis
+  const trendingTokens = useMemo(() => {
+    return baseFiltered
+      .map(t => ({ t, info: mcapMap.get(t.mint) }))
+      .filter(
+        (x): x is { t: DexToken; info: { mcapSol: number; isGraduated: boolean } } =>
+          !!x.info && x.info.mcapSol !== null && x.info.mcapSol * SOL_PRICE_USD >= TRENDING_MCAP_THRESHOLD_USD
+      )
+      .sort((a, b) => b.info.mcapSol - a.info.mcapSol)
+      .map(x => x.t)
+      .slice(0, 20);
+  }, [baseFiltered, mcapMap]);
 
   useEffect(() => {
     const currentMints = new Set(filteredTokens.map(t => t.mint));
@@ -1141,6 +1422,9 @@ export default function DexPageContent() {
       <Background />
       <div className="grain-overlay" />
 
+      {/* Gorunmez mcap probe'lari: Trending esigi ve mcap filtresi icin gercek veriyi toplar */}
+      {baseFiltered.map(t => <McapProbe key={t.mint} token={t} onUpdate={handleMcapUpdate} />)}
+
       <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ padding: "20px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 999 }}>
@@ -1166,7 +1450,7 @@ export default function DexPageContent() {
             <>
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: 7,
-                padding: "8px 14px", marginBottom: 16,
+                padding: "8px 14px", marginBottom: 20,
                 borderRadius: 10, background: "rgba(212,175,122,0.06)", border: "1px solid rgba(212,175,122,0.14)",
               }}>
                 <span style={{ position: "relative", display: "flex", width: 7, height: 7 }}>
@@ -1174,20 +1458,52 @@ export default function DexPageContent() {
                   <span style={{ position: "relative", width: 7, height: 7, borderRadius: "50%", background: "#E8C989", boxShadow: "0 0 6px #E8C989" }} />
                 </span>
                 <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#E8C989" }}>
-                  {filteredTokens.length} TOKEN SU AN LISTEDE
+                  {tokens.length} TOKENS LIVE
                 </span>
               </div>
 
-              <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+              {/* ── TRENDING COINS ─────────────────────────────────────── */}
+              {trendingTokens.length > 0 && (
+                <div style={{ marginBottom: 28 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                    <span style={{ fontSize: 15 }}>🔥</span>
+                    <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 800, letterSpacing: "0.03em", color: "#EDEBE6" }}>
+                      Trending Coins
+                    </span>
+                    <span style={{ fontSize: 9, color: "rgba(212,175,122,0.4)", fontWeight: 700, letterSpacing: "0.04em" }}>
+                      MCAP ≥ $100K
+                    </span>
+                  </div>
+                  <div className="trending-scroll dex-scroll" style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
+                    {trendingTokens.map(token => (
+                      <div key={token.mint} style={{ minWidth: 190, flexShrink: 0 }}>
+                        <TokenCard
+                          token={token}
+                          isNew={newMints.has(token.mint)}
+                          onClick={() => handleSelect(token)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── EXPLORE COINS ──────────────────────────────────────── */}
+              <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 800, letterSpacing: "0.03em", color: "#EDEBE6", marginBottom: 12 }}>
+                Explore Coins
+              </div>
+
+              <div className="search-row" style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
                 <div style={{ position: "relative", flex: "1 1 260px", minWidth: 220 }}>
                   <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(212,175,122,0.4)", fontSize: 13, zIndex: 1 }}>{'\u2315'}</span>
                   <input
                     className="dex-input"
-                    placeholder="Token adi veya sembol ara..."
+                    placeholder="Search by name or symbol..."
                     value={searchInput}
                     onChange={(e) => { setSearchInput(e.target.value); setSearch(e.target.value); }}
                   />
                 </div>
+
                 <div style={{ display: "flex", gap: 6 }}>
                   {(["new", "old"] as const).map(mode => (
                     <button
@@ -1202,10 +1518,38 @@ export default function DexPageContent() {
                         letterSpacing: "0.06em", cursor: "pointer", whiteSpace: "nowrap",
                       }}
                     >
-                      {mode === "new" ? "NEW" : "OLDEST"}
+                      {mode === "new" ? "NEWEST" : "OLDEST"}
                     </button>
                   ))}
                 </div>
+
+                <McapFilterPopover
+                  minMcap={mcapMin}
+                  maxMcap={mcapMax}
+                  onApply={(min, max) => { setMcapMin(min); setMcapMax(max); }}
+                  onReset={() => { setMcapMin(null); setMcapMax(null); }}
+                />
+
+                <div style={{ display: "flex", gap: 2, background: "rgba(255,255,255,0.03)", borderRadius: 12, padding: 3, border: "1px solid rgba(212,175,122,0.14)" }}>
+                  {(["grid", "table"] as const).map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => setViewMode(mode)}
+                      title={mode === "grid" ? "Grid view" : "Table view"}
+                      style={{
+                        padding: "7px 11px", borderRadius: 9, border: "none", cursor: "pointer",
+                        background: viewMode === mode ? "rgba(212,175,122,0.2)" : "transparent",
+                        color: viewMode === mode ? "#D4AF7A" : "rgba(255,255,255,0.3)", fontSize: 13,
+                      }}
+                    >
+                      {mode === "grid" ? "▦" : "☰"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 18 }}>
+                <CategoryTabs active={category} onChange={setCategory} />
               </div>
 
               {isLoading ? (
@@ -1216,10 +1560,10 @@ export default function DexPageContent() {
                 </div>
               ) : filteredTokens.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "60px 20px", color: "rgba(255,255,255,0.25)" }}>
-                  Token bulunamadi
+                  No tokens found
                 </div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+              ) : viewMode === "grid" ? (
+                <div className="token-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
                   {filteredTokens.map(token => (
                     <TokenCard
                       key={token.mint}
@@ -1227,6 +1571,20 @@ export default function DexPageContent() {
                       isNew={newMints.has(token.mint)}
                       onClick={() => handleSelect(token)}
                     />
+                  ))}
+                </div>
+              ) : (
+                <div className="glass" style={{ borderRadius: 16, overflow: "hidden" }}>
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "1fr 110px 100px 60px",
+                    padding: "10px 16px", borderBottom: "1px solid rgba(212,175,122,0.1)",
+                  }}>
+                    {["COIN", "MCAP", "STATUS", "AGE"].map(h => (
+                      <span key={h} style={{ color: "rgba(212,175,122,0.35)", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em" }}>{h}</span>
+                    ))}
+                  </div>
+                  {filteredTokens.map(token => (
+                    <TokenTableRow key={token.mint} token={token} onClick={() => handleSelect(token)} />
                   ))}
                 </div>
               )}
