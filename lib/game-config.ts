@@ -22,8 +22,6 @@ export const GAME_CONFIGS: Record<GameId, GameConfig> = {
   },
   flappy_bird: {
     id: "flappy_bird",
-    // Skor = geçilen boru sayısı, saniyede genelde <1 artar. Tahmini değer,
-    // gerçek boru aralığına göre kalibre edilmeli.
     maxScorePerSecond: 2,
     minDurationMs: 800,
     maxDurationMs: 15 * 60 * 1000,
@@ -31,9 +29,6 @@ export const GAME_CONFIGS: Record<GameId, GameConfig> = {
   },
   block_blast: {
     id: "block_blast",
-    // Tek hamlede çoklu satır temizlenince büyük puan sıçraması olabilir,
-    // bu yüzden tavan yüksek tutuldu. Gerçek puanlama tablosuna göre
-    // kalibre edilmeli.
     maxScorePerSecond: 800,
     minDurationMs: 1000,
     maxDurationMs: 20 * 60 * 1000,
