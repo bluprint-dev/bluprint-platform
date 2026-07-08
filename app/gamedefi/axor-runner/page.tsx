@@ -83,8 +83,8 @@ export default function AxorRunnerPage() {
     ctx.strokeStyle = "#D4AF7A";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, GROUND_Y + DINO_H);
-    ctx.lineTo(CANVAS_W, GROUND_Y + DINO_H);
+    ctx.moveTo(0, GROUND_Y);
+    ctx.lineTo(CANVAS_W, GROUND_Y);
     ctx.stroke();
   }, []);
 
@@ -126,7 +126,7 @@ export default function AxorRunnerPage() {
 
   const drawRug = useCallback((ctx: CanvasRenderingContext2D, ob: Obstacle) => {
     const { x, width, height } = ob;
-    const y = GROUND_Y + DINO_H - height;
+    const y = GROUND_Y - height;
     ctx.save();
     ctx.translate(x, y);
     ctx.fillStyle = "#F97316";
@@ -162,7 +162,7 @@ export default function AxorRunnerPage() {
 
   const drawThief = useCallback((ctx: CanvasRenderingContext2D, ob: Obstacle) => {
     const { x, width, height } = ob;
-    const y = GROUND_Y + DINO_H - height;
+    const y = GROUND_Y - height;
     ctx.save();
     ctx.translate(x, y);
     ctx.fillStyle = "#312E81";
@@ -194,7 +194,7 @@ export default function AxorRunnerPage() {
   const drawEye = useCallback((ctx: CanvasRenderingContext2D, ob: Obstacle) => {
     const { x, width, height, floatPhase } = ob;
     const bob = Math.sin(floatPhase) * 4;
-    const y = GROUND_Y + DINO_H - height + bob;
+    const y = GROUND_Y - height + bob;
     const cx = x + width / 2;
     const cy = y + height / 2;
     const r = width / 2;
@@ -337,8 +337,8 @@ export default function AxorRunnerPage() {
 
         const obY =
           ob.type === "eye"
-            ? GROUND_Y + DINO_H - ob.height + Math.sin(ob.floatPhase) * 4
-            : GROUND_Y + DINO_H - ob.height;
+            ? GROUND_Y - ob.height + Math.sin(ob.floatPhase) * 4
+            : GROUND_Y - ob.height;
 
         const overlapX = dinoBox.x < ob.x + ob.width - 6 && dinoBox.x + dinoBox.w > ob.x + 6;
         const overlapY = dinoBox.y < obY + ob.height - 4 && dinoBox.y + dinoBox.h > obY + 4;
