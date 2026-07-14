@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import RewardPoolBanner from "@/components/RewardPoolBanner";
+import GameLeaderboard from "@/components/GameLeaderboard";
 
 type Phase = "idle" | "playing" | "over";
 type ObstacleType = "rug" | "thief" | "eye";
@@ -61,6 +63,7 @@ export default function AxorRunnerPage() {
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -268,6 +271,7 @@ export default function AxorRunnerPage() {
       const data = await res.json();
       if (data.success) {
         setResult({ status: data.status, reason: data.reason, score: scoreRef.current });
+        if (data.status === "verified") setRefreshKey((k) => k + 1);
       } else {
         setResult({ status: "rejected", reason: data.reason ?? data.error });
       }
@@ -468,6 +472,8 @@ export default function AxorRunnerPage() {
         </div>
       </div>
 
+      <RewardPoolBanner gameId="axor_runner" />
+
       <div
         style={{
           position: "relative",
@@ -592,6 +598,8 @@ export default function AxorRunnerPage() {
           </div>
         )}
       </div>
+
+      <GameLeaderboard gameId="axor_runner" refreshKey={refreshKey} />
     </div>
   );
 }
