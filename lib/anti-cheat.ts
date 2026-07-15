@@ -26,6 +26,22 @@ export function checkScoreRatio(
   return { verdict: "ok" };
 }
 
+const HEARTBEAT_INTERVAL_MS = 2000;
+const HEARTBEAT_MIN_DURATION_MS = 4000; // sessions shorter than this get a pass
+const HEARTBEAT_TOLERANCE = 0.4; // must have at least 40% of expected heartbeats
+
+export function checkHeartbeat(durationMs: number, heartbeatCount: number): CheckResult {
+  if (durationMs < HEARTBEAT_MIN_DURATION_MS) {
+    return { verdict: "ok" };
+  }
+  const expected = durationMs / HEARTBEAT_INTERVAL_MS;
+  const minRequired = Math.floor(expected * HEARTBEAT_TOLERANCE);
+  if (heartbeatCount < minRequired) {
+    return { verdict: "reject", reason: "no_heartbeat_activity" };
+  }
+  return { verdict: "ok" };
+}
+
 export async function checkRateLimit(
   wallet: string,
   maxPerMinute: number
@@ -79,13 +95,17 @@ export async function runAntiCheatPipeline(params: {
   gameId: string;
   score: number;
   durationMs: number;
+  heartbeatCount: number;
   config: GameConfig;
   day: string;
 }): Promise<CheckResult> {
-  const { wallet, gameId, score, durationMs, config, day } = params;
+  const { wallet, gameId, score, durationMs, heartbeatCount, config, day } = params;
 
   const ratioCheck = checkScoreRatio(score, durationMs, config);
   if (ratioCheck.verdict === "reject") return ratioCheck;
+
+  const heartbeatCheck = checkHeartbeat(durationMs, heartbeatCount);
+  if (heartbeatCheck.verdict === "reject") return heartbeatCheck;
 
   const rateCheck = await checkRateLimit(wallet, config.maxSubmitsPerMinute);
   if (rateCheck.verdict === "reject") return rateCheck;

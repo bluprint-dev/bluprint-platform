@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -451,7 +451,7 @@ export default function AxorRunnerPage() {
               margin: 0,
             }}
           >
-            🦖 Axor Runner
+            ğŸ¦– Axor Runner
           </h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "rgba(242,228,194,0.5)" }}>
             Press Space / Up Arrow / tap to jump. Dodge rug pullers, thieves, and evil eyes.
@@ -526,7 +526,7 @@ export default function AxorRunnerPage() {
               <>
                 <p style={{ margin: 0, color: "#F2E4C2", fontSize: 15, maxWidth: 380 }}>
                   {connected
-                    ? "Start when you're ready — your score is saved automatically."
+                    ? "Start when you're ready â€” your score is saved automatically."
                     : "Connect your wallet to play."}
                 </p>
                 <button
@@ -556,20 +556,20 @@ export default function AxorRunnerPage() {
             {phase === "over" && (
               <>
                 <p style={{ margin: 0, color: "#F2E4C2", fontSize: 22, fontWeight: 800 }}>
-                  Game over — Score: {score}
+                  Game over â€” Score: {score}
                 </p>
                 {busy && <p style={{ color: "rgba(242,228,194,0.6)", fontSize: 13, margin: 0 }}>Verifying score...</p>}
                 {!busy && result?.status === "verified" && (
-                  <p style={{ color: "#4ADE80", fontSize: 14, margin: 0 }}>✅ Verified and added to the leaderboard.</p>
+                  <p style={{ color: "#4ADE80", fontSize: 14, margin: 0 }}>âœ… Verified and added to the leaderboard.</p>
                 )}
                 {!busy && result?.status === "flagged" && (
                   <p style={{ color: "#FACC15", fontSize: 14, margin: 0 }}>
-                    ⚠️ Flagged for review ({result.reason}). Awaiting admin approval.
+                    âš ï¸ Flagged for review ({result.reason}). Awaiting admin approval.
                   </p>
                 )}
                 {!busy && result?.status === "rejected" && (
                   <p style={{ color: "#EF4444", fontSize: 14, margin: 0 }}>
-                    ❌ Rejected ({result.reason}). Not saved.
+                    âŒ Rejected ({result.reason}). Not saved.
                   </p>
                 )}
                 {!busy && errorMsg && <p style={{ color: "#EF4444", fontSize: 13, margin: 0 }}>{errorMsg}</p>}

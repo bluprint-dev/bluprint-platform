@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
     gameId: session.game_id,
     score,
     durationMs,
+    heartbeatCount: session.heartbeat_count ?? 0,
     config,
     day: today,
   });
