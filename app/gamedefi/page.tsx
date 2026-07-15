@@ -21,8 +21,8 @@ const GAMES = [
   {
     id: "block-blast",
     name: "Block Blast",
-    desc: "Coming soon.",
-    available: false,
+    desc: "Clear rows and columns before the board fills up. Every block placed counts toward your score.",
+    available: true,
     emoji: "🧩",
   },
 ];
