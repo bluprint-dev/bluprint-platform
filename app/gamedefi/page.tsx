@@ -7,21 +7,21 @@ const GAMES = [
   {
     id: "axor-runner",
     name: "Axor Runner",
-    desc: "Rugcülardan, hırsızlardan ve kötü gözlerden kaç. Ne kadar uzun hayatta kalırsan skorun o kadar yüksek.",
+    desc: "Dodge rug pullers, thieves, and evil eyes. The longer you survive, the higher your score.",
     available: true,
     emoji: "🦖",
   },
   {
     id: "flappy-bird",
     name: "Flappy Bird",
-    desc: "Çok yakında.",
+    desc: "Coming soon.",
     available: false,
     emoji: "🐦",
   },
   {
     id: "block-blast",
     name: "Block Blast",
-    desc: "Çok yakında.",
+    desc: "Coming soon.",
     available: false,
     emoji: "🧩",
   },
@@ -44,7 +44,7 @@ export default function GameDefiPage() {
           Game<span style={{ color: "#D4AF7A" }}>DeFi</span>
         </h1>
         <p style={{ color: "rgba(242,228,194,0.55)", marginTop: 10, fontSize: 14 }}>
-          Oyna, skor yap, günlük ödül havuzundan payını al.
+          Play, score, and claim your share of the daily reward pool.
         </p>
       </div>
 
@@ -117,7 +117,7 @@ export default function GameDefiPage() {
                     padding: "4px 8px",
                   }}
                 >
-                  YAKINDA
+                  SOON
                 </span>
               )}
             </motion.div>

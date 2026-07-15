@@ -58,16 +58,16 @@ export default function GameLeaderboard({ gameId = "axor_runner", day, refreshKe
           margin: "0 0 14px",
         }}
       >
-        Günün Liderlik Tablosu
+        Today&apos;s Leaderboard
       </h2>
 
       {loading && entries.length === 0 && (
-        <p style={{ color: "rgba(242,228,194,0.4)", fontSize: 13 }}>Yükleniyor...</p>
+        <p style={{ color: "rgba(242,228,194,0.4)", fontSize: 13 }}>Loading...</p>
       )}
 
       {!loading && entries.length === 0 && (
         <p style={{ color: "rgba(242,228,194,0.4)", fontSize: 13 }}>
-          Bugün henüz skor kaydedilmedi. İlk sen ol.
+          No scores yet today. Be the first.
         </p>
       )}
 
@@ -125,7 +125,7 @@ export default function GameLeaderboard({ gameId = "axor_runner", day, refreshKe
                   {shortenAddress(e.wallet)}
                 </p>
                 {e.paid_at && (
-                  <p style={{ margin: "2px 0 0", fontSize: 10, color: "#4ADE80" }}>Ödül gönderildi</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 10, color: "#4ADE80" }}>Reward sent</p>
                 )}
               </div>
 

@@ -276,7 +276,7 @@ export default function AxorRunnerPage() {
         setResult({ status: "rejected", reason: data.reason ?? data.error });
       }
     } catch {
-      setErrorMsg("Skor gönderilemedi, bağlantını kontrol et.");
+      setErrorMsg("Couldn't submit score, check your connection.");
     } finally {
       setBusy(false);
     }
@@ -393,7 +393,7 @@ export default function AxorRunnerPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        setErrorMsg(data.error ?? "Oturum başlatılamadı.");
+        setErrorMsg(data.error ?? "Couldn't start session.");
         setBusy(false);
         return;
       }
@@ -404,7 +404,7 @@ export default function AxorRunnerPage() {
       lastTsRef.current = 0;
       rafRef.current = requestAnimationFrame(tick);
     } catch {
-      setErrorMsg("Sunucuya bağlanılamadı.");
+      setErrorMsg("Couldn't connect to server.");
     } finally {
       setBusy(false);
     }
@@ -454,7 +454,7 @@ export default function AxorRunnerPage() {
             🦖 Axor Runner
           </h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "rgba(242,228,194,0.5)" }}>
-            Boşluk / yukarı ok / dokun ile zıpla. Rugcü, hırsız ve kötü gözlerden kaç.
+            Press Space / Up Arrow / tap to jump. Dodge rug pullers, thieves, and evil eyes.
           </p>
         </div>
         <div
@@ -468,7 +468,7 @@ export default function AxorRunnerPage() {
             padding: "8px 14px",
           }}
         >
-          {connected && publicKey ? shortenAddress(publicKey.toBase58()) : "Cüzdan bağlı değil"}
+          {connected && publicKey ? shortenAddress(publicKey.toBase58()) : "Wallet not connected"}
         </div>
       </div>
 
@@ -526,8 +526,8 @@ export default function AxorRunnerPage() {
               <>
                 <p style={{ margin: 0, color: "#F2E4C2", fontSize: 15, maxWidth: 380 }}>
                   {connected
-                    ? "Hazır olduğunda başlat, skorun otomatik kaydedilir."
-                    : "Oynamak için önce cüzdanını bağla."}
+                    ? "Start when you're ready — your score is saved automatically."
+                    : "Connect your wallet to play."}
                 </p>
                 <button
                   onClick={(e) => {
@@ -547,7 +547,7 @@ export default function AxorRunnerPage() {
                     opacity: busy ? 0.7 : 1,
                   }}
                 >
-                  {busy ? "Yükleniyor..." : connected ? "Başlat" : "Cüzdanı Bağla"}
+                  {busy ? "Loading..." : connected ? "Start" : "Connect Wallet"}
                 </button>
                 {errorMsg && <p style={{ color: "#EF4444", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
               </>
@@ -556,20 +556,20 @@ export default function AxorRunnerPage() {
             {phase === "over" && (
               <>
                 <p style={{ margin: 0, color: "#F2E4C2", fontSize: 22, fontWeight: 800 }}>
-                  Oyun bitti — Skor: {score}
+                  Game over — Score: {score}
                 </p>
-                {busy && <p style={{ color: "rgba(242,228,194,0.6)", fontSize: 13, margin: 0 }}>Skor doğrulanıyor...</p>}
+                {busy && <p style={{ color: "rgba(242,228,194,0.6)", fontSize: 13, margin: 0 }}>Verifying score...</p>}
                 {!busy && result?.status === "verified" && (
-                  <p style={{ color: "#4ADE80", fontSize: 14, margin: 0 }}>✅ Doğrulandı ve liderlik tablosuna kaydedildi.</p>
+                  <p style={{ color: "#4ADE80", fontSize: 14, margin: 0 }}>✅ Verified and added to the leaderboard.</p>
                 )}
                 {!busy && result?.status === "flagged" && (
                   <p style={{ color: "#FACC15", fontSize: 14, margin: 0 }}>
-                    ⚠️ İnceleme için işaretlendi ({result.reason}). Admin onayı bekleniyor.
+                    ⚠️ Flagged for review ({result.reason}). Awaiting admin approval.
                   </p>
                 )}
                 {!busy && result?.status === "rejected" && (
                   <p style={{ color: "#EF4444", fontSize: 14, margin: 0 }}>
-                    ❌ Reddedildi ({result.reason}). Kaydedilmedi.
+                    ❌ Rejected ({result.reason}). Not saved.
                   </p>
                 )}
                 {!busy && errorMsg && <p style={{ color: "#EF4444", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
@@ -591,7 +591,7 @@ export default function AxorRunnerPage() {
                     opacity: busy ? 0.7 : 1,
                   }}
                 >
-                  Tekrar Oyna
+                  Play Again
                 </button>
               </>
             )}

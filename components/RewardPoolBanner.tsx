@@ -52,7 +52,7 @@ export default function RewardPoolBanner({ gameId = "axor_runner", day }: Props)
             color: "rgba(212,175,122,0.75)",
           }}
         >
-          BUGÜNÜN ÖDÜL HAVUZU
+          TODAY&apos;S REWARD POOL
         </p>
         <p
           style={{
@@ -66,7 +66,7 @@ export default function RewardPoolBanner({ gameId = "axor_runner", day }: Props)
           {loading ? "..." : `${(amount ?? 0).toLocaleString("en-US", { maximumFractionDigits: 3 })} SOL`}
         </p>
         <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(242,228,194,0.5)" }}>
-          En yüksek skoru yapan cüzdan, skoruna oranla bonding curve&apos;den payını alır.
+          The top-scoring wallet gets a share of the bonding curve proportional to their score.
         </p>
       </div>
     </div>
