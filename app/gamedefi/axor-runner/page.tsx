@@ -38,6 +38,14 @@ function shortenAddress(address: string) {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
+function formatRemaining(untilIso: string, nowMs: number): string {
+  const diff = new Date(untilIso).getTime() - nowMs;
+  if (diff <= 0) return "0h 0m";
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return `${h}h ${m}m`;
+}
+
 export default function AxorRunnerPage() {
   const { connected, publicKey } = useWallet();
   const { setVisible } = useWalletModal();
@@ -45,6 +53,7 @@ export default function AxorRunnerPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
   const lastTsRef = useRef<number>(0);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const dinoYRef = useRef(GROUND_Y - DINO_H);
   const dinoVyRef = useRef(0);
@@ -64,10 +73,24 @@ export default function AxorRunnerPage() {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [cooldownUntil, setCooldownUntil] = useState<string | null>(null);
+  const [nowTick, setNowTick] = useState(Date.now());
 
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  useEffect(() => {
+    if (!cooldownUntil) return;
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [cooldownUntil]);
+
+  useEffect(() => {
+    if (cooldownUntil && new Date(cooldownUntil).getTime() <= nowTick) {
+      setCooldownUntil(null);
+    }
+  }, [cooldownUntil, nowTick]);
 
   const drawBackground = useCallback((ctx: CanvasRenderingContext2D) => {
     const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
@@ -256,6 +279,7 @@ export default function AxorRunnerPage() {
     phaseRef.current = "over";
     setPhase("over");
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (heartbeatRef.current) clearInterval(heartbeatRef.current);
 
     const token = sessionToken;
     const wallet = publicKey?.toBase58();
@@ -393,7 +417,12 @@ export default function AxorRunnerPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        setErrorMsg(data.error ?? "Couldn't start session.");
+        if (data.error === "ALREADY_PLAYED_TODAY" && data.nextAvailableAt) {
+          setCooldownUntil(data.nextAvailableAt);
+          setNowTick(Date.now());
+        } else {
+          setErrorMsg(data.error ?? "Couldn't start session.");
+        }
         setBusy(false);
         return;
       }
@@ -403,6 +432,15 @@ export default function AxorRunnerPage() {
       phaseRef.current = "playing";
       lastTsRef.current = 0;
       rafRef.current = requestAnimationFrame(tick);
+
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      heartbeatRef.current = setInterval(() => {
+        fetch("/api/games/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionToken: data.sessionToken }),
+        }).catch(() => {});
+      }, 2000);
     } catch {
       setErrorMsg("Couldn't connect to server.");
     } finally {
@@ -424,6 +462,7 @@ export default function AxorRunnerPage() {
   useEffect(() => {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
   }, []);
 
@@ -438,6 +477,8 @@ export default function AxorRunnerPage() {
     }
   }, [phase, drawBackground, drawDino]);
 
+  const inCooldown = !!cooldownUntil && new Date(cooldownUntil).getTime() > nowTick;
+
   return (
     <div style={{ maxWidth: 940, margin: "0 auto", padding: "32px 16px 80px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
@@ -451,7 +492,7 @@ export default function AxorRunnerPage() {
               margin: 0,
             }}
           >
-            ğŸ¦– Axor Runner
+            Axor Runner
           </h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "rgba(242,228,194,0.5)" }}>
             Press Space / Up Arrow / tap to jump. Dodge rug pullers, thieves, and evil eyes.
@@ -524,75 +565,71 @@ export default function AxorRunnerPage() {
           >
             {phase === "idle" && (
               <>
-                <p style={{ margin: 0, color: "#F2E4C2", fontSize: 15, maxWidth: 380 }}>
-                  {connected
-                    ? "Start when you're ready â€” your score is saved automatically."
-                    : "Connect your wallet to play."}
-                </p>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    startGame();
-                  }}
-                  disabled={busy}
-                  style={{
-                    padding: "12px 28px",
-                    borderRadius: 999,
-                    border: "none",
-                    background: "linear-gradient(135deg,#D4AF7A,#E8C989)",
-                    color: "#0A0A0C",
-                    fontWeight: 800,
-                    fontSize: 14,
-                    cursor: busy ? "wait" : "pointer",
-                    opacity: busy ? 0.7 : 1,
-                  }}
-                >
-                  {busy ? "Loading..." : connected ? "Start" : "Connect Wallet"}
-                </button>
-                {errorMsg && <p style={{ color: "#EF4444", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
+                {inCooldown ? (
+                  <>
+                    <p style={{ margin: 0, color: "#F2E4C2", fontSize: 16, fontWeight: 700 }}>
+                      Already played today
+                    </p>
+                    <p style={{ margin: 0, color: "#D4AF7A", fontSize: 20, fontWeight: 800, fontFamily: "var(--font-mono), monospace" }}>
+                      Next attempt in {formatRemaining(cooldownUntil!, nowTick)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ margin: 0, color: "#F2E4C2", fontSize: 15, maxWidth: 380 }}>
+                      {connected
+                        ? "One attempt per 24 hours. Start when you're ready."
+                        : "Connect your wallet to play."}
+                    </p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startGame();
+                      }}
+                      disabled={busy}
+                      style={{
+                        padding: "12px 28px",
+                        borderRadius: 999,
+                        border: "none",
+                        background: "linear-gradient(135deg,#D4AF7A,#E8C989)",
+                        color: "#0A0A0C",
+                        fontWeight: 800,
+                        fontSize: 14,
+                        cursor: busy ? "wait" : "pointer",
+                        opacity: busy ? 0.7 : 1,
+                      }}
+                    >
+                      {busy ? "Loading..." : connected ? "Start" : "Connect Wallet"}
+                    </button>
+                    {errorMsg && <p style={{ color: "#EF4444", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
+                  </>
+                )}
               </>
             )}
 
             {phase === "over" && (
               <>
                 <p style={{ margin: 0, color: "#F2E4C2", fontSize: 22, fontWeight: 800 }}>
-                  Game over â€” Score: {score}
+                  Game over — Score: {score}
                 </p>
                 {busy && <p style={{ color: "rgba(242,228,194,0.6)", fontSize: 13, margin: 0 }}>Verifying score...</p>}
                 {!busy && result?.status === "verified" && (
-                  <p style={{ color: "#4ADE80", fontSize: 14, margin: 0 }}>âœ… Verified and added to the leaderboard.</p>
+                  <p style={{ color: "#4ADE80", fontSize: 14, margin: 0 }}>Verified and added to the leaderboard.</p>
                 )}
                 {!busy && result?.status === "flagged" && (
                   <p style={{ color: "#FACC15", fontSize: 14, margin: 0 }}>
-                    âš ï¸ Flagged for review ({result.reason}). Awaiting admin approval.
+                    Flagged for review ({result.reason}). Awaiting admin approval.
                   </p>
                 )}
                 {!busy && result?.status === "rejected" && (
                   <p style={{ color: "#EF4444", fontSize: 14, margin: 0 }}>
-                    âŒ Rejected ({result.reason}). Not saved.
+                    Rejected ({result.reason}). Not saved.
                   </p>
                 )}
                 {!busy && errorMsg && <p style={{ color: "#EF4444", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    startGame();
-                  }}
-                  disabled={busy}
-                  style={{
-                    padding: "12px 28px",
-                    borderRadius: 999,
-                    border: "none",
-                    background: "linear-gradient(135deg,#D4AF7A,#E8C989)",
-                    color: "#0A0A0C",
-                    fontWeight: 800,
-                    fontSize: 14,
-                    cursor: busy ? "wait" : "pointer",
-                    opacity: busy ? 0.7 : 1,
-                  }}
-                >
-                  Play Again
-                </button>
+                <p style={{ margin: 0, color: "rgba(242,228,194,0.45)", fontSize: 12 }}>
+                  Come back in 24 hours for your next attempt.
+                </p>
               </>
             )}
           </div>

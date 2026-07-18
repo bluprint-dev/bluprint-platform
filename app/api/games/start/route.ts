@@ -2,6 +2,8 @@
 import { supabase } from "@/lib/supabase";
 import { getGameConfig, generateSessionSeed } from "@/lib/game-config";
 
+const PLAY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const wallet: string | undefined = body?.wallet;
@@ -20,6 +22,30 @@ export async function POST(req: NextRequest) {
       { success: false, error: "INVALID_GAME" },
       { status: 400 }
     );
+  }
+
+  const { data: lastSession } = await supabase
+    .from("game_sessions")
+    .select("started_at")
+    .eq("wallet", wallet)
+    .eq("game_id", gameId)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (lastSession) {
+    const lastMs = new Date(lastSession.started_at).getTime();
+    const nextAvailableMs = lastMs + PLAY_COOLDOWN_MS;
+    if (Date.now() < nextAvailableMs) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ALREADY_PLAYED_TODAY",
+          nextAvailableAt: new Date(nextAvailableMs).toISOString(),
+        },
+        { status: 429 }
+      );
+    }
   }
 
   const serverSeed = generateSessionSeed();
