@@ -74,6 +74,14 @@ function shortenAddress(address: string) {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
+function formatRemaining(untilIso: string, nowMs: number): string {
+  const diff = new Date(untilIso).getTime() - nowMs;
+  if (diff <= 0) return "0h 0m";
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return `${h}h ${m}m`;
+}
+
 function emptyBoard(): Board {
   return Array.from({ length: BOARD_SIZE }, () => Array<BoardCell>(BOARD_SIZE).fill(null));
 }
@@ -137,11 +145,71 @@ function clearLines(board: Board): { board: Board; cleared: number; rows: number
   return { board: next, cleared: rows.length + cols.length, rows, cols };
 }
 
+// ─── sound (procedural, no external files) ───────────────────────────────
+function useSound() {
+  const ctxRef = useRef<AudioContext | null>(null);
+
+  const getCtx = useCallback(() => {
+    if (!ctxRef.current) {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      ctxRef.current = new AC();
+    }
+    if (ctxRef.current.state === "suspended") {
+      ctxRef.current.resume().catch(() => {});
+    }
+    return ctxRef.current;
+  }, []);
+
+  const tone = useCallback(
+    (freq: number, duration: number, type: OscillatorType = "sine", delay = 0, peak = 0.16) => {
+      try {
+        const ctx = getCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        const t0 = ctx.currentTime + delay;
+        gain.gain.setValueAtTime(0, t0);
+        gain.gain.linearRampToValueAtTime(peak, t0 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+        osc.start(t0);
+        osc.stop(t0 + duration + 0.02);
+      } catch {
+        // audio not available, ignore
+      }
+    },
+    [getCtx]
+  );
+
+  return {
+    pickup: () => tone(660, 0.05, "square", 0, 0.07),
+    place: () => tone(320, 0.09, "sine", 0, 0.14),
+    invalid: () => tone(140, 0.1, "sawtooth", 0, 0.1),
+    clear: (lines: number) => {
+      for (let i = 0; i < Math.min(lines, 4); i++) {
+        tone(440 + i * 160, 0.12, "triangle", i * 0.06, 0.18);
+      }
+    },
+    start: () => {
+      tone(500, 0.08, "sine", 0, 0.12);
+      tone(720, 0.1, "sine", 0.07, 0.12);
+    },
+    gameover: () => {
+      tone(220, 0.15, "sawtooth", 0, 0.13);
+      tone(160, 0.25, "sawtooth", 0.12, 0.13);
+    },
+  };
+}
+
 export default function BlockBlastPage() {
   const { connected, publicKey } = useWallet();
   const { setVisible } = useWalletModal();
+  const sound = useSound();
 
   const boardElRef = useRef<HTMLDivElement>(null);
+  const ghostElRef = useRef<HTMLDivElement>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const popupIdRef = useRef(0);
   const prevBoardRef = useRef<Board>(emptyBoard());
@@ -155,8 +223,11 @@ export default function BlockBlastPage() {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [cooldownUntil, setCooldownUntil] = useState<string | null>(null);
+  const [nowTick, setNowTick] = useState(Date.now());
 
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [draggingPiece, setDraggingPiece] = useState<Piece | null>(null);
   const [hoverAnchor, setHoverAnchor] = useState<{ row: number; col: number } | null>(null);
   const [flashCells, setFlashCells] = useState<Set<string>>(new Set());
   const [justPlaced, setJustPlaced] = useState<Set<string>>(new Set());
@@ -176,7 +247,18 @@ export default function BlockBlastPage() {
   hoverLiveRef.current = hoverAnchor;
   sessionTokenRef.current = sessionToken;
 
-  // pop-in animation for newly filled cells
+  useEffect(() => {
+    if (!cooldownUntil) return;
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [cooldownUntil]);
+
+  useEffect(() => {
+    if (cooldownUntil && new Date(cooldownUntil).getTime() <= nowTick) {
+      setCooldownUntil(null);
+    }
+  }, [cooldownUntil, nowTick]);
+
   useEffect(() => {
     const prev = prevBoardRef.current;
     const changed = new Set<string>();
@@ -203,6 +285,7 @@ export default function BlockBlastPage() {
     phaseRef.current = "over";
     setPhase("over");
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+    sound.gameover();
 
     const token = sessionTokenRef.current;
     const wallet = publicKey?.toBase58();
@@ -227,6 +310,7 @@ export default function BlockBlastPage() {
     } finally {
       setBusy(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publicKey]);
 
   useEffect(() => {
@@ -241,51 +325,59 @@ export default function BlockBlastPage() {
     }
   }, [board, tray, phase, endGame]);
 
-  const commitPlacement = useCallback((index: number, piece: Piece, row: number, col: number) => {
-    const placedBoard = placePiece(boardLiveRef.current, piece.shape, row, col, piece.color);
-    setBoard(placedBoard);
-    setTray((prev) => {
-      const next = [...prev];
-      next[index] = null;
-      if (next.every((p) => p == null)) {
-        return [randomPiece(), randomPiece(), randomPiece()];
-      }
-      return next;
-    });
+  const commitPlacement = useCallback(
+    (index: number, piece: Piece, row: number, col: number) => {
+      const placedBoard = placePiece(boardLiveRef.current, piece.shape, row, col, piece.color);
+      setBoard(placedBoard);
+      setTray((prev) => {
+        const next = [...prev];
+        next[index] = null;
+        if (next.every((p) => p == null)) {
+          return [randomPiece(), randomPiece(), randomPiece()];
+        }
+        return next;
+      });
 
-    const { board: clearedBoard, cleared, rows, cols } = clearLines(placedBoard);
+      const { board: clearedBoard, cleared, rows, cols } = clearLines(placedBoard);
 
-    if (cleared > 0) {
-      const flash = new Set<string>();
-      for (const r of rows) for (let c = 0; c < BOARD_SIZE; c++) flash.add(`${r}-${c}`);
-      for (const c of cols) for (let r = 0; r < BOARD_SIZE; r++) flash.add(`${r}-${c}`);
-      setFlashCells(flash);
+      if (cleared > 0) {
+        const flash = new Set<string>();
+        for (const r of rows) for (let c = 0; c < BOARD_SIZE; c++) flash.add(`${r}-${c}`);
+        for (const c of cols) for (let r = 0; r < BOARD_SIZE; r++) flash.add(`${r}-${c}`);
+        setFlashCells(flash);
+        sound.clear(cleared);
 
-      window.setTimeout(() => {
-        setBoard(clearedBoard);
-        setFlashCells(new Set());
-        const gain = piece.shape.length + 10 * cleared * cleared;
+        window.setTimeout(() => {
+          setBoard(clearedBoard);
+          setFlashCells(new Set());
+          const gain = piece.shape.length + 10 * cleared * cleared;
+          setScore((s) => {
+            const ns = s + gain;
+            scoreRef.current = ns;
+            return ns;
+          });
+          pushPopup(`+${gain}`, comboLabel(cleared));
+        }, 190);
+      } else {
+        sound.place();
+        const gain = piece.shape.length;
         setScore((s) => {
           const ns = s + gain;
           scoreRef.current = ns;
           return ns;
         });
-        pushPopup(`+${gain}`, comboLabel(cleared));
-      }, 190);
-    } else {
-      const gain = piece.shape.length;
-      setScore((s) => {
-        const ns = s + gain;
-        scoreRef.current = ns;
-        return ns;
-      });
-    }
-  }, [pushPopup]);
+      }
+    },
+    [pushPopup, sound]
+  );
 
   useEffect(() => {
     if (draggingIndex == null) return;
 
     function handleMove(e: PointerEvent) {
+      if (ghostElRef.current) {
+        ghostElRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY - DRAG_LIFT}px)`;
+      }
       const rect = boardElRef.current?.getBoundingClientRect();
       if (!rect) return;
       const cellSize = rect.width / BOARD_SIZE;
@@ -301,9 +393,12 @@ export default function BlockBlastPage() {
       if (idx != null && piece && anchor) {
         if (canPlace(boardLiveRef.current, piece.shape, anchor.row, anchor.col)) {
           commitPlacement(idx, piece, anchor.row, anchor.col);
+        } else {
+          sound.invalid();
         }
       }
       setDraggingIndex(null);
+      setDraggingPiece(null);
       setHoverAnchor(null);
     }
 
@@ -313,7 +408,7 @@ export default function BlockBlastPage() {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
     };
-  }, [draggingIndex, commitPlacement]);
+  }, [draggingIndex, commitPlacement, sound]);
 
   const startGame = useCallback(async () => {
     if (!connected || !publicKey) {
@@ -330,7 +425,12 @@ export default function BlockBlastPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        setErrorMsg(data.error ?? "Couldn't start session.");
+        if (data.error === "ALREADY_PLAYED_TODAY" && data.nextAvailableAt) {
+          setCooldownUntil(data.nextAvailableAt);
+          setNowTick(Date.now());
+        } else {
+          setErrorMsg(data.error ?? "Couldn't start session.");
+        }
         setBusy(false);
         return;
       }
@@ -345,6 +445,7 @@ export default function BlockBlastPage() {
       setPopups([]);
       setPhase("playing");
       phaseRef.current = "playing";
+      sound.start();
 
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       heartbeatRef.current = setInterval(() => {
@@ -359,7 +460,7 @@ export default function BlockBlastPage() {
     } finally {
       setBusy(false);
     }
-  }, [connected, publicKey, setVisible]);
+  }, [connected, publicKey, setVisible, sound]);
 
   useEffect(() => {
     return () => {
@@ -368,19 +469,18 @@ export default function BlockBlastPage() {
   }, []);
 
   const highlightMap = new Map<string, boolean>();
-  if (draggingIndex != null && hoverAnchor) {
-    const piece = tray[draggingIndex];
-    if (piece) {
-      const valid = canPlace(board, piece.shape, hoverAnchor.row, hoverAnchor.col);
-      for (const [dr, dc] of piece.shape) {
-        const r = hoverAnchor.row + dr;
-        const c = hoverAnchor.col + dc;
-        if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
-          highlightMap.set(`${r}-${c}`, valid);
-        }
+  if (draggingIndex != null && hoverAnchor && draggingPiece) {
+    const valid = canPlace(board, draggingPiece.shape, hoverAnchor.row, hoverAnchor.col);
+    for (const [dr, dc] of draggingPiece.shape) {
+      const r = hoverAnchor.row + dr;
+      const c = hoverAnchor.col + dc;
+      if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
+        highlightMap.set(`${r}-${c}`, valid);
       }
     }
   }
+
+  const inCooldown = !!cooldownUntil && new Date(cooldownUntil).getTime() > nowTick;
 
   return (
     <div style={{ maxWidth: "min(620px, 96vw)", margin: "0 auto", padding: "28px 12px 80px" }}>
@@ -397,9 +497,7 @@ export default function BlockBlastPage() {
           60% { transform: translateX(-4px); }
           80% { transform: translateX(4px); }
         }
-        .bb-cell-pop {
-          animation: bbCellPop 0.24s cubic-bezier(.34,1.56,.64,1);
-        }
+        .bb-cell-pop { animation: bbCellPop 0.24s cubic-bezier(.34,1.56,.64,1); }
         @keyframes bbCellPop {
           0%   { transform: scale(0.35); opacity: 0.3; }
           60%  { transform: scale(1.14); opacity: 1; }
@@ -422,7 +520,7 @@ export default function BlockBlastPage() {
               margin: 0,
             }}
           >
-            🧩 Block Blast
+            Block Blast
           </h1>
           <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "rgba(242,228,194,0.5)" }}>
             Drag pieces onto the board. Clear full rows or columns to score.
@@ -484,19 +582,11 @@ export default function BlockBlastPage() {
                   animate={{ opacity: 1, y: -46, scale: 1 }}
                   exit={{ opacity: 0, y: -70 }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    textAlign: "right",
-                    whiteSpace: "nowrap",
-                    pointerEvents: "none",
-                  }}
+                  style={{ position: "absolute", right: 0, textAlign: "right", whiteSpace: "nowrap", pointerEvents: "none" }}
                 >
                   <div style={{ fontSize: 16, fontWeight: 900, color: "#4ADE80" }}>{p.text}</div>
                   {p.sub && (
-                    <div style={{ fontSize: 10.5, fontWeight: 800, color: "#FACC15", letterSpacing: "0.04em" }}>
-                      {p.sub}
-                    </div>
+                    <div style={{ fontSize: 10.5, fontWeight: 800, color: "#FACC15", letterSpacing: "0.04em" }}>{p.sub}</div>
                   )}
                 </motion.div>
               ))}
@@ -577,11 +667,7 @@ export default function BlockBlastPage() {
                   key={piece.id}
                   className="bb-tray-piece"
                   initial={{ opacity: 0, scale: 0.4, y: 10 }}
-                  animate={{
-                    opacity: isDragging ? 0.2 : 1,
-                    scale: isDragging ? 0.9 : 1,
-                    y: 0,
-                  }}
+                  animate={{ opacity: isDragging ? 0.15 : 1, scale: isDragging ? 0.9 : 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.4 }}
                   transition={{ type: "spring", stiffness: 380, damping: 22 }}
                   whileTap={{ scale: 0.94 }}
@@ -589,7 +675,12 @@ export default function BlockBlastPage() {
                     if (phase !== "playing") return;
                     e.preventDefault();
                     setDraggingIndex(i);
+                    setDraggingPiece(piece);
                     setHoverAnchor(null);
+                    sound.pickup();
+                    if (ghostElRef.current) {
+                      ghostElRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY - DRAG_LIFT}px)`;
+                    }
                   }}
                   style={{
                     width: 80,
@@ -625,9 +716,7 @@ export default function BlockBlastPage() {
                             height: cellPx,
                             borderRadius: 3,
                             background: filled ? piece.color : "transparent",
-                            boxShadow: filled
-                              ? "inset 0 -2px 0 rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.3)"
-                              : "none",
+                            boxShadow: filled ? "inset 0 -2px 0 rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.3)" : "none",
                           }}
                         />
                       );
@@ -663,30 +752,49 @@ export default function BlockBlastPage() {
             >
               {phase === "idle" && (
                 <>
-                  <p style={{ margin: 0, color: "#F2E4C2", fontSize: 15, maxWidth: 380 }}>
-                    {connected
-                      ? "Start when you're ready — your score is saved automatically."
-                      : "Connect your wallet to play."}
-                  </p>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => startGame()}
-                    disabled={busy}
-                    style={{
-                      padding: "12px 28px",
-                      borderRadius: 999,
-                      border: "none",
-                      background: "linear-gradient(135deg,#D4AF7A,#E8C989)",
-                      color: "#0A0A0C",
-                      fontWeight: 800,
-                      fontSize: 14,
-                      cursor: busy ? "wait" : "pointer",
-                      opacity: busy ? 0.7 : 1,
-                    }}
-                  >
-                    {busy ? "Loading..." : connected ? "Start" : "Connect Wallet"}
-                  </motion.button>
-                  {errorMsg && <p style={{ color: "#EF4444", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
+                  {inCooldown ? (
+                    <>
+                      <p style={{ margin: 0, color: "#F2E4C2", fontSize: 16, fontWeight: 700 }}>Already played today</p>
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "#D4AF7A",
+                          fontSize: 20,
+                          fontWeight: 800,
+                          fontFamily: "var(--font-mono), monospace",
+                        }}
+                      >
+                        Next attempt in {formatRemaining(cooldownUntil!, nowTick)}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ margin: 0, color: "#F2E4C2", fontSize: 15, maxWidth: 380 }}>
+                        {connected
+                          ? "One attempt per 24 hours. Start when you're ready."
+                          : "Connect your wallet to play."}
+                      </p>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => startGame()}
+                        disabled={busy}
+                        style={{
+                          padding: "12px 28px",
+                          borderRadius: 999,
+                          border: "none",
+                          background: "linear-gradient(135deg,#D4AF7A,#E8C989)",
+                          color: "#0A0A0C",
+                          fontWeight: 800,
+                          fontSize: 14,
+                          cursor: busy ? "wait" : "pointer",
+                          opacity: busy ? 0.7 : 1,
+                        }}
+                      >
+                        {busy ? "Loading..." : connected ? "Start" : "Connect Wallet"}
+                      </motion.button>
+                      {errorMsg && <p style={{ color: "#EF4444", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
+                    </>
+                  )}
                 </>
               )}
 
@@ -702,37 +810,20 @@ export default function BlockBlastPage() {
                   </motion.p>
                   {busy && <p style={{ color: "rgba(242,228,194,0.6)", fontSize: 13, margin: 0 }}>Verifying score...</p>}
                   {!busy && result?.status === "verified" && (
-                    <p style={{ color: "#4ADE80", fontSize: 14, margin: 0 }}>✅ Verified and added to the leaderboard.</p>
+                    <p style={{ color: "#4ADE80", fontSize: 14, margin: 0 }}>Verified and added to the leaderboard.</p>
                   )}
                   {!busy && result?.status === "flagged" && (
                     <p style={{ color: "#FACC15", fontSize: 14, margin: 0 }}>
-                      ⚠️ Flagged for review ({result.reason}). Awaiting admin approval.
+                      Flagged for review ({result.reason}). Awaiting admin approval.
                     </p>
                   )}
                   {!busy && result?.status === "rejected" && (
-                    <p style={{ color: "#EF4444", fontSize: 14, margin: 0 }}>
-                      ❌ Rejected ({result.reason}). Not saved.
-                    </p>
+                    <p style={{ color: "#EF4444", fontSize: 14, margin: 0 }}>Rejected ({result.reason}). Not saved.</p>
                   )}
                   {!busy && errorMsg && <p style={{ color: "#EF4444", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => startGame()}
-                    disabled={busy}
-                    style={{
-                      padding: "12px 28px",
-                      borderRadius: 999,
-                      border: "none",
-                      background: "linear-gradient(135deg,#D4AF7A,#E8C989)",
-                      color: "#0A0A0C",
-                      fontWeight: 800,
-                      fontSize: 14,
-                      cursor: busy ? "wait" : "pointer",
-                      opacity: busy ? 0.7 : 1,
-                    }}
-                  >
-                    Play Again
-                  </motion.button>
+                  <p style={{ margin: 0, color: "rgba(242,228,194,0.45)", fontSize: 12 }}>
+                    Come back in 24 hours for your next attempt.
+                  </p>
                 </>
               )}
             </motion.div>
@@ -741,6 +832,61 @@ export default function BlockBlastPage() {
       </motion.div>
 
       <GameLeaderboard gameId="block_blast" refreshKey={refreshKey} />
+
+      {draggingPiece && (
+        <div
+          ref={ghostElRef}
+          style={{
+            position: "fixed",
+            left: 0,
+            top: 0,
+            pointerEvents: "none",
+            zIndex: 999,
+            transform: "translate(-1000px,-1000px)",
+            marginLeft: -((Math.max(...draggingPiece.shape.map(([, c]) => c)) + 1) * 24) / 2,
+            marginTop: -((Math.max(...draggingPiece.shape.map(([r]) => r)) + 1) * 24) / 2,
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${Math.max(...draggingPiece.shape.map(([, c]) => c)) + 1}, 24px)`,
+              gridTemplateRows: `repeat(${Math.max(...draggingPiece.shape.map(([r]) => r)) + 1}, 24px)`,
+              gap: 3,
+              filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.5))",
+            }}
+          >
+            {Array.from(
+              {
+                length:
+                  (Math.max(...draggingPiece.shape.map(([r]) => r)) + 1) *
+                  (Math.max(...draggingPiece.shape.map(([, c]) => c)) + 1),
+              },
+              (_, idx) => {
+                const maxC = Math.max(...draggingPiece.shape.map(([, c]) => c)) + 1;
+                const r = Math.floor(idx / maxC);
+                const c = idx % maxC;
+                const filled = draggingPiece.shape.some(([sr, sc]) => sr === r && sc === c);
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 5,
+                      background: filled ? draggingPiece.color : "transparent",
+                      boxShadow: filled
+                        ? "inset 0 -3px 0 rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.35)"
+                        : "none",
+                      opacity: filled ? 0.92 : 0,
+                    }}
+                  />
+                );
+              }
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
