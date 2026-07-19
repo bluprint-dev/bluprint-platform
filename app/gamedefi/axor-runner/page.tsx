@@ -73,6 +73,8 @@ export default function AxorRunnerPage() {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const sessionTokenRef = useRef<string | null>(null);
+  sessionTokenRef.current = sessionToken;
   const [cooldownUntil, setCooldownUntil] = useState<string | null>(null);
   const [nowTick, setNowTick] = useState(Date.now());
 
@@ -281,7 +283,7 @@ export default function AxorRunnerPage() {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
 
-    const token = sessionToken;
+    const token = sessionTokenRef.current;
     const wallet = publicKey?.toBase58();
     if (!token || !wallet) return;
 
@@ -304,7 +306,7 @@ export default function AxorRunnerPage() {
     } finally {
       setBusy(false);
     }
-  }, [sessionToken, publicKey]);
+  }, [publicKey]);
 
   const tick = useCallback(
     (ts: number) => {
