@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
     .select("started_at")
     .eq("wallet", wallet)
     .eq("game_id", gameId)
+    .in("status", ["verified", "flagged"])
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
